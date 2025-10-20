@@ -5,9 +5,9 @@ import markdownItTaskCheckbox from 'markdown-it-task-checkbox'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   lang: 'zh-CN',
-  title: "Yuxi-Know Docs",
-  description: "文档中心",
-  base: '/Yuxi-Know/',
+  title: "智能水利知识库文档",
+  description: "智能水利知识库管理系统文档中心",
+  base: '/smart-water/',
   markdown: {
     config: (md) => {
       md.use(markdownItTaskCheckbox)
@@ -24,7 +24,7 @@ export default defineConfig({
       {
         text: '简介',
         items: [
-          { text: '什么是 Yuxi-Know？', link: '/intro/project-overview' },
+          { text: '什么是智能水利知识库？', link: '/intro/project-overview' },
           { text: '快速开始', link: '/intro/quick-start' },
           { text: '模型配置', link: '/intro/model-config' },
           { text: '知识库与知识图谱', link: '/intro/knowledge-base' }

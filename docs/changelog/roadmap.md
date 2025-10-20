@@ -1,6 +1,6 @@
 # 开发路线图
 
-路线图可能会经常变更，如果有强烈的建议，可以在 [issue](https://github.com/xerrors/Yuxi-Know/issues) 中提。
+路线图可能会经常变更，如果有强烈的建议，可以在 [issue](#/issues) 中提。
 
 - **[2025/10/13]** v0.3 进入 beta 测试环节，不会再封装新的特性，仅作 bug 层面的修复
 
@@ -16,7 +16,7 @@
 - [ ] 基于 create_agent 创建 SQL Viewer 智能体 <Badge type="info" text="0.3.5" />
 - [ ] 优化 MCP 逻辑，支持 common + special 创建方式 <Badge type="info" text="0.3.5" />
 - [ ] 添加对于上传文件的支持
-- [ ] 统一图谱数据结构，优化可视化方式 [#298](https://github.com/xerrors/Yuxi-Know/issues/298) <Badge type="info" text="0.4" />
+- [ ] 统一图谱数据结构，优化可视化方式 [#298](#/issues/298) <Badge type="info" text="0.4" />
 - [ ] 集成智能体评估，首先使用命令行来实现，然后考虑放在 UI 里面展示
 - [ ] 开发与生产环境隔离，构建生产镜像 <Badge type="info" text="0.4" />
 - [ ] 支持 MinerU 2.5 的解析方法 <Badge type="info" text="0.3.5" />

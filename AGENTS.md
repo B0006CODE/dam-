@@ -1,7 +1,7 @@
 
 # 项目目录结构 (Project Overview)
 
-Yuxi-Know 是一个基于知识图谱和向量数据库的智能知识库系统。它通过 FastAPI 提供后端 API，使用 Vue.js 构建前端界面，并利用 Docker Compose 进行整体服务的编排和管理。
+智能水利知识库管理系统是基于知识图谱和向量数据库的专业水利工程知识管理平台。系统通过 FastAPI 提供后端 API，使用 Vue.js 构建前端界面，并利用 Docker Compose 进行整体服务的编排和管理。
 
 文档中心在 `docs` 文件夹下面。
 

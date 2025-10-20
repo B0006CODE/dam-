@@ -16,7 +16,7 @@
 
 ```bash
 # 克隆稳定版本
-git clone --branch v0.2.2 --depth 1 https://github.com/xerrors/Yuxi-Know.git
+git clone --branch v0.2.2 --depth 1 #.git
 cd Yuxi-Know
 ```
 

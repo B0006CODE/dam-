@@ -2,7 +2,7 @@
 
 感谢所有贡献者的支持！
 
-<a href="https://github.com/xerrors/Yuxi-Know/contributors">
+<a href="#/contributors">
     <img src="https://contributors.nn.ci/api?repo=xerrors/Yuxi-Know" alt="贡献者名单">
 </a>
 

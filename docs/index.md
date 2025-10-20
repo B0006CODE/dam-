@@ -3,9 +3,9 @@
 layout: home
 
 hero:
-  name: "Yuxi-Know"
-  text: "智能知识库与知识图谱问答系统"
-  tagline: 基于 LangGraph + Vue.js + FastAPI + LightRAG 架构构建的智能问答平台
+  name: "智能水利知识库"
+  text: "专业的水利工程知识管理系统"
+  tagline: 基于知识图谱技术，提供专业的水利大坝安全知识服务
   image:
     src: /bb.png
     alt: VitePress
@@ -14,8 +14,8 @@ hero:
       text: 快速开始
       link: /intro/quick-start
     - theme: alt
-      text: 在线演示
-      link: https://www.bilibili.com/video/BV1ETedzREgY/
+      text: 功能介绍
+      link: /intro/project-overview
 
 features:
   - title: 🤖 智能体与模型
