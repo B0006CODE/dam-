@@ -1,0 +1,15 @@
+{
+  "name": "smart-water-knowledge-system",
+  "version": "1.0.0",
+  "description": "智能水利知识库管理系统",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "docs:host": "vitepress dev docs --host"
+  },
+  "dependencies": {
+    "markdown-it-task-checkbox": "^1.0.6",
+    "vitepress": "^1.6.4"
+  }
+}
