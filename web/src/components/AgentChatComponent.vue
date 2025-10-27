@@ -58,11 +58,49 @@
         <p>{{ currentAgent ? currentAgent.description : '不同的智能体有不同的专长和能力' }}</p> -->
 
         <div class="inputer-init">
+          <!-- 检索模式选择器 - 独立显示 -->
+          <div class="retrieval-mode-wrapper" v-if="currentAgent">
+            <div class="retrieval-mode-selector-standalone">
+              <div class="retrieval-mode-buttons">
+                <button
+                  :class="['retrieval-mode-btn', { 'active': retrievalMode === 'mix' }]"
+                  @click="retrievalMode = 'mix'"
+                >
+                  <div class="retrieval-mode-icon">
+                    <MergeCellsOutlined />
+                  </div>
+                  <span class="retrieval-mode-text">智能混合</span>
+                </button>
+                <button
+                  :class="['retrieval-mode-btn', { 'active': retrievalMode === 'local' }]"
+                  @click="retrievalMode = 'local'"
+                >
+                  <div class="retrieval-mode-icon">
+                    <DatabaseOutlined />
+                  </div>
+                  <span class="retrieval-mode-text">语义向量</span>
+                </button>
+                <button
+                  :class="['retrieval-mode-btn', { 'active': retrievalMode === 'global' }]"
+                  @click="retrievalMode = 'global'"
+                >
+                  <div class="retrieval-mode-icon">
+                    <GlobalOutlined />
+                  </div>
+                  <span class="retrieval-mode-text">知识图谱</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 输入框 -->
           <MessageInputComponent
             v-model="userInput"
+            v-model:retrieval-mode="retrievalMode"
             :is-loading="isProcessing"
             :disabled="!currentAgent"
             :send-button-disabled="(!userInput || !currentAgent) && !isProcessing"
+            :show-retrieval-modes="false"
             placeholder="输入问题..."
             @send="handleSendOrStop"
             @keydown="handleKeyDown"
@@ -120,9 +158,11 @@
         <div class="message-input-wrapper" v-if="conversations.length > 0">
           <MessageInputComponent
             v-model="userInput"
+            v-model:retrieval-mode="retrievalMode"
             :is-loading="isProcessing"
             :disabled="!currentAgent"
             :send-button-disabled="(!userInput || !currentAgent) && !isProcessing"
+            :show-retrieval-modes="true"
             placeholder="输入问题..."
             @send="handleSendOrStop"
             @keydown="handleKeyDown"
@@ -145,6 +185,7 @@ import AgentMessageComponent from '@/components/AgentMessageComponent.vue'
 import ChatSidebarComponent from '@/components/ChatSidebarComponent.vue'
 import RefsComponent from '@/components/RefsComponent.vue'
 import { PanelLeftOpen, MessageCirclePlus } from 'lucide-vue-next';
+import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined } from '@ant-design/icons-vue';
 import { handleChatError, handleValidationError } from '@/utils/errorHandler';
 import { ScrollController } from '@/utils/scrollController';
 import { AgentValidator } from '@/utils/agentValidator';
@@ -171,6 +212,7 @@ const {
 
 // ==================== LOCAL CHAT & UI STATE ====================
 const userInput = ref('');
+const retrievalMode = ref('mix'); // 默认使用混合检索模式
 
 // 从智能体元数据获取示例问题
 const exampleQuestions = computed(() => {
@@ -559,6 +601,7 @@ const sendMessage = async ({ agentId, threadId, text, signal = undefined }) => {
     query: text,
     config: {
       thread_id: threadId,
+      retrieval_mode: retrievalMode.value,
     },
   };
 
@@ -1067,8 +1110,10 @@ watch(conversations, () => {
   bottom: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 4px 2rem 0 2rem;
-  background: white;
+  padding: 10px 2rem 20px 2rem; /* 增加底部内边距以适应更高的输入框 */
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
   z-index: 1000;
 
   .message-input-wrapper {
@@ -1302,7 +1347,32 @@ watch(conversations, () => {
   }
 
   .bottom {
-    padding: 0.5rem 0.5rem;
+    padding: 8px 1rem 16px 1rem; /* 优化移动端底部内边距以适应更高输入框 */
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 250, 252, 0.99) 100%);
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+  }
+
+  /* 移动端独立检索选择器优化 */
+  .retrieval-mode-wrapper {
+    width: 95%;
+    margin: 0 auto 15px auto;
+  }
+
+  .retrieval-mode-selector-standalone {
+    .retrieval-mode-btn {
+      padding: 5px 8px;
+      font-size: 10px;
+      min-width: 55px;
+      gap: 3px;
+
+      .retrieval-mode-icon {
+        font-size: 11px;
+      }
+
+      .retrieval-mode-text {
+        font-size: 10px;
+      }
+    }
   }
 
   .chat-header {
@@ -1330,6 +1400,94 @@ watch(conversations, () => {
 
 .hide-text {
   display: none;
+}
+
+/* 独立检索模式选择器样式 */
+.retrieval-mode-wrapper {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 90%;
+  max-width: 800px;
+  margin: 0 auto 15px auto;
+}
+
+.retrieval-mode-selector-standalone {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+
+  .retrieval-mode-buttons {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+  }
+
+  .retrieval-mode-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 400;
+    position: relative;
+    min-width: 60px;
+    white-space: nowrap;
+    user-select: none;
+
+    .retrieval-mode-icon {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .retrieval-mode-text {
+      white-space: nowrap;
+      font-weight: 400;
+    }
+
+    &:hover {
+      background: rgba(99, 102, 241, 0.08);
+      color: #6366f1;
+
+      .retrieval-mode-icon {
+        color: #6366f1;
+      }
+
+      .retrieval-mode-text {
+        color: #6366f1;
+      }
+    }
+
+    &.active {
+      background: #6366f1;
+      color: white;
+
+      .retrieval-mode-icon {
+        color: white;
+      }
+
+      .retrieval-mode-text {
+        color: white;
+        font-weight: 500;
+      }
+    }
+  }
 }
 </style>
 

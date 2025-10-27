@@ -1,54 +1,82 @@
 <template>
   <div class="input-box" :class="[customClasses, { 'single-line': isSingleLine }]" @click="focusInput">
-    <div class="expand-options" v-if="hasOptionsLeft">
-      <a-popover
-        v-model:open="optionsExpanded"
-        placement="bottomLeft"
-        trigger="click"
-      >
-        <template #content>
-          <div class="popover-options">
-            <slot name="options-left">
-              <div class="no-options">没有配置 options</div>
-            </slot>
-          </div>
-        </template>
-        <a-button
-          type="text"
-          size="small"
-          class="expand-btn"
+    <!-- 输入区域：选项按钮 + 输入框 + 发送按钮 -->
+    <div class="input-area">
+      <div class="expand-options" v-if="hasOptionsLeft">
+        <a-popover
+          v-model:open="optionsExpanded"
+          placement="bottomLeft"
+          trigger="click"
         >
-          <template #icon>
-            <PlusOutlined :class="{ 'rotated': optionsExpanded }" />
+          <template #content>
+            <div class="popover-options">
+              <slot name="options-left">
+                <div class="no-options">没有配置 options</div>
+              </slot>
+            </div>
           </template>
-        </a-button>
-      </a-popover>
+          <a-button
+            type="text"
+            size="small"
+            class="expand-btn"
+          >
+            <template #icon>
+              <PlusOutlined :class="{ 'rotated': optionsExpanded }" />
+            </template>
+          </a-button>
+        </a-popover>
+      </div>
+
+      <textarea
+        ref="inputRef"
+        class="user-input"
+        :value="inputValue"
+        @keydown="handleKeyPress"
+        @input="handleInput"
+        @focus="focusInput"
+        :placeholder="placeholder"
+        :disabled="disabled"
+      />
+
+      <div class="send-button-container">
+        <a-tooltip :title="isLoading ? '停止回答' : ''">
+          <a-button
+            @click="handleSendOrStop"
+            :disabled="sendButtonDisabled"
+            type="link"
+            class="send-button"
+          >
+            <template #icon>
+              <component :is="getIcon" class="send-btn"/>
+            </template>
+          </a-button>
+        </a-tooltip>
+      </div>
     </div>
 
-    <textarea
-      ref="inputRef"
-      class="user-input"
-      :value="inputValue"
-      @keydown="handleKeyPress"
-      @input="handleInput"
-      @focus="focusInput"
-      :placeholder="placeholder"
-      :disabled="disabled"
-    />
-
-    <div class="send-button-container">
-      <a-tooltip :title="isLoading ? '停止回答' : ''">
-        <a-button
-          @click="handleSendOrStop"
-          :disabled="sendButtonDisabled"
-          type="link"
-          class="send-button"
+    <!-- 检索模式选择器 - 紧贴输入框下方，从左侧开始 -->
+    <div class="retrieval-mode-selector" v-if="showRetrievalModes">
+      <div class="retrieval-mode-buttons">
+        <a-tooltip
+          v-for="mode in retrievalModes"
+          :key="mode.value"
+          :title="mode.description"
+          placement="top"
+          :mouse-enter-delay="0.5"
         >
-          <template #icon>
-            <component :is="getIcon" class="send-btn"/>
-          </template>
-        </a-button>
-      </a-tooltip>
+          <button
+            :class="['retrieval-mode-btn', { 'active': retrievalMode === mode.value }]"
+            @click="handleRetrievalModeChange(mode.value)"
+            :style="{ '--mode-color': mode.color }"
+          >
+            <div class="retrieval-mode-icon">
+              <component :is="mode.icon" />
+            </div>
+            <span class="retrieval-mode-text">{{ mode.label }}</span>
+            <div class="retrieval-mode-indicator" v-if="retrievalMode === mode.value"></div>
+          </button>
+        </a-tooltip>
+      </div>
     </div>
   </div>
 </template>
@@ -60,7 +88,10 @@ import {
   ArrowUpOutlined,
   LoadingOutlined,
   PauseOutlined,
-  PlusOutlined
+  PlusOutlined,
+  MergeCellsOutlined,
+  DatabaseOutlined,
+  GlobalOutlined
 } from '@ant-design/icons-vue';
 
 
@@ -102,10 +133,18 @@ const props = defineProps({
   customClasses: {
     type: Object,
     default: () => ({})
+  },
+  showRetrievalModes: {
+    type: Boolean,
+    default: false
+  },
+  retrievalMode: {
+    type: String,
+    default: 'mix'
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'send', 'keydown']);
+const emit = defineEmits(['update:modelValue', 'send', 'keydown', 'update:retrievalMode']);
 const slots = useSlots();
 const hasOptionsLeft = computed(() => {
   const slot = slots['options-left'];
@@ -120,7 +159,10 @@ const hasOptionsLeft = computed(() => {
 const iconComponents = {
   'SendOutlined': SendOutlined,
   'ArrowUpOutlined': ArrowUpOutlined,
-  'PauseOutlined': PauseOutlined
+  'PauseOutlined': PauseOutlined,
+  'MergeCellsOutlined': MergeCellsOutlined,
+  'DatabaseOutlined': DatabaseOutlined,
+  'GlobalOutlined': GlobalOutlined
 };
 
 // 根据传入的图标名动态获取组件
@@ -131,10 +173,44 @@ const getIcon = computed(() => {
   return iconComponents[props.sendIcon] || ArrowUpOutlined;
 });
 
+// 检索模式配置 - DeepSeek 风格优化
+const retrievalModes = [
+  {
+    value: 'mix',
+    label: '智能混合',
+    shortLabel: '混合',
+    icon: 'MergeCellsOutlined',
+    description: 'AI 驱动的智能混合检索',
+    color: '#6366f1'
+  },
+  {
+    value: 'local',
+    label: '语义向量',
+    shortLabel: '向量',
+    icon: 'DatabaseOutlined',
+    description: '深度语义理解检索',
+    color: '#8b5cf6'
+  },
+  {
+    value: 'global',
+    label: '知识图谱',
+    shortLabel: '图谱',
+    icon: 'GlobalOutlined',
+    description: '全局关联知识发现',
+    color: '#3b82f6'
+  }
+];
+
 // 创建本地引用以进行双向绑定
 const inputValue = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
+});
+
+// 检索模式的双向绑定
+const localRetrievalMode = computed({
+  get: () => props.retrievalMode,
+  set: (val) => emit('update:retrievalMode', val)
 });
 
 // 处理键盘事件
@@ -151,6 +227,11 @@ const handleInput = (e) => {
 // 处理发送按钮点击
 const handleSendOrStop = () => {
   emit('send');
+};
+
+// 处理检索模式切换
+const handleRetrievalModeChange = (mode) => {
+  localRetrievalMode.value = mode;
 };
 
 // 用于存储固定的单行宽度基准
@@ -266,49 +347,70 @@ onBeforeUnmount(() => {
 
 <style lang="less" scoped>
 .input-box {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   margin: 0 auto;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.8rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  gap: 8px;
+  border: 1.5px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  gap: 0;
+  position: relative;
 
   /* Default: Multi-line layout */
-  padding: 0.8rem 0.75rem 0.6rem 0.75rem;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "input input"
-    "options send";
+  padding: 1.6rem 1rem 1.2rem 1rem;
+
+  .input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
+  }
 
   .expand-options {
-    justify-self: start;
-  }
-  .send-button-container {
-    justify-self: end;
+    flex-shrink: 0;
   }
 
-  // &:focus-within {
-  //   border-color: var(--main-500);
-  //   background: white;
-  //   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  // }
+  .send-button-container {
+    flex-shrink: 0;
+  }
+
+  &:focus-within {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.08),
+      0 2px 10px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  &:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
 
   &.single-line {
-    padding: 0.75rem 0.75rem;
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: 1fr;
-    grid-template-areas: "options input send";
-    align-items: center;
+    padding: 1.4rem 1rem;
+
+    .input-area {
+      align-items: center;
+    }
 
     .user-input {
-      min-height: 24px;
-      height: 24px; /* Fix height for single line */
+      min-height: 44px;
+      height: 44px;
       align-self: center;
       white-space: nowrap;
       overflow: hidden;
+      line-height: 1.5;
     }
 
     .expand-options, .send-button-container {
@@ -318,13 +420,12 @@ onBeforeUnmount(() => {
 }
 
 .expand-options {
-  grid-area: options;
   display: flex;
   align-items: center;
 }
 
 .user-input {
-  grid-area: input;
+  flex: 1;
   width: 100%;
   padding: 0;
   background-color: transparent;
@@ -336,8 +437,8 @@ onBeforeUnmount(() => {
   resize: none;
   line-height: 1.5;
   font-family: inherit;
-  min-height: 44px; /* Default min-height for multi-line */
-  max-height: 200px;
+  min-height: 70px; /* Default min-height for multi-line (increased by 56% total) */
+  max-height: 310px; /* Also increase max-height proportionally */
 
   &:focus {
     outline: none;
@@ -350,7 +451,6 @@ onBeforeUnmount(() => {
 }
 
 .send-button-container {
-  grid-area: send;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -417,44 +517,290 @@ onBeforeUnmount(() => {
 }
 
 .send-button.ant-btn-icon-only {
-  height: 32px;
-  width: 32px;
+  height: 36px;
+  width: 36px;
   cursor: pointer;
-  background-color: var(--main-500);
+  background: linear-gradient(135deg, #6366f1 0%, color-mix(in srgb, #6366f1 85%, #000) 100%);
   border-radius: 50%;
   border: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, #6366f1 30%, transparent),
+    0 1px 4px color-mix(in srgb, #6366f1 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   color: white;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
+  position: relative;
 
   &:hover {
-    background-color: var(--main-color);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    color: white;
+    background: linear-gradient(135deg, #5b5ce6 0%, color-mix(in srgb, #5b5ce6 85%, #000) 100%);
+    box-shadow:
+      0 4px 16px color-mix(in srgb, #6366f1 40%, transparent),
+      0 2px 8px color-mix(in srgb, #6366f1 25%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
 
   &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow:
+      0 2px 8px color-mix(in srgb, #6366f1 25%, transparent),
+      0 1px 4px color-mix(in srgb, #6366f1 15%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   &:disabled {
-    background-color: var(--gray-400);
+    background: linear-gradient(135deg, #94a3b8 0%, color-mix(in srgb, #94a3b8 85%, #000) 100%);
     cursor: not-allowed;
-    transform: none;
     box-shadow: none;
+    opacity: 0.7;
+  }
+
+  .send-btn {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// 检索模式选择器样式 - 紧贴左下角设计
+.retrieval-mode-selector {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+
+  .retrieval-mode-buttons {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    margin: 0;
+  }
+
+  .retrieval-mode-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 400;
+    position: relative;
+    min-width: 60px;
+    white-space: nowrap;
+    user-select: none;
+
+    .retrieval-mode-icon {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .retrieval-mode-text {
+      white-space: nowrap;
+      font-weight: 400;
+    }
+
+    &:hover {
+      background: rgba(var(--mode-color-rgb, 99, 102, 241), 0.08);
+      color: var(--mode-color, #6366f1);
+
+      .retrieval-mode-icon {
+        color: var(--mode-color, #6366f1);
+      }
+
+      .retrieval-mode-text {
+        color: var(--mode-color, #6366f1);
+      }
+    }
+
+    &.active {
+      background: var(--mode-color, #6366f1);
+      color: white;
+
+      .retrieval-mode-icon {
+        color: white;
+      }
+
+      .retrieval-mode-text {
+        color: white;
+        font-weight: 500;
+      }
+    }
   }
 }
 
 @media (max-width: 520px) {
   .input-box {
-    border-radius: 15px;
-    padding: 0.625rem 0.875rem;
+    border-radius: 14px;
+    padding: 1.2rem 0.875rem;
+
+    &.single-line {
+      padding: 1.2rem 0.875rem;
+    }
+
+    .input-area {
+      gap: 6px;
+    }
+
+    &:focus-within {
+      box-shadow:
+        0 3px 16px rgba(0, 0, 0, 0.06),
+        0 2px 8px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    &:hover {
+      box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.06),
+        0 2px 6px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+  }
+
+  .user-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 32px;
+    padding: 2px 0;
+  }
+
+  .send-button.ant-btn-icon-only {
+    height: 32px;
+    width: 32px;
+    font-size: 14px;
+
+    &:hover {
+      transform: translateY(-0.5px) scale(1.02);
+    }
+  }
+
+  .retrieval-mode-selector {
+    margin: 0;
+    padding: 0;
+
+    .retrieval-mode-buttons {
+      gap: 1px;
+      padding: 2px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.04),
+        0 1px 1px rgba(0, 0, 0, 0.06);
+    }
+
+    .retrieval-mode-btn {
+      padding: 8px 10px;
+      font-size: 11px;
+      min-width: 60px;
+      gap: 4px;
+      border-radius: 10px;
+
+      .retrieval-mode-icon {
+        font-size: 12px;
+      }
+
+      .retrieval-mode-text {
+        font-size: 10px;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// 平板设备优化
+@media (min-width: 521px) and (max-width: 768px) {
+  .input-box {
+    padding: 1.4rem 1rem;
+
+    &.single-line {
+      padding: 1.4rem 1rem;
+    }
+
+    .input-area {
+      gap: 7px;
+    }
+  }
+
+  .retrieval-mode-selector {
+    margin: 0;
+    padding: 0;
+
+    .retrieval-mode-btn {
+      padding: 9px 14px;
+      font-size: 12px;
+      min-width: 65px;
+      gap: 5px;
+      border-radius: 11px;
+
+      .retrieval-mode-icon {
+        font-size: 13px;
+      }
+
+      .retrieval-mode-text {
+        font-size: 11px;
+      }
+    }
+  }
+}
+
+// 高对比度模式支持
+@media (prefers-contrast: high) {
+  .retrieval-mode-selector {
+    .retrieval-mode-buttons {
+      border: 2px solid #000;
+      background: #fff;
+    }
+
+    .retrieval-mode-btn {
+      color: #000;
+      border: 1px solid #ccc;
+
+      &:hover {
+        background: #f0f0f0;
+        color: #000;
+      }
+
+      &.active {
+        background: #000;
+        color: #fff;
+        border-color: #000;
+      }
+    }
+  }
+}
+
+// 减少动画模式支持
+@media (prefers-reduced-motion: reduce) {
+  .retrieval-mode-selector {
+    .retrieval-mode-buttons,
+    .retrieval-mode-btn {
+      transition: none;
+    }
+
+    .retrieval-mode-btn.active {
+      animation: none;
+
+      &::after {
+        animation: none;
+      }
+    }
   }
 }
 </style>

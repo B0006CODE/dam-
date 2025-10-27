@@ -275,7 +275,8 @@ async def chat_agent(
         # 构造运行时配置，如果没有thread_id则生成一个
         user_id = str(current_user.id)
         thread_id = config.get("thread_id")
-        input_context = {"user_id": user_id, "thread_id": thread_id}
+        retrieval_mode = config.get("retrieval_mode", "mix")  # 默认使用混合检索模式
+        input_context = {"user_id": user_id, "thread_id": thread_id, "retrieval_mode": retrieval_mode}
 
         if not thread_id:
             thread_id = str(uuid.uuid4())

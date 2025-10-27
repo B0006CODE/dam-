@@ -274,16 +274,16 @@ class LightRagKB(KnowledgeBase):
 
         return processed_items_info
 
-    async def aquery(self, query_text: str, db_id: str, **kwargs) -> str:
+    async def aquery(self, query_text: str, db_id: str, mode="mix", **kwargs) -> str:
         """异步查询知识库"""
         rag = await self._get_lightrag_instance(db_id)
         if not rag:
             raise ValueError(f"Database {db_id} not found")
 
         try:
-            # 设置查询参数
+            # 设置查询参数，使用传入的检索模式
             params_dict = {
-                "mode": "mix",
+                "mode": mode,
                 "only_need_context": True,
                 "top_k": 10,
             } | kwargs
@@ -291,12 +291,12 @@ class LightRagKB(KnowledgeBase):
 
             # 执行查询
             response = await rag.aquery(query_text, param)
-            logger.debug(f"Query response: {response}")
+            logger.debug(f"Query response with mode {mode}: {response}")
 
             return response
 
         except Exception as e:
-            logger.error(f"Query error: {e}, {traceback.format_exc()}")
+            logger.error(f"Query error with mode {mode}: {e}, {traceback.format_exc()}")
             return ""
 
     async def delete_file(self, db_id: str, file_id: str) -> None:

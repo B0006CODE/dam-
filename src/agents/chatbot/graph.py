@@ -26,16 +26,17 @@ class ChatbotAgent(BaseAgent):
         self.context_schema = Context
         self.agent_tools = None
 
-    def get_tools(self):
-        return get_tools()
+    def get_tools(self, runtime: Runtime[Context] = None):
+        input_context = runtime.config.configurable if runtime and hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable') else None
+        return get_tools(input_context)
 
-    async def _get_invoke_tools(self, selected_tools: list[str], selected_mcps: list[str]):
+    async def _get_invoke_tools(self, selected_tools: list[str], selected_mcps: list[str], runtime: Runtime[Context] = None):
         """根据配置获取工具。
         默认不使用任何工具。
         如果配置为列表，则使用列表中的工具。
         """
         enabled_tools = []
-        self.agent_tools = self.agent_tools or self.get_tools()
+        self.agent_tools = self.agent_tools or self.get_tools(runtime)
         if selected_tools and isinstance(selected_tools, list) and len(selected_tools) > 0:
             # 使用配置中指定的工具
             enabled_tools = [tool for tool in self.agent_tools if tool.name in selected_tools]
@@ -51,7 +52,7 @@ class ChatbotAgent(BaseAgent):
         model = load_chat_model(runtime.context.model)
 
         # 这里要根据配置动态获取工具
-        available_tools = await self._get_invoke_tools(runtime.context.tools, runtime.context.mcps)
+        available_tools = await self._get_invoke_tools(runtime.context.tools, runtime.context.mcps, runtime)
         logger.info(f"LLM binded ({len(available_tools)}) available_tools: {[tool.name for tool in available_tools]}")
 
         if available_tools:
@@ -71,7 +72,7 @@ class ChatbotAgent(BaseAgent):
         and executes the requested tool calls from the last message.
         """
         # Get available tools based on configuration
-        available_tools = await self._get_invoke_tools(runtime.context.tools, runtime.context.mcps)
+        available_tools = await self._get_invoke_tools(runtime.context.tools, runtime.context.mcps, runtime)
 
         # Create a ToolNode with the available tools
         tool_node = ToolNode(available_tools)

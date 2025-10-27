@@ -47,11 +47,14 @@ class KnowledgeRetrieverModel(BaseModel):
     )
 
 
-def get_kb_based_tools() -> list:
+def get_kb_based_tools(input_context: dict = None) -> list:
     """获取所有知识库基于的工具"""
     # 获取所有知识库
     kb_tools = []
     retrievers = knowledge_base.get_retrievers()
+
+    # 从输入上下文中获取检索模式，默认为 "mix"
+    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
 
     def _create_retriever_wrapper(db_id: str, retriever_info: dict[str, Any]):
         """创建检索器包装函数的工厂函数，避免闭包变量捕获问题"""
@@ -60,11 +63,11 @@ def get_kb_based_tools() -> list:
             """异步检索器包装函数"""
             retriever = retriever_info["retriever"]
             try:
-                logger.debug(f"Retrieving from database {db_id} with query: {query_text}")
+                logger.debug(f"Retrieving from database {db_id} with query: {query_text}, mode: {retrieval_mode}")
                 if asyncio.iscoroutinefunction(retriever):
-                    result = await retriever(query_text)
+                    result = await retriever(query_text, mode=retrieval_mode)
                 else:
-                    result = retriever(query_text)
+                    result = retriever(query_text, mode=retrieval_mode)
                 logger.debug(f"Retrieved {len(result) if isinstance(result, list) else 'N/A'} results from {db_id}")
                 return result
             except Exception as e:
@@ -106,13 +109,13 @@ def get_kb_based_tools() -> list:
     return kb_tools
 
 
-def get_buildin_tools() -> list:
+def get_buildin_tools(input_context: dict = None) -> list:
     """获取所有可运行的工具（给大模型使用）"""
     tools = []
 
     try:
         # 获取所有知识库基于的工具
-        tools.extend(get_kb_based_tools())
+        tools.extend(get_kb_based_tools(input_context))
         tools.extend(get_static_tools())
 
         from src.agents.common.toolkits.mysql.tools import get_mysql_tools

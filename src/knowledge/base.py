@@ -207,13 +207,14 @@ class KnowledgeBase(ABC):
         pass
 
     @abstractmethod
-    async def aquery(self, query_text: str, db_id: str, **kwargs) -> list[dict]:
+    async def aquery(self, query_text: str, db_id: str, mode="mix", **kwargs) -> list[dict]:
         """
         异步查询知识库
 
         Args:
             query_text: 查询文本
             db_id: 数据库ID
+            mode: 检索模式 ("mix", "local", "global")
             **kwargs: 查询参数
 
         Returns:
@@ -508,8 +509,8 @@ class KnowledgeBase(ABC):
         for db_id, meta in self.databases_meta.items():
 
             def make_retriever(db_id):
-                async def retriever(query_text):
-                    return await self.aquery(query_text, db_id)
+                async def retriever(query_text, mode="mix"):
+                    return await self.aquery(query_text, db_id, mode=mode)
 
                 return retriever
 
