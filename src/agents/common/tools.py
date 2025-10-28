@@ -3,7 +3,7 @@ import traceback
 from typing import Annotated, Any
 
 from langchain_core.tools import StructuredTool, tool
-from langchain_tavily import TavilySearch
+# 网页搜索功能已移除，不再需要 TavilySearch
 from pydantic import BaseModel, Field
 
 from src import config, graph_base, knowledge_base
@@ -32,9 +32,7 @@ def get_static_tools() -> list:
         query_knowledge_graph,
     ]
 
-    # 检查是否启用网页搜索
-    if config.enable_web_search:
-        static_tools.append(TavilySearch(max_results=10))
+    # 网页搜索功能已移除，只保留知识库相关功能
 
     return static_tools
 
@@ -118,9 +116,8 @@ def get_buildin_tools(input_context: dict = None) -> list:
         tools.extend(get_kb_based_tools(input_context))
         tools.extend(get_static_tools())
 
-        from src.agents.common.toolkits.mysql.tools import get_mysql_tools
-
-        tools.extend(get_mysql_tools())
+        # MySQL工具已移除，只保留知识库相关功能
+        # 如需数据库功能，请手动配置
 
     except Exception as e:
         logger.error(f"Failed to get knowledge base retrievers: {e}")

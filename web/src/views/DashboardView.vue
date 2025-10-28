@@ -115,6 +115,9 @@
 
     <!-- 反馈模态框 -->
     <FeedbackModalComponent ref="feedbackModal" />
+
+    <!-- 对话详情模态框 -->
+    <ConversationDetailModal ref="conversationDetailModal" />
   </div>
 </template>
 
@@ -133,9 +136,11 @@ import AgentStatsComponent from '@/components/dashboard/AgentStatsComponent.vue'
 import CallStatsComponent from '@/components/dashboard/CallStatsComponent.vue'
 import StatsOverviewComponent from '@/components/dashboard/StatsOverviewComponent.vue'
 import FeedbackModalComponent from '@/components/dashboard/FeedbackModalComponent.vue'
+import ConversationDetailModal from '@/components/dashboard/ConversationDetailModal.vue'
 
 // 组件引用
 const feedbackModal = ref(null)
+const conversationDetailModal = ref(null)
 
 // 统计数据 - 使用新的响应式结构
 const basicStats = ref({})
@@ -306,12 +311,15 @@ const formatDate = (dateString) => {
 const handleViewDetail = async (record) => {
   try {
     loadingDetail.value = true
-    const detail = await dashboardApi.getConversationDetail(record.thread_id)
-    console.log(detail)
+    // 使用模态框显示对话详情
+    conversationDetailModal.value.show(record.thread_id)
+    // 延迟重置loading状态，给模态框一些加载时间
+    setTimeout(() => {
+      loadingDetail.value = false
+    }, 500)
   } catch (error) {
     console.error('获取对话详情失败:', error)
     message.error('获取对话详情失败')
-  } finally {
     loadingDetail.value = false
   }
 }

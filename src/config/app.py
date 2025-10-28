@@ -189,8 +189,9 @@ class Config(SimpleConfig):
             else:
                 self.model_provider_status[provider] = bool(os.getenv(env_var))
 
-        if os.getenv("TAVILY_API_KEY"):
-            self.enable_web_search = True
+        # 网页搜索功能已移除，不再自动启用
+        # if os.getenv("TAVILY_API_KEY"):
+        #     self.enable_web_search = True
 
         self.valuable_model_provider = [k for k, v in self.model_provider_status.items() if v]
         assert len(self.valuable_model_provider) > 0, "No model provider available, please check your `.env` file."
