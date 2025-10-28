@@ -54,12 +54,17 @@
         <a-card class="conversations-section" title="对话记录" :loading="loading">
           <template #extra>
             <a-space>
-              <a-input
+              <a-select
                 v-model:value="filters.user_id"
-                placeholder="用户ID"
+                :options="userOptions"
+                placeholder="搜索用户名或ID"
                 size="small"
-                style="width: 120px"
+                style="width: 150px"
                 @change="handleFilterChange"
+                allow-clear
+                show-search
+                :filter-option="filterUserOption"
+                :not-found-content="userSearchText ? '无匹配用户' : '请输入搜索'"
               />
               <a-select
                 v-model:value="filters.status"
@@ -122,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { dashboardApi } from '@/apis/dashboard_api'
 import dayjs, { parseToShanghai } from '@/utils/time'
@@ -163,6 +168,21 @@ const conversations = ref([])
 const loading = ref(false)
 const loadingDetail = ref(false)
 
+// 用户列表（用于筛选）
+const userList = ref([])
+const userSearchText = ref('')
+
+// 用户选项（静态列表，搜索由select组件处理）
+const userOptions = computed(() => {
+  return userList.value.map(user => ({
+    label: user.username,
+    value: String(user.id),  // 使用数据库主键作为筛选值（conversations表存储的是这个）
+    username: user.username,
+    user_id: user.user_id,
+    db_id: user.id  // 保存数据库主键用于搜索
+  }))
+})
+
 // 调用统计子组件引用
 const callStatsRef = ref(null)
 
@@ -186,9 +206,9 @@ const conversationColumns = [
   },
   {
     title: '用户',
-    dataIndex: 'user_id',
-    key: 'user_id',
-    width: '80px',
+    dataIndex: 'username',
+    key: 'username',
+    width: '120px',
     ellipsis: true,
   },
   {
@@ -266,6 +286,17 @@ const loadAllStats = async () => {
 // 保留原有的loadStats函数以兼容旧代码
 const loadStats = loadAllStats
 
+// 加载用户列表
+const loadUsers = async () => {
+  try {
+    const response = await dashboardApi.getUsers()
+    userList.value = response || []
+  } catch (error) {
+    console.error('Failed to load users:', error)
+    message.error('加载用户列表失败')
+  }
+}
+
 // 加载对话列表
 const loadConversations = async () => {
   try {
@@ -324,6 +355,26 @@ const handleViewDetail = async (record) => {
   }
 }
 
+// 自定义用户搜索过滤函数
+const filterUserOption = (input, option) => {
+  if (!input) return true
+
+  const searchLower = input.toLowerCase()
+  const user = option
+
+  // 匹配用户名、user_id或数据库ID
+  const usernameMatch = user.username?.toLowerCase().includes(searchLower)
+  const userIdMatch = String(user.user_id || '').toLowerCase().includes(searchLower)
+  const dbIdMatch = String(user.db_id || '').includes(searchLower)
+
+  return usernameMatch || userIdMatch || dbIdMatch
+}
+
+// 处理用户搜索
+const handleUserSearch = (searchText) => {
+  userSearchText.value = searchText
+}
+
 // 处理过滤器变化
 const handleFilterChange = () => {
   conversationPagination.current = 1
@@ -350,6 +401,7 @@ const cleanupCharts = () => {
 // 初始化
 onMounted(() => {
   loadAllStats()
+  loadUsers()
   loadConversations()
 })
 

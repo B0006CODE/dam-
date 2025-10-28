@@ -75,6 +75,8 @@ class ConversationListItem(BaseModel):
 
     thread_id: str
     user_id: str
+    username: str
+    user_avatar: str | None
     agent_id: str
     title: str
     status: str
@@ -114,12 +116,14 @@ async def get_all_conversations(
     current_user: User = Depends(get_admin_user),
 ):
     """Get all conversations (Admin only)"""
-    from src.storage.db.models import Conversation, ConversationStats
+    from src.storage.db.models import Conversation, ConversationStats, User
 
     try:
-        # Build query
-        query = db.query(Conversation, ConversationStats).outerjoin(
-            ConversationStats, Conversation.id == ConversationStats.conversation_id
+        # Build query with user join
+        query = (
+            db.query(Conversation, ConversationStats, User)
+            .outerjoin(ConversationStats, Conversation.id == ConversationStats.conversation_id)
+            .outerjoin(User, Conversation.user_id == cast(User.id, String))
         )
 
         # Apply filters
@@ -139,6 +143,8 @@ async def get_all_conversations(
             {
                 "thread_id": conv.thread_id,
                 "user_id": conv.user_id,
+                "username": user.username if user else f"用户{conv.user_id}",
+                "user_avatar": user.avatar if user else None,
                 "agent_id": conv.agent_id,
                 "title": conv.title,
                 "status": conv.status,
@@ -146,7 +152,7 @@ async def get_all_conversations(
                 "created_at": conv.created_at.isoformat(),
                 "updated_at": conv.updated_at.isoformat(),
             }
-            for conv, stats in results
+            for conv, stats, user in results
         ]
     except Exception as e:
         logger.error(f"Error getting conversations: {e}")
@@ -674,12 +680,12 @@ async def get_all_feedbacks(
 
     try:
         # Build query with joins including User table
-        # Try both User.id and User.user_id as MessageFeedback.user_id might be stored as either
+        # MessageFeedback.user_id stores string representation of User.id
         query = (
             db.query(MessageFeedback, Message, Conversation, User)
             .join(Message, MessageFeedback.message_id == Message.id)
             .join(Conversation, Message.conversation_id == Conversation.id)
-            .outerjoin(User, (MessageFeedback.user_id == User.id) | (MessageFeedback.user_id == User.user_id))
+            .outerjoin(User, MessageFeedback.user_id == cast(User.id, String))
         )
 
         # Apply filters

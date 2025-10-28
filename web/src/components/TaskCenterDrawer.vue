@@ -16,6 +16,38 @@
         </div>
         <div class="task-toolbar-actions">
           <a-button
+            v-if="selectedTasks.length > 0"
+            type="text"
+            danger
+            @click="handleBatchDelete"
+            :loading="batchDeleting"
+          >
+            删除选中 ({{ selectedTasks.length }})
+          </a-button>
+          <a-dropdown>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item key="cleanup-success" @click="handleCleanup('success')">
+                  清理已完成
+                </a-menu-item>
+                <a-menu-item key="cleanup-failed" @click="handleCleanup('failed')">
+                  清理失败任务
+                </a-menu-item>
+                <a-menu-item key="cleanup-old" @click="handleCleanupOld">
+                  清理旧任务
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="cleanup-all" danger @click="handleCleanupAll">
+                  清空所有任务
+                </a-menu-item>
+              </a-menu>
+            </template>
+            <a-button type="text">
+              批量操作
+              <DownOutlined />
+            </a-button>
+          </a-dropdown>
+          <a-button
             type="text"
             @click="handleRefresh"
             :loading="loadingState"
@@ -41,6 +73,12 @@
           :class="taskCardClasses(task)"
         >
           <div class="task-card-header">
+            <div class="task-card-checkbox">
+              <a-checkbox
+                :checked="selectedTasks.includes(task.id)"
+                @change="(e) => handleTaskSelect(task.id, e.target.checked)"
+              />
+            </div>
             <div class="task-card-info">
               <div class="task-card-title">{{ task.name }}</div>
               <div class="task-card-subtitle">
@@ -51,7 +89,6 @@
             </div>
             <a-tag :color="statusColor(task.status)" class="task-card-status">
               {{ statusLabel(task.status) }}
-
             </a-tag>
           </div>
 
@@ -90,6 +127,20 @@
               >
                 取消
               </a-button>
+              <a-popconfirm
+                title="确定要删除这个任务吗？"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="handleDelete(task.id)"
+              >
+                <a-button
+                  type="link"
+                  size="small"
+                  danger
+                >
+                  删除
+                </a-button>
+              </a-popconfirm>
             </div>
           </div>
         </div>
@@ -106,7 +157,8 @@
 
 <script setup>
 import { computed, h, onBeforeUnmount, watch, ref } from 'vue'
-import { Modal } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
+import { DownOutlined } from '@ant-design/icons-vue'
 import { useTaskerStore } from '@/stores/tasker'
 import { storeToRefs } from 'pinia'
 import { formatFullDateTime, formatRelative, parseToShanghai } from '@/utils/time'
@@ -119,6 +171,8 @@ const tasks = computed(() => sortedTasks.value)
 const loadingState = computed(() => Boolean(loading.value))
 const lastErrorState = computed(() => lastError.value)
 const statusFilter = ref('all')
+const selectedTasks = ref([])
+const batchDeleting = ref(false)
 const inProgressCount = computed(
   () => tasks.value.filter((task) => ACTIVE_CLASS_STATUSES.has(task.status)).length
 )
@@ -250,6 +304,114 @@ function handleDetail(taskId) {
 
 function handleCancel(taskId) {
   taskerStore.cancelTask(taskId)
+}
+
+function handleDelete(taskId) {
+  taskerStore.deleteTask(taskId)
+}
+
+function handleTaskSelect(taskId, checked) {
+  if (checked) {
+    if (!selectedTasks.value.includes(taskId)) {
+      selectedTasks.value.push(taskId)
+    }
+  } else {
+    const index = selectedTasks.value.indexOf(taskId)
+    if (index >= 0) {
+      selectedTasks.value.splice(index, 1)
+    }
+  }
+}
+
+function handleBatchDelete() {
+  if (selectedTasks.value.length === 0) return
+
+  Modal.confirm({
+    title: '批量删除任务',
+    content: `确定要删除选中的 ${selectedTasks.value.length} 个任务吗？此操作不可恢复。`,
+    okText: '确定删除',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      batchDeleting.value = true
+      try {
+        await taskerStore.deleteTasksBatch(selectedTasks.value)
+        selectedTasks.value = []
+      } catch (error) {
+        console.error('批量删除失败:', error)
+      } finally {
+        batchDeleting.value = false
+      }
+    }
+  })
+}
+
+function handleCleanup(status) {
+  const statusText = status === 'success' ? '已完成' : '失败'
+  Modal.confirm({
+    title: '清理任务',
+    content: `确定要清理所有${statusText}的任务吗？此操作不可恢复。`,
+    okText: '确定',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        console.log(`Starting cleanup for ${status} tasks`)
+        const response = await taskerStore.cleanupTasks({ status })
+        console.log(`Cleanup completed for ${status} tasks:`, response)
+      } catch (error) {
+        console.error('清理失败:', error)
+        // Error is already handled by the store, but we can add additional UI feedback if needed
+      }
+    }
+  })
+}
+
+function handleCleanupOld() {
+  Modal.confirm({
+    title: '清理旧任务',
+    content: '确定要清理超过7天的任务吗？此操作不可恢复。',
+    okText: '确定',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const cleanupTime = sevenDaysAgo.toISOString()
+        console.log('Starting cleanup for tasks older than:', cleanupTime)
+
+        const response = await taskerStore.cleanupTasks({
+          older_than: cleanupTime
+        })
+
+        console.log('Cleanup completed for old tasks:', response)
+      } catch (error) {
+        console.error('清理失败:', error)
+        // Error is already handled by the store
+      }
+    }
+  })
+}
+
+function handleCleanupAll() {
+  Modal.confirm({
+    title: '清空所有任务',
+    content: '确定要清空所有任务吗？此操作不可恢复，请谨慎操作！',
+    okText: '确定清空',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        console.log('Starting cleanup for ALL tasks')
+        const response = await taskerStore.cleanupTasks()
+        console.log('Cleanup completed for all tasks:', response)
+      } catch (error) {
+        console.error('清空失败:', error)
+        // Error is already handled by the store
+      }
+    }
+  })
 }
 
 function formatTime(value, mode = 'full') {
@@ -420,6 +582,12 @@ function canCancel(task) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.task-card-checkbox {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
 }
 
 .task-card-info {

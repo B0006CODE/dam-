@@ -130,6 +130,14 @@ export const dashboardApi = {
     return apiAdminGet(`/api/dashboard/stats/calls/timeseries?type=${type}&time_range=${timeRange}`)
   },
 
+  /**
+   * 获取所有用户列表
+   * @returns {Promise<Array>} - 用户列表
+   */
+  getUsers: () => {
+    return apiAdminGet('/api/auth/users')
+  },
+
   // ========== 管理员批量删除功能 ==========
 
   /**
