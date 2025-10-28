@@ -677,12 +677,36 @@ const selectChat = async (chatId) => {
 const deleteChat = async (chatId) => {
   if (!AgentValidator.validateAgentIdWithError(currentAgentId.value, '删除对话', handleValidationError)) return;
   try {
+    // 如果是批量删除（参数为null），重新加载所有对话
+    if (chatId === null) {
+      await fetchThreads(currentAgentId.value);
+      message.success('对话列表已刷新');
+      return;
+    }
+
+    // 单个删除逻辑
     await deleteThread(chatId);
+
+    // 从本地列表中移除已删除的线程，提供即时反馈
+    const originalLength = threads.value.length;
+    threads.value = threads.value.filter(thread => thread.id !== chatId);
+
+    // 清理对应的消息缓存
+    if (threadMessages.value[chatId]) {
+      delete threadMessages.value[chatId];
+    }
+
+    // 如果删除的是当前选中的线程，需要切换到其他线程
     if (chatState.currentThreadId === chatId) {
       chatState.currentThreadId = null;
-      if (chatsList.value.length > 0) {
-        await selectChat(chatsList.value[0].id);
+      if (threads.value.length > 0) {
+        await selectChat(threads.value[0].id);
       }
+    }
+
+    // 如果确实删除了对话，显示成功提示
+    if (originalLength > threads.value.length) {
+      message.success('对话删除成功');
     }
   } catch (error) {
     handleChatError(error, 'delete');

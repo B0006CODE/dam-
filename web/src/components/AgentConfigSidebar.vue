@@ -338,7 +338,7 @@ const isEmptyConfig = computed(() => {
 });
 
 const filteredTools = computed(() => {
-  const toolsList = availableTools.value ? Object.values(availableTools.value) : [];
+  const toolsList = filteredAvailableTools.value ? Object.values(filteredAvailableTools.value) : [];
   if (!toolsSearchText.value) {
     return toolsList;
   }
@@ -427,6 +427,29 @@ const loadAvailableTools = async () => {
     console.error('加载工具列表失败:', error);
   }
 };
+
+// 过滤掉不需要在前端显示的工具
+const filteredAvailableTools = computed(() => {
+  if (!availableTools.value) return {};
+
+  const toolsToHide = [
+    'calculator',
+    'text_to_img_qwen',
+    'mysql_list_tables',
+    'mysql_describe_table',
+    'mysql_query'
+  ];
+
+  const filtered = {};
+  Object.keys(availableTools.value).forEach(key => {
+    const tool = availableTools.value[key];
+    if (!toolsToHide.includes(tool.id)) {
+      filtered[key] = tool;
+    }
+  });
+
+  return filtered;
+});
 
 const openToolsModal = async () => {
   try {

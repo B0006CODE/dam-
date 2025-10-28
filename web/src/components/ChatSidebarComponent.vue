@@ -17,10 +17,74 @@
           </div>
         </div>
       </div>
+
+      <!-- 批量操作工具栏 -->
+      <div v-if="isBatchMode" class="batch-toolbar">
+        <div class="batch-info">
+          <a-checkbox
+            v-model:checked="isAllSelected"
+            @change="toggleSelectAll"
+            class="select-all-checkbox"
+          >
+            <span>已选择 {{ selectedChats.size }} 个对话</span>
+          </a-checkbox>
+          <a-button size="small" @click="exitBatchMode" class="cancel-btn">取消</a-button>
+        </div>
+        <div class="batch-actions">
+          <a-button size="small" type="primary" danger @click="batchDeleteSelected" :disabled="selectedChats.size === 0" class="delete-btn">
+            删除选中
+          </a-button>
+          <a-dropdown :trigger="['click']">
+            <a-button size="small" class="more-actions-btn">
+              更多操作 <DownOutlined />
+            </a-button>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item key="select-all" @click="selectAllChats">
+                  <CheckSquareOutlined /> 全选
+                </a-menu-item>
+                <a-menu-item key="clear-selection" @click="clearSelection">
+                  <ClearOutlined /> 清空选择
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="delete-today" @click="deleteChatsByDays(1)">
+                  <CalendarOutlined /> 删除今天对话
+                </a-menu-item>
+                <a-menu-item key="delete-week" @click="deleteChatsByDays(7)">
+                  <CalendarOutlined /> 删除本周对话
+                </a-menu-item>
+                <a-menu-item key="delete-month" @click="deleteChatsByDays(30)">
+                  <CalendarOutlined /> 删除本月对话
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="clear-all" @click="clearAllConversations" danger>
+                  <DeleteOutlined /> 清空所有对话
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
+      </div>
+
       <div class="conversation-list-top">
-        <button type="text" @click="createNewChat" class="new-chat-btn">
+        <button type="text" @click="createNewChat" class="new-chat-btn" v-if="!isBatchMode">
           <MessageSquarePlus size="20" /> 创建新对话
         </button>
+        <div class="batch-mode-header" v-else>
+          <a-button size="small" @click="exitBatchMode">
+            <LeftOutlined /> 返回正常模式
+          </a-button>
+        </div>
+        <div class="conversation-actions-header">
+          <a-button
+            size="small"
+            @click="enterBatchMode"
+            v-if="!isBatchMode && Object.keys(groupedChats).length > 0"
+            class="batch-mode-btn"
+          >
+            <CheckSquareOutlined /> 批量操作
+          </a-button>
+        </div>
       </div>
       <div class="conversation-list">
         <template v-if="Object.keys(groupedChats).length > 0">
@@ -30,12 +94,24 @@
               v-for="chat in group"
               :key="chat.id"
               class="conversation-item"
-              :class="{ 'active': currentChatId === chat.id }"
-              @click="selectChat(chat)"
+              :class="{
+                'active': currentChatId === chat.id,
+                'batch-mode': isBatchMode,
+                'selected': selectedChats.has(chat.id)
+              }"
+              @click="handleItemClick(chat)"
             >
+              <!-- 批量选择模式的复选框 -->
+              <a-checkbox
+                v-if="isBatchMode"
+                :checked="selectedChats.has(chat.id)"
+                @change="toggleChatSelection(chat.id)"
+                class="chat-checkbox"
+                @click.stop
+              />
               <div class="conversation-title">{{ chat.title || '新的对话' }}</div>
               <div class="actions-mask"></div>
-              <div class="conversation-actions">
+              <div class="conversation-actions" v-if="!isBatchMode">
                 <a-dropdown :trigger="['click']" @click.stop>
                   <template #overlay>
                     <a-menu>
@@ -64,14 +140,20 @@
 </template>
 
 <script setup>
-import { computed, h } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import {
   DeleteOutlined,
   EditOutlined,
-  MoreOutlined
+  MoreOutlined,
+  CheckSquareOutlined,
+  ClearOutlined,
+  CalendarOutlined,
+  DownOutlined,
+  LeftOutlined
 } from '@ant-design/icons-vue';
 import { message, Modal } from 'ant-design-vue';
 import { PanelLeftClose, MessageSquarePlus, ChevronDown } from 'lucide-vue-next';
+import { threadApi } from '@/apis/agent_api';
 import dayjs, { parseToShanghai } from '@/utils/time';
 
 const props = defineProps({
@@ -110,6 +192,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['create-chat', 'select-chat', 'delete-chat', 'rename-chat', 'toggle-sidebar', 'open-agent-modal']);
+
+// 批量操作状态
+const isBatchMode = ref(false);
+const selectedChats = ref(new Set());
+const isAllSelected = ref(false);
 
 const selectedAgentName = computed(() => {
   if (props.selectedAgentId && props.agents && props.agents[props.selectedAgentId]) {
@@ -170,6 +257,172 @@ const groupedChats = computed(() => {
   return groups;
 });
 
+// 监听选中的聊天变化，更新全选状态
+watch(selectedChats, (newSelected) => {
+  const totalChats = props.chatsList.length;
+  isAllSelected.value = totalChats > 0 && newSelected.size === totalChats;
+});
+
+// 监听对话列表变化，更新全选状态
+watch(() => props.chatsList, () => {
+  const totalChats = props.chatsList.length;
+  isAllSelected.value = totalChats > 0 && selectedChats.value.size === totalChats;
+});
+
+// 批量操作方法
+const enterBatchMode = () => {
+  isBatchMode.value = true;
+  clearSelection();
+};
+
+const exitBatchMode = () => {
+  isBatchMode.value = false;
+  clearSelection();
+};
+
+const handleItemClick = (chat) => {
+  if (isBatchMode.value) {
+    // 批量模式下，点击切换选择状态
+    toggleChatSelection(chat.id);
+  } else {
+    // 正常模式下，选择聊天
+    selectChat(chat);
+  }
+};
+
+const selectAllChats = () => {
+  const allChatIds = props.chatsList.map(chat => chat.id);
+  selectedChats.value = new Set(allChatIds);
+  isAllSelected.value = true;
+  // 确保响应式更新
+  selectedChats.value = new Set(selectedChats.value);
+};
+
+const clearSelection = () => {
+  selectedChats.value.clear();
+  isAllSelected.value = false;
+  // 确保响应式更新
+  selectedChats.value = new Set(selectedChats.value);
+};
+
+const toggleChatSelection = (chatId) => {
+  if (selectedChats.value.has(chatId)) {
+    selectedChats.value.delete(chatId);
+  } else {
+    selectedChats.value.add(chatId);
+  }
+  // 确保响应式更新
+  selectedChats.value = new Set(selectedChats.value);
+};
+
+const toggleSelectAll = (checked) => {
+  isAllSelected.value = checked;
+  if (checked) {
+    selectAllChats();
+  } else {
+    clearSelection();
+  }
+};
+
+const batchDeleteSelected = async () => {
+  if (selectedChats.value.size === 0) {
+    message.warning('请先选择要删除的对话');
+    return;
+  }
+
+  Modal.confirm({
+    title: '批量删除确认',
+    content: `确定要删除选中的 ${selectedChats.value.size} 个对话吗？此操作不可恢复。`,
+    okText: '确认删除',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        const results = await threadApi.batchDeleteThreads(Array.from(selectedChats.value));
+
+        if (results.deleted_count > 0) {
+          message.success(`成功删除 ${results.deleted_count} 个对话`);
+        }
+
+        if (results.failed_count > 0) {
+          message.warning(`有 ${results.failed_count} 个对话删除失败`);
+        }
+
+        emit('delete-chat', null); // 通知父组件重新加载
+        // 不立即退出批量模式，让用户看到操作结果
+        setTimeout(() => {
+          exitBatchMode();
+        }, 1000);
+      } catch (error) {
+        message.error('批量删除失败');
+        console.error('批量删除失败:', error);
+      }
+    },
+    onCancel: () => {
+      // 用户取消删除，不做任何操作
+    }
+  });
+};
+
+const deleteChatsByDays = async (days) => {
+  const dayText = days === 1 ? '今天' : days === 7 ? '本周' : '本月';
+
+  Modal.confirm({
+    title: `删除${dayText}对话确认`,
+    content: `确定要删除${dayText}的所有对话吗？此操作不可恢复。`,
+    okText: '确认删除',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        const results = await threadApi.deleteThreadsByCondition({ days });
+
+        if (results.deleted_count > 0) {
+          message.success(`成功删除 ${results.deleted_count} 个${dayText}对话`);
+        } else {
+          message.info(`${dayText}没有对话需要删除`);
+        }
+
+        emit('delete-chat', null);
+      } catch (error) {
+        message.error(`删除${dayText}对话失败`);
+        console.error(`删除${dayText}对话失败:`, error);
+      }
+    },
+    onCancel: () => {
+      // 用户取消删除，不做任何操作
+    }
+  });
+};
+
+const clearAllConversations = async () => {
+  Modal.confirm({
+    title: '清空所有对话确认',
+    content: '确定要清空所有对话吗？此操作不可恢复，请谨慎操作。',
+    okText: '确认清空',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        const results = await threadApi.clearAllConversations();
+
+        if (results.deleted_count > 0) {
+          message.success(`成功清空 ${results.deleted_count} 个对话`);
+        } else {
+          message.info('没有对话需要清空');
+        }
+
+        emit('delete-chat', null);
+      } catch (error) {
+        message.error('清空对话失败');
+        console.error('清空对话失败:', error);
+      }
+    },
+    onCancel: () => {
+      // 用户取消删除，不做任何操作
+    }
+  });
+};
 
 const createNewChat = () => {
   emit('create-chat');
@@ -296,7 +549,9 @@ const openAgentModal = () => {
 
   .conversation-list-top {
     padding: 8px 12px;
-    // border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 
     .new-chat-btn {
       width: 100%;
@@ -315,6 +570,92 @@ const openAgentModal = () => {
 
       &:hover {
         background-color: var(--gray-100);
+      }
+    }
+
+    .batch-mode-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .conversation-actions-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .batch-mode-btn {
+        width: 100%;
+        padding: 6px 12px;
+        border-radius: 6px;
+        background-color: var(--main-color);
+        color: white;
+        border: none;
+        transition: all 0.2s ease;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 13px;
+
+        &:hover {
+          background-color: var(--main-600);
+        }
+      }
+    }
+  }
+
+  // 批量操作工具栏样式
+  .batch-toolbar {
+    padding: 12px;
+    background-color: var(--gray-25);
+    border-bottom: 1px solid var(--gray-200);
+    border-radius: 8px;
+    margin: 8px 12px;
+
+    .batch-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+
+      .select-all-checkbox {
+        flex: 1;
+
+        span {
+          font-size: 13px;
+          color: var(--gray-700);
+        }
+      }
+
+      .cancel-btn {
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+    }
+
+    .batch-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .delete-btn {
+        background-color: #ff4d4f;
+        border-color: #ff4d4f;
+        font-size: 12px;
+        padding: 4px 12px;
+
+        &:hover {
+          background-color: #ff7875;
+          border-color: #ff7875;
+        }
+      }
+
+      .more-actions-btn {
+        font-size: 12px;
+        padding: 4px 8px;
       }
     }
   }
@@ -346,6 +687,42 @@ const openAgentModal = () => {
       transition: background-color 0.2s ease;
       position: relative;
       overflow: hidden;
+
+      // 批量选择模式样式
+      &.batch-mode {
+        padding-left: 8px;
+
+        .chat-checkbox {
+          margin-right: 8px;
+          flex-shrink: 0;
+
+          :deep(.ant-checkbox) {
+            .ant-checkbox-inner {
+              border-color: var(--gray-400);
+
+              &:hover {
+                border-color: var(--main-color);
+              }
+            }
+
+            &.ant-checkbox-checked .ant-checkbox-inner {
+              background-color: var(--main-color);
+              border-color: var(--main-color);
+            }
+          }
+        }
+      }
+
+      // 选中状态样式
+      &.selected {
+        background-color: var(--main-50);
+        border: 1px solid var(--main-200);
+
+        .conversation-title {
+          color: var(--main-700);
+          font-weight: 500;
+        }
+      }
 
       .conversation-title {
         flex: 1;

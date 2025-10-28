@@ -332,6 +332,82 @@ class ConversationManager:
 
         return True
 
+    def batch_delete_conversations(self, thread_ids: list[str], soft_delete: bool = True) -> dict:
+        """
+        Batch delete conversations
+
+        Args:
+            thread_ids: List of thread IDs to delete
+            soft_delete: If True, mark as deleted; if False, permanently delete
+
+        Returns:
+            Dictionary with success and failure counts
+        """
+        results = {
+            "success_count": 0,
+            "failed_count": 0,
+            "failed_details": []
+        }
+
+        for thread_id in thread_ids:
+            try:
+                success = self.delete_conversation(thread_id, soft_delete)
+                if success:
+                    results["success_count"] += 1
+                else:
+                    results["failed_count"] += 1
+                    results["failed_details"].append({
+                        "thread_id": thread_id,
+                        "reason": "删除失败"
+                    })
+            except Exception as e:
+                results["failed_count"] += 1
+                results["failed_details"].append({
+                    "thread_id": thread_id,
+                    "reason": str(e)
+                })
+                logger.error(f"批量删除对话 {thread_id} 失败: {e}")
+
+        logger.info(f"批量删除完成: 成功 {results['success_count']}, 失败 {results['failed_count']}")
+        return results
+
+    def cleanup_deleted_conversations(self, days: int = 30) -> dict:
+        """
+        Clean up deleted conversations older than specified days
+
+        Args:
+            days: Number of days after which deleted conversations should be permanently removed
+
+        Returns:
+            Dictionary with cleanup results
+        """
+        from datetime import timedelta
+
+        cutoff_date = utc_now() - timedelta(days=days)
+
+        deleted_conversations = self.db.query(Conversation).filter(
+            Conversation.status == "deleted",
+            Conversation.updated_at < cutoff_date
+        ).all()
+
+        results = {
+            "cleanup_count": 0,
+            "failed_count": 0
+        }
+
+        for conv in deleted_conversations:
+            try:
+                # Hard delete the conversation and related data
+                self.db.delete(conv)
+                results["cleanup_count"] += 1
+            except Exception as e:
+                results["failed_count"] += 1
+                logger.error(f"清理对话失败 {conv.thread_id}: {e}")
+
+        self.db.commit()
+        logger.info(f"清理完成: 成功 {results['cleanup_count']}, 失败 {results['failed_count']}")
+        return results
+
     def get_stats(self, conversation_id: int) -> ConversationStats | None:
         """
         Get conversation statistics

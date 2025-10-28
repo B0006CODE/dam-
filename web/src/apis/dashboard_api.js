@@ -1,4 +1,4 @@
-import { apiAdminGet } from './base'
+import { apiAdminGet, apiAdminPost, apiAdminDelete } from './base'
 
 /**
  * Dashboard API模块
@@ -128,7 +128,44 @@ export const dashboardApi = {
    */
   getCallTimeseries: (type = 'models', timeRange = '7days') => {
     return apiAdminGet(`/api/dashboard/stats/calls/timeseries?type=${type}&time_range=${timeRange}`)
-  }
+  },
+
+  // ========== 管理员批量删除功能 ==========
+
+  /**
+   * 管理员批量删除对话
+   * @param {Array} threadIds - 对话线程ID列表
+   * @returns {Promise<Object>} - 删除结果
+   */
+  adminBatchDeleteConversations: (threadIds) =>
+    apiAdminDelete('/api/dashboard/conversations/batch', { thread_ids: threadIds }),
+
+  /**
+   * 管理员按条件删除对话
+   * @param {Object} params - 删除条件
+   * @param {string} params.user_id - 用户ID（可选）
+   * @param {string} params.agent_id - 智能体ID（可选）
+   * @param {number} params.days - 删除多少天前的对话（可选）
+   * @param {string} params.status - 对话状态，默认为"active"
+   * @returns {Promise<Object>} - 删除结果
+   */
+  adminDeleteConversationsByCondition: (params) =>
+    apiAdminDelete('/api/dashboard/conversations/condition', params),
+
+  /**
+   * 管理员清理旧对话（永久删除超过指定天数的已删除对话）
+   * @param {number} days - 天数，默认30天
+   * @returns {Promise<Object>} - 清理结果
+   */
+  adminCleanupConversations: (days = 30) =>
+    apiAdminDelete(`/api/dashboard/conversations/cleanup?days=${days}`),
+
+  /**
+   * 管理员清空所有对话（谨慎使用）
+   * @returns {Promise<Object>} - 清空结果
+   */
+  adminClearAllConversations: () =>
+    apiAdminDelete('/api/dashboard/conversations/condition', { days: 0 })
 }
 
 

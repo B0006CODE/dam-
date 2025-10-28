@@ -140,7 +140,7 @@ const isKnowledgeGraphResult = computed(() => {
   const toolNameLower = props.toolName.toLowerCase()
   const isGraphTool = toolNameLower.includes('graph') ||
                      toolNameLower.includes('kg') ||
-                     toolNameLower.includes('query_knowledge_graph')
+                     toolNameLower.includes('global_knowledge_graph_search')
 
   if (!isGraphTool) return false
 

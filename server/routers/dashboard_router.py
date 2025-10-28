@@ -979,3 +979,108 @@ async def get_call_timeseries_stats(
         logger.error(f"Error getting call timeseries stats: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to get call timeseries stats: {str(e)}")
+
+
+# =============================================================================
+# Conversation Management (Admin)
+# =============================================================================
+
+
+class AdminBatchDeleteRequest(BaseModel):
+    thread_ids: list[str]
+
+
+@dashboard.delete("/conversations/batch")
+async def admin_batch_delete_conversations(
+    request: AdminBatchDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """管理员批量删除对话"""
+    from src.storage.conversation import ConversationManager
+
+    conv_manager = ConversationManager(db)
+    results = conv_manager.batch_delete_conversations(request.thread_ids, soft_delete=False)
+
+    return {
+        "message": f"管理员批量删除完成: 成功 {results['success_count']} 个，失败 {results['failed_count']} 个",
+        "success_count": results["success_count"],
+        "failed_count": results["failed_count"],
+        "failed_details": results["failed_details"]
+    }
+
+
+class AdminDeleteByConditionRequest(BaseModel):
+    user_id: str | None = None
+    agent_id: str | None = None
+    days: int | None = None
+    status: str = "active"
+
+
+@dashboard.delete("/conversations/condition")
+async def admin_delete_conversations_by_condition(
+    request: AdminDeleteByConditionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """管理员按条件删除对话"""
+    from src.storage.conversation import ConversationManager
+
+    conv_manager = ConversationManager(db)
+
+    # 构建查询条件
+    conversations = conv_manager.list_conversations(
+        user_id=request.user_id,
+        agent_id=request.agent_id,
+        status=request.status
+    )
+
+    # 按时间过滤
+    if request.days:
+        cutoff_date = utc_now() - timedelta(days=request.days)
+        conversations = [
+            conv for conv in conversations
+            if conv.created_at < cutoff_date
+        ]
+
+    deleted_count = 0
+    failed_threads = []
+
+    for conv in conversations:
+        try:
+            success = conv_manager.delete_conversation(conv.thread_id, soft_delete=False)
+            if success:
+                deleted_count += 1
+        except Exception as e:
+            logger.error(f"管理员按条件删除对话 {conv.thread_id} 失败: {e}")
+            failed_threads.append({
+                "thread_id": conv.thread_id,
+                "reason": str(e)
+            })
+
+    return {
+        "message": f"管理员按条件删除完成: 成功删除 {deleted_count} 个对话",
+        "deleted_count": deleted_count,
+        "total_found": len(conversations),
+        "failed_count": len(failed_threads),
+        "failed_threads": failed_threads
+    }
+
+
+@dashboard.delete("/conversations/cleanup")
+async def admin_cleanup_conversations(
+    days: int = 30,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """管理员清理旧对话（永久删除超过指定天数的已删除对话）"""
+    from src.storage.conversation import ConversationManager
+
+    conv_manager = ConversationManager(db)
+    results = conv_manager.cleanup_deleted_conversations(days)
+
+    return {
+        "message": f"管理员清理完成: 成功清理 {results['cleanup_count']} 个对话，失败 {results['failed_count']} 个",
+        "cleanup_count": results["cleanup_count"],
+        "failed_count": results["failed_count"]
+    }

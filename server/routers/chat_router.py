@@ -605,6 +605,116 @@ async def delete_thread(thread_id: str, db: Session = Depends(get_db), current_u
     return {"message": "删除成功"}
 
 
+class BatchDeleteRequest(BaseModel):
+    thread_ids: list[str]
+
+
+@chat.delete("/threads/batch")
+async def batch_delete_threads(
+    request: BatchDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_required_user)
+):
+    """批量删除对话线程"""
+    conv_manager = ConversationManager(db)
+
+    results = {
+        "deleted_count": 0,
+        "failed_count": 0,
+        "failed_threads": []
+    }
+
+    for thread_id in request.thread_ids:
+        try:
+            conversation = conv_manager.get_conversation_by_thread_id(thread_id)
+            if not conversation or conversation.user_id != str(current_user.id):
+                results["failed_threads"].append({
+                    "thread_id": thread_id,
+                    "reason": "对话不存在或无权限"
+                })
+                results["failed_count"] += 1
+                continue
+
+            success = conv_manager.delete_conversation(thread_id, soft_delete=True)
+            if success:
+                results["deleted_count"] += 1
+            else:
+                results["failed_threads"].append({
+                    "thread_id": thread_id,
+                    "reason": "删除失败"
+                })
+                results["failed_count"] += 1
+        except Exception as e:
+            logger.error(f"批量删除对话 {thread_id} 失败: {e}")
+            results["failed_threads"].append({
+                "thread_id": thread_id,
+                "reason": str(e)
+            })
+            results["failed_count"] += 1
+
+    return {
+        "message": f"成功删除 {results['deleted_count']} 个对话，失败 {results['failed_count']} 个",
+        "deleted_count": results["deleted_count"],
+        "failed_count": results["failed_count"],
+        "failed_threads": results["failed_threads"]
+    }
+
+
+class DeleteByConditionRequest(BaseModel):
+    agent_id: str | None = None
+    days: int | None = None
+
+
+@chat.delete("/threads/condition")
+async def delete_threads_by_condition(
+    request: DeleteByConditionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_required_user)
+):
+    """按条件删除对话线程"""
+    from datetime import timedelta
+
+    conv_manager = ConversationManager(db)
+
+    # 构建查询条件
+    conversations = conv_manager.list_conversations(
+        user_id=str(current_user.id),
+        agent_id=request.agent_id,
+        status="active"
+    )
+
+    # 按时间过滤
+    if request.days:
+        cutoff_date = utc_now() - timedelta(days=request.days)
+        conversations = [
+            conv for conv in conversations
+            if conv.created_at < cutoff_date
+        ]
+
+    deleted_count = 0
+    failed_threads = []
+
+    for conv in conversations:
+        try:
+            success = conv_manager.delete_conversation(conv.thread_id, soft_delete=True)
+            if success:
+                deleted_count += 1
+        except Exception as e:
+            logger.error(f"按条件删除对话 {conv.thread_id} 失败: {e}")
+            failed_threads.append({
+                "thread_id": conv.thread_id,
+                "reason": str(e)
+            })
+
+    return {
+        "message": f"按条件成功删除 {deleted_count} 个对话",
+        "deleted_count": deleted_count,
+        "total_found": len(conversations),
+        "failed_count": len(failed_threads),
+        "failed_threads": failed_threads
+    }
+
+
 class ThreadUpdate(BaseModel):
     title: str | None = None
 

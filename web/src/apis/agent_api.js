@@ -186,5 +186,27 @@ export const threadApi = {
    * @param {string} threadId - 对话线程ID
    * @returns {Promise} - 删除结果
    */
-  deleteThread: (threadId) => apiDelete(`/api/chat/thread/${threadId}`)
+  deleteThread: (threadId) => apiDelete(`/api/chat/thread/${threadId}`),
+
+  /**
+   * 批量删除对话线程
+   * @param {Array} threadIds - 对话线程ID列表
+   * @returns {Promise} - 批量删除结果
+   */
+  batchDeleteThreads: (threadIds) => apiDelete('/api/chat/threads/batch', { thread_ids: threadIds }),
+
+  /**
+   * 按条件删除对话线程
+   * @param {Object} params - 删除条件
+   * @param {string} params.agentId - 智能体ID（可选）
+   * @param {number} params.days - 删除多少天前的对话（可选）
+   * @returns {Promise} - 删除结果
+   */
+  deleteThreadsByCondition: (params) => apiDelete('/api/chat/threads/condition', params),
+
+  /**
+   * 清空所有对话（仅当前用户）
+   * @returns {Promise} - 清空结果
+   */
+  clearAllConversations: () => apiDelete('/api/chat/threads/condition', { days: 0 })
 };

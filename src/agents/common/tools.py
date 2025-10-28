@@ -11,8 +11,8 @@ from src.utils import logger
 
 
 @tool
-def query_knowledge_graph(query: Annotated[str, "The keyword to query knowledge graph."]) -> Any:
-    """Use this to query knowledge graph, which include some food domain knowledge."""
+def global_knowledge_graph_search(query: Annotated[str, "The keyword to query knowledge graph."]) -> Any:
+    """使用全局知识图谱进行检索，查询实体间的关联关系和知识信息。"""
     try:
         logger.debug(f"Querying knowledge graph with: {query}")
         result = graph_base.query_node(query, hops=2, return_format="triples")
@@ -29,7 +29,7 @@ def query_knowledge_graph(query: Annotated[str, "The keyword to query knowledge 
 def get_static_tools() -> list:
     """注册静态工具"""
     static_tools = [
-        query_knowledge_graph,
+        global_knowledge_graph_search,
     ]
 
     # 网页搜索功能已移除，只保留知识库相关功能

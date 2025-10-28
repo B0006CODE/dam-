@@ -204,23 +204,31 @@ export function apiSuperAdminPut(url, data = {}, options = {}, responseType = 'j
 /**
  * 发送DELETE请求
  * @param {string} url - API端点
+ * @param {Object} data - 请求体数据
  * @param {Object} options - 请求选项
  * @param {boolean} requiresAuth - 是否需要认证
  * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
  * @returns {Promise} - 请求结果
  */
-export function apiDelete(url, options = {}, requiresAuth = true, responseType = 'json') {
-  return apiRequest(url, { method: 'DELETE', ...options }, requiresAuth, responseType)
+export function apiDelete(url, data = {}, options = {}, requiresAuth = true, responseType = 'json') {
+  return apiRequest(
+    url,
+    {
+      method: 'DELETE',
+      body: JSON.stringify(data),
+      ...options
+    },
+    requiresAuth,
+    responseType
+  )
 }
 
-
-export function apiAdminDelete(url, options = {}) {
+export function apiAdminDelete(url, data = {}, options = {}) {
   checkAdminPermission()
-  return apiDelete(url, options, true)
+  return apiDelete(url, data, options, true)
 }
 
-
-export function apiSuperAdminDelete(url, options = {}) {
+export function apiSuperAdminDelete(url, data = {}, options = {}) {
   checkSuperAdminPermission()
-  return apiDelete(url, options, true)
+  return apiDelete(url, data, options, true)
 }
