@@ -31,7 +31,9 @@
       <GraphCanvas
         ref="graphRef"
         :graph-data="graphData"
+        :layout-options="layoutOptions"
         :highlight-keywords="[state.searchInput]"
+        :node-style-options="nodeStyleOptions"
       >
         <template #top>
           <div class="actions">
@@ -49,13 +51,21 @@
               </a-input>
             </div>
             <div class="actions-right">
+              <a-select v-model:value="layoutType" style="width: 180px; margin-right: 8px" size="middle">
+                <a-select-option value="auto">自动布局</a-select-option>
+                <a-select-option value="force">力导向</a-select-option>
+                <a-select-option value="circular">环形</a-select-option>
+                <a-select-option value="radial">扇形 / 放射</a-select-option>
+                <a-select-option value="concentric">同心</a-select-option>
+                <a-select-option value="grid">网格</a-select-option>
+              </a-select>
               <a-button type="default" @click="state.showInfoModal = true" :icon="h(InfoCircleOutlined)">
                 说明
               </a-button>
               <a-input
                 v-model:value="sampleNodeCount"
                 placeholder="查询三元组数量"
-                style="width: 100px"
+                style="width: 120px"
                 @keydown.enter="loadSampleNodes"
                 :loading="state.fetching"
               >
@@ -73,6 +83,17 @@
           <div class="footer">
             <div class="tags">
               <a-tag :bordered="false" v-for="tag in graphTags" :key="tag.key" :color="tag.type">{{ tag.text }}</a-tag>
+            </div>
+            <div class="legend" v-if="legendItems.length">
+              <div class="legend-header">
+                <h4>实体类型</h4>
+              </div>
+              <div class="legend-content">
+                <div class="legend-item" v-for="item in legendItems" :key="item.type">
+                  <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
+                  <span class="legend-label">{{ item.type }} ({{ item.count }})</span>
+                </div>
+              </div>
             </div>
           </div>
         </template>
@@ -150,6 +171,7 @@ import HeaderComponent from '@/components/HeaderComponent.vue';
 import { neo4jApi } from '@/apis/graph_api';
 import { useUserStore } from '@/stores/user';
 import GraphCanvas from '@/components/GraphCanvas.vue';
+import { getEntityTypeColor } from '@/apis/graph_api';
 
 const configStore = useConfigStore();
 const cur_embed_model = computed(() => configStore.config?.embed_model);
@@ -163,6 +185,57 @@ const graphData = reactive({
   nodes: [],
   edges: [],
 });
+
+const layoutType = ref('auto') // auto | force | circular | radial | concentric | grid
+const layoutOptions = computed(() => {
+  const count = graphData.nodes.length
+  const autoType = count <= 200 ? 'd3-force' : 'concentric'
+  const type = ({
+    auto: autoType,
+    force: 'd3-force',
+    circular: 'circular',
+    radial: 'radial',
+    concentric: 'concentric',
+    grid: 'grid',
+  }[layoutType.value] ?? autoType)
+
+  if (type === 'd3-force') {
+    return {
+      type: 'd3-force',
+      preventOverlap: true,
+      alphaDecay: 0.12,
+      alphaMin: 0.01,
+      velocityDecay: 0.6,
+      iterations: 120,
+      force: {
+        center: { x: 0.5, y: 0.5, strength: 0.1 },
+        charge: { strength: -400, distanceMax: 400 },
+        link: { distance: 120, strength: 0.8 },
+      },
+      collide: { radius: 40, strength: 0.8, iterations: 3 },
+    }
+  }
+
+  if (type === 'radial') {
+    return {
+      type: 'radial',
+      unitRadius: 120,
+      preventOverlap: true,
+      center: [0, 0],
+    }
+  }
+
+  if (type === 'grid') {
+    return {
+      type: 'grid',
+      preventOverlap: true,
+      width: 800,
+      height: 600,
+    }
+  }
+
+  return { type, preventOverlap: true }
+})
 
 const state = reactive({
   fetching: false,
@@ -309,6 +382,69 @@ const graphTags = computed(() => {
   return tags;
 });
 
+// ========= 实体类型图例与颜色映射 =========
+const DEFAULT_TYPE_COLORS = [
+  '#60a5fa', '#34d399', '#f59e0b', '#f472b6', '#22d3ee',
+  '#a78bfa', '#f97316', '#4ade80', '#f43f5e', '#2dd4bf',
+]
+
+function getNodeType(n) {
+  if (!n || typeof n !== 'object') return 'unknown'
+  if (n.entity_type) return String(n.entity_type)
+  if (Array.isArray(n.labels) && n.labels.length) return String(n.labels[0])
+  return 'Entity'
+}
+
+const entityTypeCounts = computed(() => {
+  const map = new Map()
+  for (const n of graphData.nodes) {
+    const t = getNodeType(n)
+    map.set(t, (map.get(t) || 0) + 1)
+  }
+  return Array.from(map.entries()).map(([type, count]) => ({ type, count }))
+})
+
+const typeColorMap = computed(() => {
+  const map = new Map()
+  const types = entityTypeCounts.value
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .map(i => i.type)
+  let idx = 0
+  for (const t of types) {
+    const normalized = String(t).toLowerCase()
+    const knownColor = getEntityTypeColor(normalized)
+    if (normalized === 'unknown' || knownColor === getEntityTypeColor('unknown')) {
+      map.set(t, DEFAULT_TYPE_COLORS[idx % DEFAULT_TYPE_COLORS.length])
+      idx++
+    } else {
+      map.set(t, knownColor)
+    }
+  }
+  return map
+})
+
+const legendItems = computed(() => {
+  return entityTypeCounts.value
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .map(item => ({
+      type: item.type,
+      count: item.count,
+      color: typeColorMap.value.get(item.type) || getEntityTypeColor('unknown')
+    }))
+})
+
+const nodeStyleOptions = computed(() => ({
+  style: {
+    fill: (d) => {
+      const t = d?.data?.entity_type || 'unknown'
+      return typeColorMap.value.get(t) || getEntityTypeColor('unknown')
+    },
+  },
+  palette: { field: 'entity_type', color: legendItems.value.map(i => i.color) },
+}))
+
 // 为未索引节点添加索引
 const indexNodes = () => {
   // 判断 embed_model_name 是否相同
@@ -449,5 +585,43 @@ const openLink = (url) => {
     height: 37px;
     box-shadow: none;
   }
+}
+
+/* 图例样式 */
+.legend {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 6px 10px;
+  min-width: 180px;
+}
+.legend-header {
+  padding: 2px 0 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 6px;
+}
+.legend-header h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #262626;
+}
+.legend-content { max-height: 140px; overflow-y: auto; }
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  margin: 2px 0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 </style>

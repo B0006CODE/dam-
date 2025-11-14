@@ -27,6 +27,25 @@
 
       <div v-else-if="parsedData.reasoning_content"  class="empty-block"></div>
 
+      <div v-if="hasKnowledgeGraphData && (message.isLast || message.status === 'finished')" class="knowledge-graph-wrapper">
+        <div class="kg-toggle-header">
+          <span class="kg-title">知识图谱推理结果</span>
+          <a-button
+            size="small"
+            class="kg-collapse-btn"
+            :title="kgCollapsed ? '展开' : '收起'"
+            @click="kgCollapsed = !kgCollapsed"
+          >
+            <caret-right-outlined :rotate="kgCollapsed ? 0 : 90" />
+          </a-button>
+        </div>
+        <KnowledgeGraphResult 
+          v-show="!kgCollapsed"
+          :data="message.knowledgeGraphData"
+          :hide-header="true"
+        />
+      </div>
+
       <!-- 错误提示块 -->
       <div v-if="message.error_type" class="error-hint" :class="{ 'error-interrupted': message.error_type === 'interrupted', 'error-unexpect': message.error_type === 'unexpect' }">
         <span v-if="message.error_type === 'interrupted'">回答生成已中断</span>
@@ -89,7 +108,7 @@ import { computed, ref } from 'vue';
 import { CaretRightOutlined, ThunderboltOutlined, LoadingOutlined } from '@ant-design/icons-vue';
 import RefsComponent from '@/components/RefsComponent.vue'
 import { Loader, CircleCheckBig } from 'lucide-vue-next';
-import { ToolResultRenderer } from '@/components/ToolCallingResult'
+import { ToolResultRenderer, KnowledgeGraphResult } from '@/components/ToolCallingResult'
 import { useAgentStore } from '@/stores/agent'
 import { useInfoStore } from '@/stores/info'
 import { storeToRefs } from 'pinia'
@@ -142,6 +161,8 @@ const expandedToolCalls = ref(new Set()); // 展开的工具调用集合
 // 引入智能体 store
 const agentStore = useAgentStore();
 const infoStore = useInfoStore();
+// KG 折叠开关（默认收起）
+const kgCollapsed = ref(false);
 const { availableTools } = storeToRefs(agentStore);
 
 // 工具相关方法
@@ -188,6 +209,14 @@ const toggleToolCall = (toolCallId) => {
     expandedToolCalls.value.add(toolCallId);
   }
 };
+
+// 是否存在可视化的知识图谱数据
+const hasKnowledgeGraphData = computed(() => {
+  const kg = props.message && props.message.knowledgeGraphData;
+  if (!kg) return false;
+  const triples = Array.isArray(kg.triples) ? kg.triples : [];
+  return triples.length > 0;
+});
 </script>
 
 <style lang="less" scoped>
@@ -690,5 +719,33 @@ const toggleToolCall = (toolCallId) => {
   code {
     font-size: 14px;
   }
+}
+
+/* KG toggle header styles */
+.knowledge-graph-wrapper {
+  margin-top: 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-0);
+}
+.knowledge-graph-wrapper .kg-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--gray-25);
+}
+.knowledge-graph-wrapper .kg-title {
+  color: var(--main-color);
+  font-weight: 500;
+}
+.knowledge-graph-wrapper .kg-collapse-btn {
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

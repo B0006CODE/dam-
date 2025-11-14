@@ -67,8 +67,10 @@ async def text_to_img_qwen(text: str) -> str:
 
 def get_tools(input_context: dict = None) -> list[Any]:
     """获取所有可运行的工具（给大模型使用）"""
-    tools = get_buildin_tools(input_context)
-    tools.append(calculator)
-    tools.append(text_to_img_qwen)
-    tools.extend(get_mysql_tools())
+    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+    tools = [] if retrieval_mode == "llm" else get_buildin_tools(input_context)
+    if retrieval_mode != "llm":
+        tools.append(calculator)
+        tools.append(text_to_img_qwen)
+        tools.extend(get_mysql_tools())
     return tools

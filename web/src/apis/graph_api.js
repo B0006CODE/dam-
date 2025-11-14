@@ -1,24 +1,21 @@
-import { apiGet, apiPost } from './base'
+﻿import { apiGet, apiPost } from './base'
 
 /**
- * 图数据库API模块
- * 包含LightRAG图知识库和Neo4j图数据库两种接口
- * 采用命名空间分组模式，清晰区分接口类型
- */
+ * 鍥炬暟鎹簱API妯″潡
+ * 鍖呭惈LightRAG鍥剧煡璇嗗簱鍜孨eo4j鍥炬暟鎹簱涓ょ鎺ュ彛
+ * 閲囩敤鍛藉悕绌洪棿鍒嗙粍妯″紡锛屾竻鏅板尯鍒嗘帴鍙ｇ被鍨? */
 
 // =============================================================================
-// === LightRAG图知识库接口分组 ===
+// === LightRAG鍥剧煡璇嗗簱鎺ュ彛鍒嗙粍 ===
 // =============================================================================
 
 export const lightragApi = {
   /**
-   * 获取LightRAG知识图谱子图数据
-   * @param {Object} params - 查询参数
-   * @param {string} params.db_id - LightRAG数据库ID
-   * @param {string} params.node_label - 节点标签（"*"获取全图）
-   * @param {number} params.max_depth - 最大深度
-   * @param {number} params.max_nodes - 最大节点数
-   * @returns {Promise} - 子图数据
+   * 鑾峰彇LightRAG鐭ヨ瘑鍥捐氨瀛愬浘鏁版嵁
+   * @param {Object} params - 鏌ヨ鍙傛暟
+   * @param {string} params.db_id - LightRAG鏁版嵁搴揑D
+   * @param {string} params.node_label - 鑺傜偣鏍囩锛?*"鑾峰彇鍏ㄥ浘锛?   * @param {number} params.max_depth - 鏈€澶ф繁搴?   * @param {number} params.max_nodes - 鏈€澶ц妭鐐规暟
+   * @returns {Promise} - 瀛愬浘鏁版嵁
    */
   getSubgraph: async (params) => {
     const { db_id, node_label = "*", max_depth = 2, max_nodes = 100 } = params
@@ -38,17 +35,15 @@ export const lightragApi = {
   },
 
   /**
-   * 获取所有可用的LightRAG数据库
-   * @returns {Promise} - LightRAG数据库列表
-   */
+   * 鑾峰彇鎵€鏈夊彲鐢ㄧ殑LightRAG鏁版嵁搴?   * @returns {Promise} - LightRAG鏁版嵁搴撳垪琛?   */
   getDatabases: async () => {
     return await apiGet('/api/graph/lightrag/databases', {}, true)
   },
 
   /**
-   * 获取LightRAG图谱标签列表
-   * @param {string} db_id - LightRAG数据库ID
-   * @returns {Promise} - 标签列表
+   * 鑾峰彇LightRAG鍥捐氨鏍囩鍒楄〃
+   * @param {string} db_id - LightRAG鏁版嵁搴揑D
+   * @returns {Promise} - 鏍囩鍒楄〃
    */
   getLabels: async (db_id) => {
     if (!db_id) {
@@ -63,9 +58,9 @@ export const lightragApi = {
   },
 
   /**
-   * 获取LightRAG图谱统计信息
-   * @param {string} db_id - LightRAG数据库ID
-   * @returns {Promise} - 统计信息
+   * 鑾峰彇LightRAG鍥捐氨缁熻淇℃伅
+   * @param {string} db_id - LightRAG鏁版嵁搴揑D
+   * @returns {Promise} - 缁熻淇℃伅
    */
   getStats: async (db_id) => {
     if (!db_id) {
@@ -81,15 +76,42 @@ export const lightragApi = {
 }
 
 // =============================================================================
-// === Neo4j图数据库接口分组 ===
+// === Generic graph endpoints (paged subgraph) ===
+// =============================================================================
+
+export async function getPagedSubgraph(params) {
+  const {
+    db_id,
+    center = '*',
+    depth = 2,
+    limit = 200,
+    page = 1,
+    fields = 'compact',
+  } = params || {}
+
+  if (!db_id) throw new Error('db_id is required')
+
+  const qp = new URLSearchParams({
+    db_id: String(db_id),
+    center: String(center),
+    depth: String(depth),
+    limit: String(limit),
+    page: String(page),
+    fields: String(fields),
+  })
+
+  return await apiGet(`/api/graph/subgraph?${qp.toString()}`, {}, true)
+}
+
+// =============================================================================
+// === Neo4j鍥炬暟鎹簱鎺ュ彛鍒嗙粍 ===
 // =============================================================================
 
 export const neo4jApi = {
   /**
-   * 获取Neo4j图数据库样例节点
-   * @param {string} kgdb_name - Neo4j数据库名称（默认为'neo4j'）
-   * @param {number} num - 节点数量
-   * @returns {Promise} - 样例节点数据
+   * 鑾峰彇Neo4j鍥炬暟鎹簱鏍蜂緥鑺傜偣
+   * @param {string} kgdb_name - Neo4j鏁版嵁搴撳悕绉帮紙榛樿涓?neo4j'锛?   * @param {number} num - 鑺傜偣鏁伴噺
+   * @returns {Promise} - 鏍蜂緥鑺傜偣鏁版嵁
    */
   getSampleNodes: async (kgdb_name = 'neo4j', num = 100) => {
     const queryParams = new URLSearchParams({
@@ -101,9 +123,8 @@ export const neo4jApi = {
   },
 
   /**
-   * 根据实体名称查询Neo4j图节点
-   * @param {string} entity_name - 实体名称
-   * @returns {Promise} - 节点数据
+   * 鏍规嵁瀹炰綋鍚嶇О鏌ヨNeo4j鍥捐妭鐐?   * @param {string} entity_name - 瀹炰綋鍚嶇О
+   * @returns {Promise} - 鑺傜偣鏁版嵁
    */
   queryNode: async (entity_name) => {
     if (!entity_name) {
@@ -118,10 +139,9 @@ export const neo4jApi = {
   },
 
   /**
-   * 通过JSONL文件添加图谱实体到Neo4j
-   * @param {string} file_path - JSONL文件路径
-   * @param {string} kgdb_name - Neo4j数据库名称（默认为'neo4j'）
-   * @returns {Promise} - 添加结果
+   * 閫氳繃JSONL鏂囦欢娣诲姞鍥捐氨瀹炰綋鍒癗eo4j
+   * @param {string} file_path - JSONL鏂囦欢璺緞
+   * @param {string} kgdb_name - Neo4j鏁版嵁搴撳悕绉帮紙榛樿涓?neo4j'锛?   * @returns {Promise} - 娣诲姞缁撴灉
    */
   addEntities: async (file_path, kgdb_name = 'neo4j') => {
     return await apiPost('/api/graph/neo4j/add-entities', {
@@ -131,9 +151,8 @@ export const neo4jApi = {
   },
 
   /**
-   * 为Neo4j图谱节点添加嵌入向量索引
-   * @param {string} kgdb_name - Neo4j数据库名称（默认为'neo4j'）
-   * @returns {Promise} - 索引结果
+   * 涓篘eo4j鍥捐氨鑺傜偣娣诲姞宓屽叆鍚戦噺绱㈠紩
+   * @param {string} kgdb_name - Neo4j鏁版嵁搴撳悕绉帮紙榛樿涓?neo4j'锛?   * @returns {Promise} - 绱㈠紩缁撴灉
    */
   indexEntities: async (kgdb_name = 'neo4j') => {
     return await apiPost('/api/graph/neo4j/index-entities', {
@@ -142,8 +161,8 @@ export const neo4jApi = {
   },
 
   /**
-   * 获取Neo4j图数据库信息
-   * @returns {Promise} - 图数据库信息
+   * 鑾峰彇Neo4j鍥炬暟鎹簱淇℃伅
+   * @returns {Promise} - 鍥炬暟鎹簱淇℃伅
    */
   getInfo: async () => {
     return await apiGet('/api/graph/neo4j/info', {}, true)
@@ -151,39 +170,34 @@ export const neo4jApi = {
 }
 
 // =============================================================================
-// === 工具函数分组 ===
+// === 宸ュ叿鍑芥暟鍒嗙粍 ===
 // =============================================================================
 
 /**
- * 根据实体类型获取颜色
- * @param {string} entityType - 实体类型
- * @returns {string} - 颜色值
- */
+ * 鏍规嵁瀹炰綋绫诲瀷鑾峰彇棰滆壊
+ * @param {string} entityType - 瀹炰綋绫诲瀷
+ * @returns {string} - 棰滆壊鍊? */
 export const getEntityTypeColor = (entityType) => {
   const colorMap = {
-    'person': '#FF6B6B',      // 红色 - 人物
-    'organization': '#4ECDC4', // 青色 - 组织
-    'location': '#45B7D1',    // 蓝色 - 地点
-    'geo': '#45B7D1',         // 蓝色 - 地理位置
-    'event': '#96CEB4',       // 绿色 - 事件
-    'category': '#FFEAA7',    // 黄色 - 分类
-    'equipment': '#DDA0DD',   // 紫色 - 设备
-    'athlete': '#FF7675',     // 红色 - 运动员
-    'record': '#FD79A8',      // 粉色 - 记录
-    'year': '#FDCB6E',        // 橙色 - 年份
-    'UNKNOWN': '#B2BEC3',     // 灰色 - 未知
-    'unknown': '#B2BEC3'      // 灰色 - 未知
+    'person': '#FF6B6B',      // 绾㈣壊 - 浜虹墿
+    'organization': '#4ECDC4', // 闈掕壊 - 缁勭粐
+    'location': '#45B7D1',    // 钃濊壊 - 鍦扮偣
+    'geo': '#45B7D1',         // 钃濊壊 - 鍦扮悊浣嶇疆
+    'event': '#96CEB4',       // 缁胯壊 - 浜嬩欢
+    'category': '#FFEAA7',    // 榛勮壊 - 鍒嗙被
+    'equipment': '#DDA0DD',   // 绱壊 - 璁惧
+    'athlete': '#FF7675',     // 绾㈣壊 - 杩愬姩鍛?    'record': '#FD79A8',      // 绮夎壊 - 璁板綍
+    'year': '#FDCB6E',        // 姗欒壊 - 骞翠唤
+    'UNKNOWN': '#B2BEC3',     // 鐏拌壊 - 鏈煡
+    'unknown': '#B2BEC3'      // 鐏拌壊 - 鏈煡
   }
 
   return colorMap[entityType] || colorMap['unknown']
 }
 
 /**
- * 根据权重计算边的粗细
- * @param {number} weight - 权重值
- * @param {number} minWeight - 最小权重
- * @param {number} maxWeight - 最大权重
- * @returns {number} - 边的粗细
+ * 鏍规嵁鏉冮噸璁＄畻杈圭殑绮楃粏
+ * @param {number} weight - 鏉冮噸鍊? * @param {number} minWeight - 鏈€灏忔潈閲? * @param {number} maxWeight - 鏈€澶ф潈閲? * @returns {number} - 杈圭殑绮楃粏
  */
 export const calculateEdgeWidth = (weight, minWeight = 1, maxWeight = 10) => {
   const minWidth = 1
@@ -193,10 +207,10 @@ export const calculateEdgeWidth = (weight, minWeight = 1, maxWeight = 10) => {
 }
 
 // =============================================================================
-// === 兼容性导出（可选，用于平滑迁移）===
+// === 鍏煎鎬у鍑猴紙鍙€夛紝鐢ㄤ簬骞虫粦杩佺Щ锛?==
 // =============================================================================
 
-// 保持向后兼容的导出，后续可以移除
+// 淇濇寔鍚戝悗鍏煎鐨勫鍑猴紝鍚庣画鍙互绉婚櫎
 export const getGraphNodes = async (params = {}) => {
   console.warn('getGraphNodes is deprecated, use neo4jApi.getSampleNodes instead')
   return neo4jApi.getSampleNodes(params.kgdb_name || 'neo4j', params.num || 100)
@@ -224,9 +238,10 @@ export const getGraphStats = async () => {
 
 // 保持旧的分组导出，便于批量替换
 export const graphApi = {
-  getSubgraph: lightragApi.getSubgraph,
+  getSubgraph: getPagedSubgraph,
   getDatabases: lightragApi.getDatabases,
   getLabels: lightragApi.getLabels,
   getStats: lightragApi.getStats,
-  ...neo4jApi  // 临时兼容
+  ...neo4jApi
 }
+

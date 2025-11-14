@@ -91,7 +91,8 @@ import {
   PlusOutlined,
   MergeCellsOutlined,
   DatabaseOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  RobotOutlined
 } from '@ant-design/icons-vue';
 
 
@@ -198,6 +199,14 @@ const retrievalModes = [
     icon: 'GlobalOutlined',
     description: '全局关联知识发现',
     color: '#3b82f6'
+  },
+  {
+    value: 'llm',
+    label: '大模型知识',
+    shortLabel: '大模型',
+    icon: 'RobotOutlined',
+    description: '直接使用模型自身知识，不检索本地/图谱',
+    color: '#10b981'
   }
 ];
 

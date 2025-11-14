@@ -215,6 +215,261 @@ export class MessageProcessor {
   }
 
   /**
+   * 为对话消息附加知识库引用信息
+   * @param {Array} convList - 对话列�?   * @returns {Array}
+   */
+  static attachCitationsToConversations(convList) {
+    if (!Array.isArray(convList)) return [];
+
+    return convList.map((conv) => {
+      if (!conv?.messages) return conv;
+
+      let messagesChanged = false;
+      const enrichedMessages = conv.messages.map((msg) => {
+        if (!msg || msg.type !== 'ai') return msg;
+
+        const nextCitations = MessageProcessor.extractCitationsFromMessage(msg);
+        const hasCitations = nextCitations.length > 0;
+
+        if (!hasCitations) {
+          if (!msg.citations || msg.citations.length === 0) return msg;
+          messagesChanged = true;
+          const { citations: _removed, ...rest } = msg;
+          return rest;
+        }
+
+        if (MessageProcessor._areCitationsEqual(msg.citations, nextCitations)) {
+          return msg;
+        }
+
+        messagesChanged = true;
+        return { ...msg, citations: nextCitations };
+      });
+
+      if (!messagesChanged) return conv;
+      return { ...conv, messages: enrichedMessages };
+    });
+  }
+
+  /**
+   * 从单条消息提取引用信息
+   * @param {Object} message - 消息对象
+   * @returns {Array<Object>}
+   */
+  static extractCitationsFromMessage(message) {
+    if (!message || !Array.isArray(message.tool_calls) || message.tool_calls.length === 0) {
+      return [];
+    }
+
+    const references = [];
+    const seen = new Set();
+
+    for (const toolCall of message.tool_calls) {
+      const rawResult =
+        toolCall?.tool_call_result?.content !== undefined
+          ? toolCall.tool_call_result.content
+          : toolCall?.tool_call_result ?? toolCall?.result;
+
+      if (!rawResult) continue;
+
+      const citations = MessageProcessor._extractCitationsFromToolResult(rawResult);
+      if (!Array.isArray(citations) || citations.length === 0) continue;
+
+      citations.forEach((cite) => {
+        const key = cite.path || cite.title || cite.referenceId;
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        references.push(cite);
+      });
+    }
+
+    return references.map((item, index) => ({
+      ...item,
+      index: index + 1,
+    }));
+  }
+
+  /**
+   * 解析工具执行结果中的引用信息
+   * @param {any} rawResult - 工具执行结果
+   * @returns {Array<Object>}
+   * @private
+   */
+  static _extractCitationsFromToolResult(rawResult) {
+    if (!rawResult) return [];
+
+    if (typeof rawResult === 'object' && !Array.isArray(rawResult)) {
+      if (Array.isArray(rawResult.json)) {
+        return MessageProcessor._extractCitationsFromToolResult(rawResult.json);
+      }
+
+      if (Array.isArray(rawResult.content)) {
+        const flattened = rawResult.content
+          .map((item) => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item === 'object') {
+              return item.text || item.content || '';
+            }
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n');
+        return MessageProcessor._extractCitationsFromToolResult(flattened);
+      }
+
+      return [];
+    }
+
+    if (Array.isArray(rawResult)) {
+      const collected = rawResult
+        .filter((item) => item && typeof item === 'object' && item.metadata && item.metadata.source)
+        .map((item) => ({
+          title: item.metadata.source,
+          path: item.metadata.source,
+          snippet: MessageProcessor._sanitizeSnippet(item.content || ''),
+          score: item.score,
+          rerankScore: item.rerank_score,
+          sourceType: 'vector',
+        }));
+
+      return collected;
+    }
+
+    if (typeof rawResult !== 'string') return [];
+
+    const trimmed = rawResult.trim();
+    if (!trimmed) return [];
+
+    const jsonValue = MessageProcessor._safeJsonParse(trimmed);
+    if (Array.isArray(jsonValue)) {
+      return MessageProcessor._extractCitationsFromToolResult(jsonValue);
+    }
+
+    if (trimmed.includes('Reference Document List')) {
+      return MessageProcessor._parseLightRagReferences(trimmed);
+    }
+
+    return [];
+  }
+
+  /**
+   * 解析 LightRAG 结果并提取引用列表
+   * @param {string} content - 工具输出内容
+   * @returns {Array<Object>}
+   * @private
+   */
+  static _parseLightRagReferences(content) {
+    if (typeof content !== 'string') return [];
+
+    const referenceBlockMatch = content.match(/Reference Document List[\s\S]*?```([\s\S]*?)```/i);
+    if (!referenceBlockMatch) return [];
+
+    const refLines = referenceBlockMatch[1]
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('['));
+
+    if (refLines.length === 0) return [];
+
+    const refMap = new Map();
+    refLines.forEach((line) => {
+      const match = line.match(/^\[(\d+)\]\s+(.*)$/);
+      if (!match) return;
+      const [, refId, rawPath] = match;
+      const title = rawPath.split('/').pop() || rawPath;
+      refMap.set(refId, {
+        referenceId: refId,
+        path: rawPath,
+        title,
+        snippet: '',
+        sourceType: 'lightrag',
+      });
+    });
+
+    if (refMap.size === 0) return [];
+
+    const chunkBlockMatch = content.match(/Document Chunks[\s\S]*?```json\s*([\s\S]*?)```/i);
+    if (chunkBlockMatch) {
+      const chunkRaw = chunkBlockMatch[1].trim();
+      if (chunkRaw) {
+        const sanitized = `[${chunkRaw.replace(/}\s*[\r\n]+\s*{/g, '},{')}]`;
+        try {
+          const chunks = JSON.parse(sanitized);
+          if (Array.isArray(chunks)) {
+            chunks.forEach((chunk) => {
+              const refId = chunk?.reference_id || chunk?.referenceId;
+              if (refId && refMap.has(refId)) {
+                const entry = refMap.get(refId);
+                if (entry && !entry.snippet) {
+                  entry.snippet = MessageProcessor._sanitizeSnippet(chunk.content || '');
+                }
+              }
+            });
+          }
+        } catch (error) {
+          console.debug('Failed to parse LightRAG chunk data:', error);
+        }
+      }
+    }
+
+    return Array.from(refMap.values());
+  }
+
+  /**
+   * 尝试解析 JSON 字符串
+   * @param {string} value - 原始字符串
+   * @returns {any|null}
+   * @private
+   */
+  static _safeJsonParse(value) {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * 清洗引用内容摘要
+   * @param {string} text - 原始文本
+   * @param {number} maxLength - 最长长度
+   * @returns {string}
+   * @private
+   */
+  static _sanitizeSnippet(text, maxLength = 160) {
+    if (!text || typeof text !== 'string') return '';
+    const plain = text.replace(/\s+/g, ' ').trim();
+    if (plain.length <= maxLength) return plain;
+    return `${plain.slice(0, maxLength - 1)}…`;
+  }
+
+  /**
+   * 判断两个引用列表是否相同
+   * @param {Array} current
+   * @param {Array} next
+   * @returns {boolean}
+   * @private
+   */
+  static _areCitationsEqual(current, next) {
+    if (!current && !next) return true;
+    if (!Array.isArray(current) || !Array.isArray(next)) return false;
+    if (current.length !== next.length) return false;
+
+    return current.every((item, index) => {
+      const target = next[index];
+      return (
+        item?.path === target?.path &&
+        item?.title === target?.title &&
+        item?.snippet === target?.snippet &&
+        item?.sourceType === target?.sourceType
+      );
+    });
+  }
+
+  /**
    * 处理流式响应
    * @param {Response} response - 响应对象
    * @param {Function} processChunk - 处理块的函数

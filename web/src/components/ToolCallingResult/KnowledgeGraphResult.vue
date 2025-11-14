@@ -1,14 +1,14 @@
 <template>
   <div class="knowledge-graph-result">
-    <div class="kg-header">
-      <h4><DeploymentUnitOutlined /> 知识图谱查询结果</h4>
+    <div class="kg-header" v-if="!hideHeader">
+      <h4><DeploymentUnitOutlined /> 知识图谱推理结果</h4>
       <div class="result-summary">
-        找到 {{ totalNodes }} 个节点, {{ totalRelations }} 个关系
+        找到 {{ totalNodes }} 个节点、{{ totalRelations }} 个关系
       </div>
     </div>
 
     <!-- 图谱可视化容器 -->
-    <div class="graph-visualization" ref="graphContainerRef" v-if="totalNodes > 0 || totalRelations > 0">
+    <div class="graph-visualization" ref="graphContainerRef" v-show="!isCollapsed && (totalNodes > 0 || totalRelations > 0)">
       <GraphCanvas :graph-data="graphData" ref="graphContainer" style="height: 360px;">
         <template #top>
           <div class="graph-controls">
@@ -25,18 +25,38 @@
       </GraphCanvas>
     </div>
 
+    <div class="kg-reasoning" v-show="!isCollapsed && reasoningPaths.length">
+      <div class="reasoning-header">
+        <span class="reasoning-title">推理链条</span>
+        <span class="reasoning-hint">共 {{ reasoningPaths.length }} 条路径</span>
+      </div>
+
+      <div class="reasoning-path" v-for="(path, pIndex) in reasoningPaths" :key="'path_'+pIndex">
+        <a-timeline class="path-timeline">
+          <a-timeline-item v-for="(step, sIndex) in path" :key="'step_'+pIndex+'_'+sIndex">
+            <span class="entity">{{ step.source }}</span>
+            <span class="relation">{{ step.type }}</span>
+            <span class="entity">{{ step.target }}</span>
+          </a-timeline-item>
+        </a-timeline>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onUpdated } from 'vue'
-import { DeploymentUnitOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { DeploymentUnitOutlined, ReloadOutlined, CaretRightOutlined } from '@ant-design/icons-vue'
 import GraphCanvas from '../GraphCanvas.vue'
 
 const props = defineProps({
   data: {
     type: [Array, Object],
     required: true
+  },
+  hideHeader: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -45,6 +65,8 @@ const graphContainer = ref(null)
 const graphContainerRef = ref(null)
 const isVisible = ref(false)
 const isRefreshing = ref(false)
+// 内部折叠状态（默认不折叠）；当由父组件控制时，可忽略
+const isCollapsed = ref(false)
 
 // 计算属性：解析图谱数据
 const graphData = computed(() => {
@@ -124,6 +146,71 @@ const allRelations = computed(() => {
 // 统计信息
 const totalNodes = computed(() => graphData.value.nodes.length)
 const totalRelations = computed(() => graphData.value.edges.length)
+
+const reasoningTriples = computed(() => {
+  return allRelations.value.map((relation, index) => ({
+    id: `reasoning_${index}`,
+    source: relation.source || '未知实体',
+    type: relation.type || '相关',
+    target: relation.target || '未知实体'
+  }))
+})
+// 将三元组按连通关系合并为有序路径，提升可读性
+const reasoningPaths = computed(() => {
+  const nodes = graphData.value.nodes
+  const edges = graphData.value.edges
+  if (!Array.isArray(nodes) || !Array.isArray(edges) || edges.length === 0) return []
+
+  const nameOf = (id) => {
+    const node = nodes.find(n => n.id === id)
+    return node?.name || id
+  }
+
+  const outMap = new Map()
+  const inSet = new Set()
+
+  edges.forEach(e => {
+    if (!outMap.has(e.source_id)) outMap.set(e.source_id, [])
+    outMap.get(e.source_id).push(e)
+    inSet.add(e.target_id)
+  })
+
+  // 起点：有出度且入度为 0 的节点；若没有，回退到任意有出度的节点
+  let starts = Array.from(outMap.keys()).filter(k => !inSet.has(k))
+  if (starts.length === 0) starts = Array.from(outMap.keys())
+
+  const paths = []
+  const MAX_STEPS = 10
+
+  for (const start of starts) {
+    let current = start
+    const visited = new Set([current])
+    const path = []
+    let steps = 0
+
+    while (outMap.has(current) && steps < MAX_STEPS) {
+      const nextEdge = outMap.get(current).find(e => !visited.has(e.target_id))
+      if (!nextEdge) break
+      path.push({
+        source: nameOf(nextEdge.source_id),
+        type: nextEdge.type || '相关',
+        target: nameOf(nextEdge.target_id)
+      })
+      current = nextEdge.target_id
+      visited.add(current)
+      steps += 1
+    }
+
+    if (path.length) paths.push(path)
+  }
+
+  // 如果无法构成路径，则以单步形式回退（保证最少也能展示）
+  if (paths.length === 0) {
+    return reasoningTriples.value.map(t => [{ source: t.source, type: t.type, target: t.target }])
+  }
+
+  return paths
+})
 
 // 检查容器是否可见
 const checkVisibility = () => {
@@ -230,6 +317,10 @@ defineExpose({
   // border: 1px solid var(--gray-200);
 
   .kg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 12px 16px;
     // border-bottom: 1px solid var(--gray-200);
     background: var(--gray-25);
@@ -247,6 +338,16 @@ defineExpose({
     .result-summary {
       font-size: 12px;
       color: var(--gray-600);
+    }
+
+    .collapse-btn {
+      min-width: 24px;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   }
 
@@ -360,6 +461,82 @@ defineExpose({
       overflow-y: auto;
       margin: 0;
       color: var(--gray-700);
+    }
+  }
+
+  .kg-reasoning {
+    margin: 12px 8px 10px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    background: var(--gray-0);
+
+    .reasoning-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 8px;
+
+      .reasoning-title {
+        font-weight: 600;
+        color: var(--gray-900);
+      }
+
+      .reasoning-hint {
+        font-size: 12px;
+        color: var(--gray-500);
+      }
+    }
+
+    .reasoning-path {
+      background: var(--gray-0);
+      border: 1px solid var(--gray-150);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+    }
+
+    :deep(.path-timeline.ant-timeline) {
+      margin: 0;
+      padding: 6px 0 0 0;
+    }
+
+    :deep(.path-timeline .ant-timeline-item) {
+      padding-bottom: 10px;
+    }
+
+    :deep(.path-timeline .ant-timeline-item-tail) {
+      border-inline-start: 2px solid var(--gray-200);
+    }
+
+    :deep(.path-timeline .ant-timeline-item-head) {
+      background-color: var(--main-50);
+      border-color: var(--main-color);
+    }
+
+    :deep(.path-timeline .ant-timeline-item-content) {
+      font-size: 13px;
+      color: var(--gray-900);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .entity {
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: var(--gray-100);
+      font-weight: 500;
+    }
+
+    .relation {
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--main-color);
+      color: var(--main-color);
+      font-weight: 600;
+      font-size: 12px;
     }
   }
 }

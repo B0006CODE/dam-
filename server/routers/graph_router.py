@@ -1,4 +1,5 @@
 import traceback
+import math
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
@@ -101,6 +102,142 @@ async def get_lightrag_subgraph(
         logger.error(f"获取子图数据失败: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"获取子图数据失败: {str(e)}")
+
+
+# =============================================================================
+# === 通用子图（分页 + 紧凑字段） ===
+# =============================================================================
+
+
+@graph.get("/subgraph")
+async def get_subgraph(
+    db_id: str = Query(..., description="数据库ID"),
+    center: str = Query("*", description="中心节点标识或 '*' 代表全图"),
+    depth: int = Query(2, description="最大深度", ge=1, le=5),
+    limit: int = Query(200, description="每页节点数", ge=1, le=1000),
+    page: int = Query(1, description="页码(从1开始)", ge=1),
+    fields: str = Query("compact", description="字段模式: compact | full"),
+    current_user: User = Depends(get_admin_user),
+):
+    """
+    通用子图接口，支持分页与紧凑字段返回。
+
+    注意：当前实现基于 LightRAG 子图结果进行分页切片，
+    后续可根据真实存储添加更高效的分页与过滤。
+    """
+    try:
+        # 仅支持 LightRAG 知识库
+        if not knowledge_base.is_lightrag_database(db_id):
+            raise HTTPException(status_code=400, detail="当前仅支持 LightRAG 知识库的通用子图查询")
+
+        # 计算需要获取的最大节点数以满足分页
+        fetch_max = min(limit * page, 5000)
+
+        rag_instance = await knowledge_base._get_lightrag_instance(db_id)
+        if not rag_instance:
+            raise HTTPException(status_code=404, detail=f"LightRAG 数据库 {db_id} 不存在或无法访问")
+
+        # 拉取子图（可能超出本页大小），随后在内存中切片
+        kg = await rag_instance.get_knowledge_graph(
+            node_label=center, max_depth=depth, max_nodes=fetch_max
+        )
+
+        total_nodes_all = len(kg.nodes)
+        total_edges_all = len(kg.edges)
+
+        # 计算分页窗口
+        start = (page - 1) * limit
+        end = min(start + limit, total_nodes_all)
+        if start >= total_nodes_all:
+            paged_nodes_raw = []
+        else:
+            paged_nodes_raw = kg.nodes[start:end]
+
+        included_ids = {str(n.id) for n in paged_nodes_raw}
+
+        # 过滤边：仅保留两端都在当前页节点集合内的边
+        paged_edges_raw = [
+            e for e in kg.edges if str(e.source) in included_ids and str(e.target) in included_ids
+        ]
+
+        # 计算度（当前页内的度）
+        degree_map: dict[str, int] = {}
+        for e in paged_edges_raw:
+            s = str(e.source)
+            t = str(e.target)
+            degree_map[s] = degree_map.get(s, 0) + 1
+            degree_map[t] = degree_map.get(t, 0) + 1
+
+        def _node_label(n) -> str:
+            props = getattr(n, "properties", {}) or {}
+            if isinstance(props, dict) and props.get("entity_id"):
+                return str(props.get("entity_id"))
+            labels = getattr(n, "labels", []) or []
+            if labels:
+                return str(labels[0])
+            return str(getattr(n, "id", ""))
+
+        # 构造节点返回
+        nodes = []
+        for n in paged_nodes_raw:
+            nid = str(n.id)
+            if fields == "compact":
+                nodes.append(
+                    {
+                        "id": nid,
+                        "label": _node_label(n),
+                        "type": (getattr(n, "properties", {}) or {}).get("entity_type", "unknown"),
+                        "degree": degree_map.get(nid, 0),
+                    }
+                )
+            else:
+                nodes.append(
+                    {
+                        "id": nid,
+                        "labels": list(getattr(n, "labels", []) or []),
+                        "entity_type": (getattr(n, "properties", {}) or {}).get("entity_type", "unknown"),
+                        "properties": getattr(n, "properties", {}) or {},
+                        "degree": degree_map.get(nid, 0),
+                    }
+                )
+
+        # 构造边返回（紧凑：不含 properties）
+        edges = []
+        for e in paged_edges_raw:
+            ed = {
+                "id": str(e.id),
+                "source": str(e.source),
+                "target": str(e.target),
+                "type": getattr(e, "type", "DIRECTED"),
+            }
+            if fields != "compact":
+                ed["properties"] = getattr(e, "properties", {}) or {}
+            edges.append(ed)
+
+        total_pages = max(1, math.ceil(total_nodes_all / limit)) if limit else 1
+
+        return {
+            "success": True,
+            "data": {
+                "nodes": nodes,
+                "edges": edges,
+                "paging": {
+                    "page": page,
+                    "limit": limit,
+                    "total_nodes": total_nodes_all,
+                    "total_edges": total_edges_all,
+                    "total_pages": total_pages,
+                },
+                "is_truncated": total_nodes_all > end,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"通用子图查询失败: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"通用子图查询失败: {str(e)}")
 
 
 @graph.get("/lightrag/databases")

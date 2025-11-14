@@ -36,6 +36,15 @@ class ChatbotAgent(BaseAgent):
         如果配置为列表，则使用列表中的工具。
         """
         enabled_tools = []
+
+        # 在 llm 模式下，不注入任何工具（包括 MCP）
+        try:
+            input_context = runtime.config.configurable if runtime and hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable') else None
+            retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+            if retrieval_mode == "llm":
+                return []
+        except Exception:
+            pass
         self.agent_tools = self.agent_tools or self.get_tools(runtime)
         if selected_tools and isinstance(selected_tools, list) and len(selected_tools) > 0:
             # 使用配置中指定的工具

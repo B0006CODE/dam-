@@ -73,6 +73,17 @@
         </a-button>
       </div>
 
+      <div class="layout-section">
+        <a-select v-model:value="layoutMode" size="small" style="width: 140px">
+          <a-select-option value="auto">自动布局</a-select-option>
+          <a-select-option value="circular">环形</a-select-option>
+          <a-select-option value="radial">放射/扇形</a-select-option>
+          <a-select-option value="concentric">同心</a-select-option>
+          <a-select-option value="force">力导向</a-select-option>
+        </a-select>
+        <a-button size="small" style="margin-left: 6px" @click="reapplyLayout">应用布局</a-button>
+      </div>
+
       <div v-if="!props.hideStats" class="stats-section">
         <a-tag color="blue" size="small">节点: {{ stats.displayed_nodes || 0 }}</a-tag>
         <a-tag color="green" size="small">边: {{ stats.displayed_edges || 0 }}</a-tag>
@@ -235,7 +246,7 @@ import { NodeBorderProgram } from '@sigma/node-border'
 import EdgeCurveProgram, { EdgeCurvedArrowProgram } from '@sigma/edge-curve'
 import { EdgeArrowProgram } from 'sigma/rendering'
 
-import { lightragApi } from '@/apis/graph_api'
+import { lightragApi, graphApi } from '@/apis/graph_api'
 import { useGraphStore } from '@/stores/graphStore'
 import '@/assets/css/sigma.css'
 
@@ -281,6 +292,7 @@ const expanding = ref(false)
 const sigmaContainer = ref(null)
 const layoutRunning = ref(false)
 const loadingMessage = ref('加载图数据中...')
+const layoutMode = ref('auto') // auto | circular | radial | concentric | force
 
 // 面板拖拽相关
 const nodePanelPosition = ref({ x: 12, y: 60 })
@@ -682,11 +694,13 @@ const loadGraphData = async () => {
 
   try {
     const [graphResponse, statsResponse] = await Promise.all([
-      lightragApi.getSubgraph({
+      graphApi.getSubgraph({
         db_id: selectedDatabase.value,
-        node_label: selectedLabel.value || '*',
-        max_depth: searchParams.max_depth,
-        max_nodes: searchParams.max_nodes
+        center: selectedLabel.value || '*',
+        depth: searchParams.max_depth,
+        limit: searchParams.max_nodes,
+        page: 1,
+        fields: 'full'
       }),
       lightragApi.getStats(selectedDatabase.value)
     ])
@@ -772,9 +786,102 @@ const applyLayout = async (graph) => {
 
     loadingMessage.value = '计算布局中...'
 
-    // 简单的力导向布局
+    // 简单的力导向布局 / 多布局支持
     const nodes = graph.nodes()
     const edges = graph.edges()
+
+    // Multi-layout implementations
+    const assignRandomIfMissing = () => {
+      nodes.forEach((node) => {
+        if (!graph.hasNodeAttribute(node, 'x')) graph.setNodeAttribute(node, 'x', Math.random() * 1000)
+        if (!graph.hasNodeAttribute(node, 'y')) graph.setNodeAttribute(node, 'y', Math.random() * 1000)
+      })
+    }
+
+    const layoutCircular = () => {
+      const n = nodes.length
+      const R = 400
+      nodes.forEach((node, i) => {
+        const angle = (2 * Math.PI * i) / Math.max(1, n)
+        graph.setNodeAttribute(node, 'x', Math.cos(angle) * R)
+        graph.setNodeAttribute(node, 'y', Math.sin(angle) * R)
+      })
+    }
+
+    const layoutRadial = () => {
+      // Basic radial layout: reuse circular for now
+      layoutCircular()
+    }
+
+    const layoutConcentric = () => {
+      const degree = new Map()
+      edges.forEach((e) => {
+        const s = graph.source(e); const t = graph.target(e)
+        degree.set(s, (degree.get(s) || 0) + 1)
+        degree.set(t, (degree.get(t) || 0) + 1)
+      })
+      const arr = nodes.map((n) => ({ id: n, deg: degree.get(n) || 0 }))
+      arr.sort((a, b) => b.deg - a.deg)
+      const rings = []
+      let current = []
+      arr.forEach((item, idx) => {
+        current.push(item.id)
+        if (current.length >= 20) { rings.push(current); current = [] }
+      })
+      if (current.length) rings.push(current)
+      const baseR = 200
+      rings.forEach((ring, ri) => {
+        const R = baseR + ri * 160
+        ring.forEach((node, i) => {
+          const angle = (2 * Math.PI * i) / Math.max(1, ring.length)
+          graph.setNodeAttribute(node, 'x', Math.cos(angle) * R)
+          graph.setNodeAttribute(node, 'y', Math.sin(angle) * R)
+        })
+      })
+    }
+
+    const layoutForceLite = () => {
+      assignRandomIfMissing()
+      const iterations = 80
+      for (let i = 0; i < iterations; i++) {
+        for (let j = 0; j < nodes.length; j++) {
+          for (let k = j + 1; k < nodes.length; k++) {
+            const n1 = nodes[j]; const n2 = nodes[k]
+            const x1 = graph.getNodeAttribute(n1, 'x'); const y1 = graph.getNodeAttribute(n1, 'y')
+            const x2 = graph.getNodeAttribute(n2, 'x'); const y2 = graph.getNodeAttribute(n2, 'y')
+            const dx = x2 - x1; const dy = y2 - y1
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1
+            const force = 800 / (dist * dist)
+            const fx = (dx / dist) * force; const fy = (dy / dist) * force
+            graph.setNodeAttribute(n1, 'x', x1 - fx); graph.setNodeAttribute(n1, 'y', y1 - fy)
+            graph.setNodeAttribute(n2, 'x', x2 + fx); graph.setNodeAttribute(n2, 'y', y2 + fy)
+          }
+        }
+        edges.forEach((e) => {
+          const s = graph.source(e); const t = graph.target(e)
+          const x1 = graph.getNodeAttribute(s, 'x'); const y1 = graph.getNodeAttribute(s, 'y')
+          const x2 = graph.getNodeAttribute(t, 'x'); const y2 = graph.getNodeAttribute(t, 'y')
+          const dx = x2 - x1; const dy = y2 - y1
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          const force = dist * 0.01
+          const fx = (dx / dist) * force; const fy = (dy / dist) * force
+          graph.setNodeAttribute(s, 'x', x1 + fx); graph.setNodeAttribute(s, 'y', y1 + fy)
+          graph.setNodeAttribute(t, 'x', x2 - fx); graph.setNodeAttribute(t, 'y', y2 - fy)
+        })
+      }
+    }
+
+    // Choose and apply layout
+    const mode = (layoutMode.value || 'auto').toLowerCase()
+    const N = nodes.length
+    if (mode === 'circular') layoutCircular()
+    else if (mode === 'radial') layoutRadial()
+    else if (mode === 'concentric') layoutConcentric()
+    else if (mode === 'force') layoutForceLite()
+    else { if (N <= 150) layoutForceLite(); else layoutConcentric() }
+
+    resolve()
+    return
 
     // 随机初始位置
     nodes.forEach((node) => {
@@ -844,6 +951,13 @@ const applyLayout = async (graph) => {
   })
 }
 
+// 重新应用当前布局
+const reapplyLayout = async () => {
+  if (!sigmaInstance || !graphStore || !graphStore.sigmaGraph) return
+  await applyLayout(graphStore.sigmaGraph)
+  sigmaInstance.refresh()
+}
+
 // 展开节点
 const expandNode = async (nodeId) => {
   if (!selectedDatabase.value) {
@@ -853,11 +967,13 @@ const expandNode = async (nodeId) => {
 
   expanding.value = true
   try {
-    const response = await lightragApi.getSubgraph({
+    const response = await graphApi.getSubgraph({
       db_id: selectedDatabase.value,
-      node_label: nodeId,
-      max_depth: 1,
-      max_nodes: 50
+      center: nodeId,
+      depth: 1,
+      limit: 50,
+      page: 1,
+      fields: 'full'
     })
 
     if (response.success) {

@@ -89,6 +89,15 @@
                   </div>
                   <span class="retrieval-mode-text">知识图谱</span>
                 </button>
+                <button
+                  :class="['retrieval-mode-btn', { 'active': retrievalMode === 'llm' }]"
+                  @click="retrievalMode = 'llm'"
+                >
+                  <div class="retrieval-mode-icon">
+                    <RobotOutlined />
+                  </div>
+                  <span class="retrieval-mode-text">大模型知识</span>
+                </button>
               </div>
             </div>
           </div>
@@ -185,7 +194,7 @@ import AgentMessageComponent from '@/components/AgentMessageComponent.vue'
 import ChatSidebarComponent from '@/components/ChatSidebarComponent.vue'
 import RefsComponent from '@/components/RefsComponent.vue'
 import { PanelLeftOpen, MessageCirclePlus } from 'lucide-vue-next';
-import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined } from '@ant-design/icons-vue';
+import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined, RobotOutlined } from '@ant-design/icons-vue';
 import { handleChatError, handleValidationError } from '@/utils/errorHandler';
 import { ScrollController } from '@/utils/scrollController';
 import { AgentValidator } from '@/utils/agentValidator';
@@ -288,25 +297,26 @@ const conversations = computed(() => {
   const historyConvs = MessageProcessor.convertServerHistoryToMessages(currentThreadMessages.value);
   const threadState = currentThreadState.value;
 
+  let combinedConvs = historyConvs;
+
   // 如果有进行中的消息且线程状态显示正在流式处理，添加进行中的对话
   if (onGoingConvMessages.value.length > 0 && threadState?.isStreaming) {
     const onGoingConv = {
       messages: onGoingConvMessages.value,
       status: 'streaming'
     };
-    return [...historyConvs, onGoingConv];
-  }
-
-  // 即使流式结束，如果历史记录为空但还有消息没有完全同步，也保持显示
-  if (historyConvs.length === 0 && onGoingConvMessages.value.length > 0 && !threadState?.isStreaming) {
+    combinedConvs = [...historyConvs, onGoingConv];
+  } else if (historyConvs.length === 0 && onGoingConvMessages.value.length > 0 && !threadState?.isStreaming) {
+    // 即使流式结束，如果历史记录为空但还有消息没有完全同步，也保持显示
     const finalConv = {
       messages: onGoingConvMessages.value,
       status: 'finished'
     };
-    return [finalConv];
+    combinedConvs = [finalConv];
   }
 
-  return historyConvs;
+  const withGraphData = attachKnowledgeGraphData(combinedConvs);
+  return MessageProcessor.attachCitationsToConversations(withGraphData);
 });
 
 const isLoadingThreads = computed(() => chatState.isLoadingThreads);
@@ -876,6 +886,366 @@ const getLastMessage = (conv) => {
     if (conv.messages[i].type === 'ai') return conv.messages[i];
   }
   return null;
+};
+
+const tryParseJson = (value) => {
+  if (typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value);
+  } catch (_error) {
+    return null;
+  }
+};
+
+const toLabel = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') {
+    if (value.name) return String(value.name).trim();
+    if (value.label) return String(value.label).trim();
+    if (value.type) return String(value.type).trim();
+    if (value.value) return String(value.value).trim();
+    if (value.title) return String(value.title).trim();
+    if (value.id) return String(value.id).trim();
+  }
+  return String(value).trim();
+};
+
+const normalizeTriple = (rawTriple) => {
+  if (Array.isArray(rawTriple)) {
+    const [subject, relation, object] = rawTriple;
+    if (subject !== undefined && relation !== undefined && object !== undefined) {
+      const s = toLabel(subject);
+      const p = toLabel(relation);
+      const o = toLabel(object);
+      if (s && p && o) return [s, p, o];
+    }
+    return null;
+  }
+
+  if (rawTriple && typeof rawTriple === 'object') {
+    let subject =
+      rawTriple.subject ??
+      rawTriple.source ??
+      rawTriple.head ??
+      rawTriple.from ??
+      rawTriple.h ??
+      rawTriple.entity ??
+      rawTriple.entity1 ??
+      rawTriple.node1 ??
+      rawTriple.start ??
+      rawTriple.a;
+    let relation =
+      rawTriple.relation ??
+      rawTriple.relationship ??
+      rawTriple.predicate ??
+      rawTriple.type ??
+      rawTriple.rel ??
+      rawTriple.r ??
+      rawTriple.edge ??
+      rawTriple.description;
+    let object =
+      rawTriple.object ??
+      rawTriple.target ??
+      rawTriple.tail ??
+      rawTriple.to ??
+      rawTriple.t ??
+      rawTriple.neighbor ??
+      rawTriple.entity2 ??
+      rawTriple.node2 ??
+      rawTriple.end ??
+      rawTriple.b;
+
+    if (!subject && rawTriple.h) {
+      subject = rawTriple.h.name ?? rawTriple.h.label ?? rawTriple.h.value ?? rawTriple.h.id ?? rawTriple.h;
+    }
+    if (!relation && rawTriple.r) {
+      relation = rawTriple.r.type ?? rawTriple.r.name ?? rawTriple.r.label ?? rawTriple.r.value ?? rawTriple.r;
+    }
+    if (!object && rawTriple.t) {
+      object = rawTriple.t.name ?? rawTriple.t.label ?? rawTriple.t.value ?? rawTriple.t.id ?? rawTriple.t;
+    }
+
+    if (subject !== undefined && relation !== undefined && object !== undefined) {
+      const s = toLabel(subject);
+      const p = toLabel(relation);
+      const o = toLabel(object);
+      if (s && p && o) return [s, p, o];
+    }
+  }
+
+  return null;
+};
+
+const parseKnowledgeGraphContent = (rawContent) => {
+  if (!rawContent) return null;
+
+  let data = rawContent;
+
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (!trimmed) return null;
+
+    let parsed = tryParseJson(trimmed);
+    if (!parsed) {
+      const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fencedMatch && fencedMatch[1]) {
+        parsed = tryParseJson(fencedMatch[1]);
+      }
+    }
+
+    if (parsed !== null) {
+      data = parsed;
+    } else {
+      const fallbackTriples = parseTriplesFromJsonBlocks(trimmed);
+      if (fallbackTriples.length > 0) {
+        return { triples: fallbackTriples };
+      }
+      return null;
+    }
+  }
+
+  if (Array.isArray(data)) {
+    const triples = data.map(normalizeTriple).filter(Boolean);
+    return triples.length ? { triples } : null;
+  }
+
+  if (data && typeof data === 'object') {
+    if (Array.isArray(data.triples)) {
+      const triples = data.triples.map(normalizeTriple).filter(Boolean);
+      if (triples.length) return { triples };
+    }
+
+    if (data.result && Array.isArray(data.result.triples)) {
+      const triples = data.result.triples.map(normalizeTriple).filter(Boolean);
+      if (triples.length) return { triples };
+    }
+
+    if (Array.isArray(data.data)) {
+      const triples = data.data.map(normalizeTriple).filter(Boolean);
+      if (triples.length) return { triples };
+    }
+
+    const singleTriple = normalizeTriple(data);
+    if (singleTriple) return { triples: [singleTriple] };
+  }
+
+  return null;
+};
+
+const parseTriplesFromJsonBlocks = (text) => {
+  if (!text) return [];
+  const triples = [];
+  const blockRegex = /```(?:json)?\s*([\s\S]*?)```/gi;
+  let blockMatch;
+
+  while ((blockMatch = blockRegex.exec(text))) {
+    const blockContent = blockMatch[1];
+    if (!blockContent) continue;
+
+    blockContent
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        let parsedLine = null;
+        try {
+          parsedLine = JSON.parse(line);
+        } catch (_error) {
+          // ignore invalid json line
+        }
+
+        if (!parsedLine) return;
+
+        if (Array.isArray(parsedLine)) {
+          const normalized = normalizeTriple(parsedLine);
+          if (normalized) {
+            triples.push(normalized);
+          }
+          return;
+        }
+
+        const normalized = normalizeTriple(parsedLine);
+        if (normalized) {
+          triples.push(normalized);
+        }
+      });
+  }
+
+  return triples;
+};
+
+const normalizeToolResultPayload = (payload) => {
+  if (payload === null || payload === undefined) {
+    return null;
+  }
+
+  if (typeof payload === 'string') {
+    const trimmed = payload.trim();
+    return trimmed || null;
+  }
+
+  if (Array.isArray(payload)) {
+    const flattened = payload
+      .map((item) => normalizeToolResultPayload(item))
+      .filter(Boolean);
+    if (flattened.length === 0) return null;
+    if (flattened.length === 1) return flattened[0];
+    return flattened.join('\n');
+  }
+
+  if (typeof payload === 'object') {
+    if (payload.type === 'text' && typeof payload.text === 'string') {
+      return payload.text;
+    }
+
+    if (payload.content !== undefined) {
+      const nested = normalizeToolResultPayload(payload.content);
+      if (nested) return nested;
+    }
+
+    if (payload.data !== undefined) {
+      const nested = normalizeToolResultPayload(payload.data);
+      if (nested) return nested;
+    }
+
+    if (payload.result !== undefined) {
+      const nested = normalizeToolResultPayload(payload.result);
+      if (nested) return nested;
+    }
+
+    if (payload.output !== undefined) {
+      const nested = normalizeToolResultPayload(payload.output);
+      if (nested) return nested;
+    }
+
+    if (payload.json !== undefined) {
+      const nested = normalizeToolResultPayload(payload.json);
+      if (nested) return nested;
+    }
+
+    if (Array.isArray(payload.triples)) {
+      return payload;
+    }
+
+    return payload;
+  }
+
+  return payload;
+};
+
+const extractGraphPayloadFromToolCall = (toolCall) => {
+  if (!toolCall) return null;
+
+  const candidates = [
+    toolCall?.tool_call_result?.content,
+    toolCall?.tool_call_result?.data,
+    toolCall?.tool_call_result?.result,
+    toolCall?.tool_call_result?.output,
+    toolCall?.tool_call_result?.json,
+    toolCall?.tool_call_result,
+    toolCall?.result,
+    toolCall?.output,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeToolResultPayload(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+};
+
+const collectKnowledgeGraphData = (messages) => {
+  if (!Array.isArray(messages)) return null;
+
+  const triples = [];
+  const tripleKeys = new Set();
+
+  messages.forEach((msg) => {
+    if (!msg || msg.type !== 'ai') return;
+
+    const toolCalls = Array.isArray(msg.tool_calls)
+      ? msg.tool_calls
+      : Object.values(msg.tool_calls || {});
+
+    toolCalls.forEach((toolCall) => {
+      const rawContent = extractGraphPayloadFromToolCall(toolCall);
+      if (!rawContent) return;
+
+      const parsed = parseKnowledgeGraphContent(rawContent);
+      if (parsed?.triples?.length) {
+        parsed.triples.forEach((triple) => {
+          const key = triple.join('||');
+          if (!tripleKeys.has(key)) {
+            tripleKeys.add(key);
+            triples.push(triple);
+          }
+        });
+      }
+    });
+  });
+
+  if (triples.length === 0) return null;
+  return { triples };
+};
+
+const findLastAiMessageIndex = (messages) => {
+  if (!Array.isArray(messages)) return -1;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]?.type === 'ai') return i;
+  }
+  return -1;
+};
+
+const isSameGraphData = (left, right) => {
+  if (!left || !right) return false;
+  const leftTriples = Array.isArray(left.triples) ? left.triples : [];
+  const rightTriples = Array.isArray(right.triples) ? right.triples : [];
+  if (leftTriples.length !== rightTriples.length) return false;
+
+  for (let i = 0; i < leftTriples.length; i += 1) {
+    const lt = leftTriples[i];
+    const rt = rightTriples[i];
+    if (!Array.isArray(lt) || !Array.isArray(rt)) return false;
+    if (lt[0] !== rt[0] || lt[1] !== rt[1] || lt[2] !== rt[2]) return false;
+  }
+  return true;
+};
+
+const attachKnowledgeGraphData = (convList) => {
+  if (!Array.isArray(convList)) return [];
+
+  // 仅在“智能混合(mix)”或“知识图谱(global)”检索模式下附加子图
+  if (!['mix', 'global'].includes(retrievalMode.value)) {
+    return convList;
+  }
+
+  return convList.map((conv) => {
+    if (!conv?.messages) return conv;
+
+    const graphData = collectKnowledgeGraphData(conv.messages);
+    if (!graphData) return conv;
+
+    const lastAiIndex = findLastAiMessageIndex(conv.messages);
+    if (lastAiIndex === -1) return conv;
+
+    let messagesChanged = false;
+    const enrichedMessages = conv.messages.map((msg, idx) => {
+      if (idx !== lastAiIndex || msg?.type !== 'ai') return msg;
+      if (isSameGraphData(msg.knowledgeGraphData, graphData)) return msg;
+      messagesChanged = true;
+      return { ...msg, knowledgeGraphData: graphData };
+    });
+
+    if (!messagesChanged) return conv;
+
+    return {
+      ...conv,
+      messages: enrichedMessages
+    };
+  });
 };
 
 const showMsgRefs = (msg) => {

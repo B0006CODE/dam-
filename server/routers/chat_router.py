@@ -225,9 +225,9 @@ async def chat_agent(
                     name = msg_dict.get("name", "")
 
                     if tool_call_id:
-                        # 确保tool_output是字符串类型，避免SQLite不支持列表类型
-                        if isinstance(content, list):
-                            tool_output = json.dumps(content) if content else ""
+                        # 确保tool_output是字符串类型且序列化为JSON，避免SQLite不支持列表或对象类型
+                        if isinstance(content, (list, dict)):
+                            tool_output = json.dumps(content, ensure_ascii=False) if content else ""
                         else:
                             tool_output = str(content)
 

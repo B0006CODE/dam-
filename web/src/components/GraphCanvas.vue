@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="graph-canvas-container" ref="rootEl">
     <div v-show="graphData.nodes.length > 0" class="graph-canvas" ref="container"></div>
     <div class="slots">
@@ -49,7 +49,7 @@ const MAX_RETRIES = 5
 const defaultLayout = {
   type: 'd3-force',
   preventOverlap: true,
-  // 性能友好参数（参考 GraphView.vue）
+  // 鎬ц兘鍙嬪ソ鍙傛暟锛堝弬鑰?GraphView.vue锛?
   alphaDecay: 0.1,
   alphaMin: 0.01,
   velocityDecay: 0.7,
@@ -81,13 +81,24 @@ function formatData() {
     degrees.set(t, (degrees.get(t) || 0) + 1)
   }
 
-  const nodes = (data.nodes || []).map((n) => ({
-    id: String(n.id),
-    data: {
-      label: n[props.labelField] ?? n.name ?? String(n.id),
-      degree: degrees.get(String(n.id)) || 0,
-    },
-  }))
+  const nodes = (data.nodes || []).map((n) => {
+    // 推断实体类型：优先 entity_type -> type -> labels[0] -> unknown
+    let inferredType = 'unknown'
+    if (n && typeof n === 'object') {
+      if (n.entity_type) inferredType = String(n.entity_type)
+      else if (n.type) inferredType = String(n.type)
+      else if (Array.isArray(n.labels) && n.labels.length) inferredType = String(n.labels[0])
+    }
+
+    return {
+      id: String(n.id),
+      data: {
+        label: n[props.labelField] ?? n.name ?? String(n.id),
+        degree: degrees.get(String(n.id)) || 0,
+        entity_type: inferredType,
+      },
+    }
+  })
 
   const edges = (data.edges || []).map((e, idx) => ({
     id: e.id ? String(e.id) : `edge-${idx}`,
@@ -266,14 +277,14 @@ function setGraphData() {
   graphInstance.setData(data)
   graphInstance.render()
 
-  // 应用关键词高亮
+  // 搴旂敤鍏抽敭璇嶉珮浜?
   setTimeout(() => {
     applyHighlightKeywords()
     emit('data-rendered')
   }, 100)
 }
 
-// 关键词高亮功能
+// 鍏抽敭璇嶉珮浜姛鑳?
 function applyHighlightKeywords() {
   if (!graphInstance || !props.highlightKeywords || props.highlightKeywords.length === 0) return
 
@@ -297,7 +308,7 @@ function applyHighlightKeywords() {
   }
 }
 
-// 清除高亮
+// 娓呴櫎楂樹寒
 function clearHighlights() {
   if (!graphInstance) return
 
@@ -372,7 +383,13 @@ watch(() => props.graphData, () => {
   renderTimeout = setTimeout(() => setGraphData(), 50)
 }, { deep: true })
 
-// 监听关键词变化
+// 鐩戝惉鍏抽敭璇嶅彉鍖?
+
+// 监听布局参数变化，重新渲染以应用新布局
+watch(() => props.layoutOptions, () => {
+  refreshGraph()
+}, { deep: true })
+
 watch(() => props.highlightKeywords, () => {
   if (graphInstance) {
     clearHighlights()
@@ -381,7 +398,7 @@ watch(() => props.highlightKeywords, () => {
 }, { deep: true })
 
 onMounted(() => {
-  // ResizeObserver 监听容器尺寸，自动重渲染
+  // ResizeObserver 鐩戝惉瀹瑰櫒灏哄锛岃嚜鍔ㄩ噸娓叉煋
   if (window.ResizeObserver) {
     resizeObserver = new ResizeObserver(() => {
       if (!container.value || !graphInstance) return
@@ -406,7 +423,7 @@ onUnmounted(() => {
   graphInstance = null
 })
 
-// 暴露方法
+// 鏆撮湶鏂规硶
 defineExpose({
   refreshGraph,
   fitView,
@@ -432,7 +449,7 @@ defineExpose({
   }
 
   .slots {
-    // 让整层覆盖容器默认不接收指针事件（便于穿透到底下画布）
+    // 璁╂暣灞傝鐩栧鍣ㄩ粯璁や笉鎺ユ敹鎸囬拡浜嬩欢锛堜究浜庣┛閫忓埌搴曚笅鐢诲竷锛?
     pointer-events: none;
     position: absolute;
     top: 0;
@@ -453,7 +470,7 @@ defineExpose({
       &.bottom { bottom: 0; }
     }
     .content {
-      // 中间内容层及其子元素全部穿透
+      // 涓棿鍐呭灞傚強鍏跺瓙鍏冪礌鍏ㄩ儴绌块€?
       pointer-events: none;
       flex: 1;
     }
@@ -463,7 +480,7 @@ defineExpose({
   }
 }
 
-/* 高亮节点的脉冲动画效果 */
+/* 楂樹寒鑺傜偣鐨勮剦鍐插姩鐢绘晥鏋?*/
 @keyframes highlightPulse {
   0% {
     filter: brightness(1);
