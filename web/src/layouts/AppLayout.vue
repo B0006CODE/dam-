@@ -5,7 +5,7 @@ import {
   GithubOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons-vue'
-import { Bot, Waypoints, LibraryBig, Settings, BarChart3, BookOpen, ListChecks } from 'lucide-vue-next';
+import { Bot, Waypoints, LibraryBig, Settings, BarChart3, BookOpen, ListChecks, Map } from 'lucide-vue-next';
 import { onLongPress } from '@vueuse/core'
 
 import { useConfigStore } from '@/stores/config'
@@ -78,7 +78,7 @@ console.log(route)
 
 const activeTaskCount = computed(() => activeCountRef.value || 0)
 
-// 下面是导航菜单部分，添加智能体项
+// 下面是导航菜单部分,添加智能体项
 const mainList = [{
     name: '智能体',
     path: '/agent',
@@ -94,6 +94,11 @@ const mainList = [{
     path: '/database',
     icon: LibraryBig,
     activeIcon: LibraryBig,
+  }, {
+    name: '水库地图',
+    path: '/map',
+    icon: Map,
+    activeIcon: Map,
   }, {
     name: 'Dashboard',
     path: '/dashboard',

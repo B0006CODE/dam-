@@ -104,6 +104,19 @@ const router = createRouter({
       ]
     },
     {
+      path: '/map',
+      name: 'reservoirMap',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'ReservoirMapComp',
+          component: () => import('../views/ReservoirMapView.vue'),
+          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
+        }
+      ]
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('../views/EmptyView.vue'),
