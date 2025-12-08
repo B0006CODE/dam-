@@ -38,7 +38,7 @@ function applyCircularLayout(graph) {
 function applyRandomLayout(graph) {
   const nodes = graph.nodes()
   const nodeCount = nodes.length
-  const scale = Math.sqrt(nodeCount) * 50 // 根据节点数动态调整分布范围
+  const scale = Math.sqrt(nodeCount) * 150 // 大幅增加分布范围，避免初始就重叠
   
   nodes.forEach(node => {
     graph.setNodeAttribute(node, 'x', (Math.random() - 0.5) * scale)
@@ -53,16 +53,16 @@ function applySimpleForceLayout(graph, iterations = 50) {
   
   if (nodeCount === 0) return
   
-  const repulsionStrength = 200 // 增加排斥力强度
-  const attractionStrength = 0.005 // 减小吸引力强度
-  const damping = 0.8 // 调整阻尼系数
+  const repulsionStrength = 1000 // 大幅增加排斥力强度，使节点保持更大距离
+  const attractionStrength = 0.001 // 进一步减小吸引力强度
+  const damping = 0.9 // 调整阻尼系数使节点更快稳定
   
   // 初始化速度
   const velocities = new Map()
   nodes.forEach(node => velocities.set(node, { vx: 0, vy: 0 }))
   
-  // 增加迭代次数
-  for (let iter = 0; iter < iterations * 2; iter++) {
+  // 大幅增加迭代次数以确保节点充分分散
+  for (let iter = 0; iter < iterations * 4; iter++) {
     // 计算排斥力（让节点相互排斥）
     for (let i = 0; i < nodeCount; i++) {
       const nodeA = nodes[i]
@@ -77,8 +77,9 @@ function applySimpleForceLayout(graph, iterations = 50) {
         const dy = posB.y - posA.y
         const distance = Math.sqrt(dx * dx + dy * dy) || 1
         
-        // 排斥力
-        const force = repulsionStrength / (distance * distance)
+        // 排斥力 - 使用更强的排斥力，并设置最小距离阈值
+        const minDistance = 100 // 设置最小距离阈值
+        const force = repulsionStrength / Math.max(distance * distance, minDistance)
         const fx = (dx / distance) * force
         const fy = (dy / distance) * force
         
@@ -129,6 +130,58 @@ function applySimpleForceLayout(graph, iterations = 50) {
       vel.vy *= damping
     })
   }
+}
+
+// 将节点标签绘制在节点内部并根据可用空间换行
+function drawLabelInsideNode(context, data, settings) {
+  if (!data.label) return
+
+  const size = settings.labelSize
+  const font = settings.labelFont
+  const weight = settings.labelWeight
+  const color = settings.labelColor.attribute
+    ? data[settings.labelColor.attribute] || settings.labelColor.color || '#000'
+    : settings.labelColor.color
+
+  context.fillStyle = color
+  context.font = `${weight} ${size}px ${font}`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+
+  const diameter = Math.max(16, (data.size || 1) * 2)
+  const maxWidth = diameter * 0.85
+  const lineHeight = size + 2
+  const rawLines = []
+  const text = String(data.label)
+  let currentLine = ''
+
+  for (const char of text) {
+    const testLine = currentLine + char
+    if (context.measureText(testLine).width <= maxWidth || !currentLine) {
+      currentLine = testLine
+    } else {
+      rawLines.push(currentLine)
+      currentLine = char
+    }
+  }
+  if (currentLine) rawLines.push(currentLine)
+
+  const maxLines = Math.max(1, Math.floor((diameter * 0.8) / lineHeight))
+  const lines = rawLines.slice(0, maxLines)
+  if (rawLines.length > maxLines && lines.length > 0) {
+    let lastLine = lines[lines.length - 1] || ''
+    const ellipsis = '...'
+    while (lastLine && context.measureText(lastLine + ellipsis).width > maxWidth) {
+      lastLine = lastLine.slice(0, -1)
+    }
+    lines[lines.length - 1] = `${lastLine}${ellipsis}`
+  }
+
+  const totalHeight = lines.length * lineHeight
+  const startY = data.y - totalHeight / 2 + lineHeight / 2
+  lines.forEach((line, index) => {
+    context.fillText(line, data.x, startY + index * lineHeight)
+  })
 }
 
 const props = defineProps({
@@ -185,12 +238,14 @@ function initGraph() {
   // 创建 Sigma 实例
   sigmaInstance = new Sigma(graph, container.value, {
     allowInvalidContainer: true,
-    renderLabels: true,
+    renderLabels: true,  // 启用Sigma默认标签渲染
+    labelRenderer: drawLabelInsideNode,
     renderEdgeLabels: true,
     labelFont: 'Microsoft YaHei, sans-serif',
-    labelSize: 12,
-    labelColor: { color: '#334155' },
-    labelWeight: 'normal',
+    labelSize: 12,  // 标签字体大小
+    labelColor: { color: '#ffffff' },  // 白色字体
+    labelWeight: 'bold',  // 加粗
+    labelRenderedSizeThreshold: 0,  // 始终显示标签
     edgeLabelSize: 10,
     edgeLabelColor: { color: '#cbd5e1' },
     edgeLabelWeight: 'normal',
@@ -287,57 +342,53 @@ function bindEvents() {
     emit('edge-click', { id: edge, data: graph.getEdgeAttributes(edge) })
   })
   
-  // 节点拖拽支持
+  // 节点拖拽支持 - 完全重写以确保正常工作
   let draggedNode = null
   let isDragging = false
   
-  // 鼠标按下节点
+  // 鼠标按下节点时开始拖拽
   sigmaInstance.on('downNode', (e) => {
     isDragging = true
     draggedNode = e.node
     graph.setNodeAttribute(draggedNode, 'highlighted', true)
-    
-    // 拖拽时禁用相机移动
-    if (sigmaInstance.getCamera()) {
-      sigmaInstance.getCamera().disable()
-    }
+    sigmaInstance.getGraph().setNodeAttribute(draggedNode, 'fixed', true)
   })
   
-  // 监听鼠标移动事件 (绑定到 sigma 容器)
+  // 鼠标移动时更新节点位置
   sigmaInstance.getMouseCaptor().on('mousemovebody', (e) => {
     if (!isDragging || !draggedNode) return
     
-    // 获取画布坐标
+    // 获取鼠标在图空间中的坐标
     const pos = sigmaInstance.viewportToGraph(e)
     
     // 更新节点位置
     graph.setNodeAttribute(draggedNode, 'x', pos.x)
     graph.setNodeAttribute(draggedNode, 'y', pos.y)
     
-    // 阻止默认行为
+    // 阻止默认行为并刷新
     e.preventSigmaDefault()
     e.original.preventDefault()
     e.original.stopPropagation()
   })
   
-  // 监听鼠标释放事件
+  // 鼠标释放时结束拖拽
   const endDrag = () => {
     if (draggedNode) {
       graph.removeNodeAttribute(draggedNode, 'highlighted')
+      graph.removeNodeAttribute(draggedNode, 'fixed')
       draggedNode = null
     }
     isDragging = false
-    
-    // 恢复相机移动
-    if (sigmaInstance.getCamera()) {
-      sigmaInstance.getCamera().enable()
-    }
   }
   
+  // 绑定mouseup事件到body，确保在任何位置释放都能结束拖拽
   sigmaInstance.getMouseCaptor().on('mouseup', endDrag)
-  sigmaInstance.getMouseCaptor().on('mousedown', () => {
-    if (!isDragging) return
-    endDrag()
+  
+  // 点击画布时也结束拖拽
+  sigmaInstance.on('clickStage', () => {
+    if (isDragging) {
+      endDrag()
+    }
   })
 }
 
@@ -384,10 +435,10 @@ function setGraphData() {
     const degree = degrees.get(nodeId) || 0
     const colorInfo = colorMap.get(nodeId) || { color: '#f59e0b', dimension: 'default' }
     
-    // 计算节点大小
-    let size = 8
+    // 计算节点大小 - 增大基础大小以容纳标签
+    let size = 15  // 增大基础大小
     if (props.sizeByDegree) {
-      size = Math.min(6 + degree * 2, 30)
+      size = Math.min(15 + degree * 3, 50)  // 增大节点以容纳标签
     }
     
     graph.addNode(nodeId, {
@@ -443,8 +494,8 @@ function applyLayout() {
     // 先应用随机布局作为初始位置
     applyRandomLayout(graph)
     
-    // 使用简单力导向布局，使节点分散并不重叠
-    applySimpleForceLayout(graph, 50)
+    // 使用简单力导向布局，使节点分散并不重叠 - 增加迭代次数
+    applySimpleForceLayout(graph, 100)
   }
 }
 
@@ -621,3 +672,39 @@ defineExpose({
   }
 }
 </style>
+
+// �ڵ����鵯����ʽ
+.node-detail {
+  padding: 8px 0;
+  
+  .detail-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+  
+  .detail-label {
+    font-weight: 600;
+    color: #262626;
+    min-width: 80px;
+    margin-right: 12px;
+  }
+  
+  .detail-value {
+    color: #595959;
+    flex: 1;
+    word-break: break-all;
+  }
+  
+  .detail-color {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    border: 1px solid #d9d9d9;
+  }
+}

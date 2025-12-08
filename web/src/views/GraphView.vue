@@ -28,7 +28,7 @@
     </HeaderComponent>
 
     <div class="container-outter">
-      <SigmaGraphCanvas
+      <G6GraphCanvas
         ref="graphRef"
         :graph-data="graphData"
         :layout-options="layoutOptions"
@@ -110,7 +110,7 @@
             </div>
           </div>
         </template>
-      </SigmaGraphCanvas>
+      </G6GraphCanvas>
       
       <!-- 维度筛选器 -->
       <DimensionFilter v-model="hiddenDimensions" />
@@ -186,7 +186,7 @@ import { UploadOutlined, SyncOutlined, GlobalOutlined, InfoCircleOutlined, Searc
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import { neo4jApi } from '@/apis/graph_api';
 import { useUserStore } from '@/stores/user';
-import SigmaGraphCanvas from '@/components/SigmaGraphCanvas.vue';
+import G6GraphCanvas from '@/components/G6GraphCanvas.vue';
 import DimensionFilter from '@/components/DimensionFilter.vue';
 import { buildNodeColorMap, getDimensionList, DIMENSION_COLORS } from '@/utils/nodeColorMapper';
 
