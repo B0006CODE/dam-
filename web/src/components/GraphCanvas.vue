@@ -49,17 +49,17 @@ const MAX_RETRIES = 5
 const defaultLayout = {
   type: 'd3-force',
   preventOverlap: true,
-  // 鎬ц兘鍙嬪ソ鍙傛暟锛堝弬鑰?GraphView.vue锛?
-  alphaDecay: 0.1,
-  alphaMin: 0.01,
-  velocityDecay: 0.7,
-  iterations: 100,
+  // 性能优化参数 - 减少迭代次数，加快收敛
+  alphaDecay: 0.15,      // 加快衰减 (原0.1)
+  alphaMin: 0.02,        // 提高最小alpha阈值 (原0.01)
+  velocityDecay: 0.75,   // 增加速度衰减 (原0.7)
+  iterations: 60,        // 减少迭代次数 (原100)
   force: {
-    center: { x: 0.5, y: 0.5, strength: 0.1 },
-    charge: { strength: -400, distanceMax: 400 },
-    link: { distance: 100, strength: 0.8 },
+    center: { x: 0.5, y: 0.5, strength: 0.05 },  // 降低中心力 (原0.1)
+    charge: { strength: -300, distanceMax: 300 }, // 降低斥力 (原-400)
+    link: { distance: 80, strength: 0.6 },        // 减少连接距离 (原100)
   },
-  collide: { radius: 40, strength: 0.8, iterations: 3 },
+  collide: { radius: 30, strength: 0.6, iterations: 2 }, // 减少碰撞检测 (原3)
 }
 
 const paletteColors = [

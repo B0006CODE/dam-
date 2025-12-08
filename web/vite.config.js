@@ -15,6 +15,14 @@ export default defineConfig(({ mode }) => {
     json: {
       stringify: false
     },
+    optimizeDeps: {
+      include: [
+        'graphology',
+        'graphology-layout',
+        'graphology-layout-forceatlas2',
+        'sigma'
+      ]
+    },
     server: {
       proxy: {
         '^/api': {

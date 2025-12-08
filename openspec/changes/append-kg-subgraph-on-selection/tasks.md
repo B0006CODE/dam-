@@ -1,7 +1,0 @@
-- [x] Gate KG attachment by retrieval mode in chat UI
-- [x] Compute hasKnowledgeGraphData to drive rendering
-- [x] Ensure KnowledgeGraphResult renders when data arrives
-- [x] Manual check: mix/global show graph, local hides it
-- [x] Update KG block title + summary copy to emphasize “知识图谱推理结果”
-- [x] Render textual reasoning chain (subject→relation→object) under the graph
-- [x] Validate OpenSpec change

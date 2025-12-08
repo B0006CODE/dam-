@@ -28,12 +28,12 @@
     </HeaderComponent>
 
     <div class="container-outter">
-      <GraphCanvas
+      <SigmaGraphCanvas
         ref="graphRef"
         :graph-data="graphData"
         :layout-options="layoutOptions"
         :highlight-keywords="[state.searchInput]"
-        :node-style-options="nodeStyleOptions"
+        :hidden-dimensions="hiddenDimensions"
       >
         <template #top>
           <div class="actions">
@@ -52,12 +52,8 @@
             </div>
             <div class="actions-right">
               <a-select v-model:value="layoutType" style="width: 180px; margin-right: 8px" size="middle">
-                <a-select-option value="auto">自动布局</a-select-option>
-                <a-select-option value="force">力导向</a-select-option>
-                <a-select-option value="circular">环形</a-select-option>
-                <a-select-option value="radial">扇形 / 放射</a-select-option>
-                <a-select-option value="concentric">同心</a-select-option>
-                <a-select-option value="grid">网格</a-select-option>
+                <a-select-option value="force">力导向布局</a-select-option>
+                <a-select-option value="circular">扇形布局</a-select-option>
               </a-select>
               <a-button type="default" @click="state.showInfoModal = true" :icon="h(InfoCircleOutlined)">
                 说明
@@ -77,7 +73,16 @@
           </div>
         </template>
         <template #content>
-          <a-empty v-show="graphData.nodes.length === 0" style="padding: 4rem 0;"/>
+          <div v-show="graphData.nodes.length === 0" class="empty-graph-hint">
+            <a-empty style="padding: 4rem 0;">
+              <template #description>
+                <span>点击右上角的刷新按钮加载图谱数据</span>
+              </template>
+              <a-button type="primary" @click="loadSampleNodes" :loading="state.fetching">
+                <ReloadOutlined v-if="!state.fetching" /> 加载 {{ sampleNodeCount }} 个节点
+              </a-button>
+            </a-empty>
+          </div>
         </template>
         <template #bottom>
           <div class="footer">
@@ -87,6 +92,14 @@
             <div class="legend" v-if="legendItems.length">
               <div class="legend-header">
                 <h4>实体类型</h4>
+                <div class="legend-stats">
+                  <span v-if="typeof graphInfo?.entity_count === 'number'" class="stat-item">
+                    实体 {{ graphData.nodes.length }} / {{ graphInfo.entity_count }}
+                  </span>
+                  <span v-if="typeof graphInfo?.relationship_count === 'number'" class="stat-item">
+                    关系 {{ graphData.edges.length }} / {{ graphInfo.relationship_count }}
+                  </span>
+                </div>
               </div>
               <div class="legend-content">
                 <div class="legend-item" v-for="item in legendItems" :key="item.type">
@@ -97,7 +110,10 @@
             </div>
           </div>
         </template>
-      </GraphCanvas>
+      </SigmaGraphCanvas>
+      
+      <!-- 维度筛选器 -->
+      <DimensionFilter v-model="hiddenDimensions" />
     </div>
 
     <a-modal
@@ -170,8 +186,9 @@ import { UploadOutlined, SyncOutlined, GlobalOutlined, InfoCircleOutlined, Searc
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import { neo4jApi } from '@/apis/graph_api';
 import { useUserStore } from '@/stores/user';
-import GraphCanvas from '@/components/GraphCanvas.vue';
-import { getEntityTypeColor } from '@/apis/graph_api';
+import SigmaGraphCanvas from '@/components/SigmaGraphCanvas.vue';
+import DimensionFilter from '@/components/DimensionFilter.vue';
+import { buildNodeColorMap, getDimensionList, DIMENSION_COLORS } from '@/utils/nodeColorMapper';
 
 const configStore = useConfigStore();
 const cur_embed_model = computed(() => configStore.config?.embed_model);
@@ -180,61 +197,16 @@ const modelMatched = computed(() => !graphInfo?.value?.embed_model_name || graph
 const graphRef = ref(null)
 const graphInfo = ref(null)
 const fileList = ref([]);
-const sampleNodeCount = ref(100);
+const sampleNodeCount = ref(100);  // 分页加载每页数量
+const hiddenDimensions = ref([]);  // 隐藏的维度列表
 const graphData = reactive({
   nodes: [],
   edges: [],
 });
 
-const layoutType = ref('auto') // auto | force | circular | radial | concentric | grid
+const layoutType = ref('force') // force | circular
 const layoutOptions = computed(() => {
-  const count = graphData.nodes.length
-  const autoType = count <= 200 ? 'd3-force' : 'concentric'
-  const type = ({
-    auto: autoType,
-    force: 'd3-force',
-    circular: 'circular',
-    radial: 'radial',
-    concentric: 'concentric',
-    grid: 'grid',
-  }[layoutType.value] ?? autoType)
-
-  if (type === 'd3-force') {
-    return {
-      type: 'd3-force',
-      preventOverlap: true,
-      alphaDecay: 0.12,
-      alphaMin: 0.01,
-      velocityDecay: 0.6,
-      iterations: 120,
-      force: {
-        center: { x: 0.5, y: 0.5, strength: 0.1 },
-        charge: { strength: -400, distanceMax: 400 },
-        link: { distance: 120, strength: 0.8 },
-      },
-      collide: { radius: 40, strength: 0.8, iterations: 3 },
-    }
-  }
-
-  if (type === 'radial') {
-    return {
-      type: 'radial',
-      unitRadius: 120,
-      preventOverlap: true,
-      center: [0, 0],
-    }
-  }
-
-  if (type === 'grid') {
-    return {
-      type: 'grid',
-      preventOverlap: true,
-      width: 800,
-      height: 600,
-    }
-  }
-
-  return { type, preventOverlap: true }
+  return { type: layoutType.value }
 })
 
 const state = reactive({
@@ -344,6 +316,7 @@ const onSearch = () => {
 
 onMounted(() => {
   loadGraphInfo();
+  // 自动加载节点数据
   loadSampleNodes();
 });
 
@@ -370,80 +343,32 @@ const graphStatusText = computed(() => {
 // 新增：将图谱信息拆分为多条标签用于展示
 const graphTags = computed(() => {
   const tags = [];
-  const dbName = graphInfo.value?.graph_name;
-  const entityCount = graphInfo.value?.entity_count;
-  const relationCount = graphInfo.value?.relationship_count;
 
-  if (dbName) tags.push({ key: 'name', text: `图谱 ${dbName}`, type: 'blue' });
-  if (typeof entityCount === 'number') tags.push({ key: 'entities', text: `实体 ${graphData.nodes.length} of ${entityCount}`, type: 'success' });
-  if (typeof relationCount === 'number') tags.push({ key: 'relations', text: `关系 ${graphData.edges.length} of ${relationCount}`, type: 'purple' });
+  // 只保留未索引警告标签
   if (unindexedCount.value > 0) tags.push({ key: 'unindexed', text: `未索引 ${unindexedCount.value}`, type: 'warning' });
 
   return tags;
 });
 
-// ========= 实体类型图例与颜色映射 =========
-const DEFAULT_TYPE_COLORS = [
-  '#60a5fa', '#34d399', '#f59e0b', '#f472b6', '#22d3ee',
-  '#a78bfa', '#f97316', '#4ade80', '#f43f5e', '#2dd4bf',
-]
-
-function getNodeType(n) {
-  if (!n || typeof n !== 'object') return 'unknown'
-  if (n.entity_type) return String(n.entity_type)
-  if (Array.isArray(n.labels) && n.labels.length) return String(n.labels[0])
-  return 'Entity'
-}
-
-const entityTypeCounts = computed(() => {
-  const map = new Map()
-  for (const n of graphData.nodes) {
-    const t = getNodeType(n)
-    map.set(t, (map.get(t) || 0) + 1)
-  }
-  return Array.from(map.entries()).map(([type, count]) => ({ type, count }))
-})
-
-const typeColorMap = computed(() => {
-  const map = new Map()
-  const types = entityTypeCounts.value
-    .slice()
-    .sort((a, b) => b.count - a.count)
-    .map(i => i.type)
-  let idx = 0
-  for (const t of types) {
-    const normalized = String(t).toLowerCase()
-    const knownColor = getEntityTypeColor(normalized)
-    if (normalized === 'unknown' || knownColor === getEntityTypeColor('unknown')) {
-      map.set(t, DEFAULT_TYPE_COLORS[idx % DEFAULT_TYPE_COLORS.length])
-      idx++
-    } else {
-      map.set(t, knownColor)
-    }
-  }
-  return map
-})
-
+// ========= 维度图例 =========
 const legendItems = computed(() => {
-  return entityTypeCounts.value
-    .slice()
-    .sort((a, b) => b.count - a.count)
-    .map(item => ({
-      type: item.type,
-      count: item.count,
-      color: typeColorMap.value.get(item.type) || getEntityTypeColor('unknown')
-    }))
-})
-
-const nodeStyleOptions = computed(() => ({
-  style: {
-    fill: (d) => {
-      const t = d?.data?.entity_type || 'unknown'
-      return typeColorMap.value.get(t) || getEntityTypeColor('unknown')
-    },
-  },
-  palette: { field: 'entity_type', color: legendItems.value.map(i => i.color) },
-}))
+  // 统计每个维度的节点数量
+  const colorMap = buildNodeColorMap(graphData.nodes, graphData.edges);
+  const dimensionCounts = new Map();
+  
+  for (const [nodeId, info] of colorMap) {
+    const dim = info.dimension;
+    dimensionCounts.set(dim, (dimensionCounts.get(dim) || 0) + 1);
+  }
+  
+  // 使用所有维度（包括 default）
+  return Object.values(DIMENSION_COLORS).map(dim => ({
+    type: dim.label,
+    count: dimensionCounts.get(dim.key) || 0,
+    color: dim.main,
+    dimension: dim.key
+  })).filter(item => item.count > 0);
+});
 
 // 为未索引节点添加索引
 const indexNodes = () => {
@@ -601,12 +526,26 @@ const openLink = (url) => {
   padding: 2px 0 6px 0;
   border-bottom: 1px solid #f0f0f0;
   margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 .legend-header h4 {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
   color: #262626;
+  flex-shrink: 0;
+}
+.legend-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #595959;
+}
+.legend-stats .stat-item {
+  white-space: nowrap;
 }
 .legend-content { max-height: 140px; overflow-y: auto; }
 .legend-item {
