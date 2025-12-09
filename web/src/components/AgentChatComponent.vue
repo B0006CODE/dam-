@@ -69,7 +69,7 @@
                   <div class="retrieval-mode-icon">
                     <MergeCellsOutlined />
                   </div>
-                  <span class="retrieval-mode-text">智能混合</span>
+                  <span class="retrieval-mode-text">混合检索</span>
                 </button>
                 <button
                   :class="['retrieval-mode-btn', { 'active': retrievalMode === 'local' }]"
@@ -78,7 +78,7 @@
                   <div class="retrieval-mode-icon">
                     <DatabaseOutlined />
                   </div>
-                  <span class="retrieval-mode-text">语义向量</span>
+                  <span class="retrieval-mode-text">知识库检索</span>
                 </button>
                 <button
                   :class="['retrieval-mode-btn', { 'active': retrievalMode === 'global' }]"
@@ -87,7 +87,7 @@
                   <div class="retrieval-mode-icon">
                     <GlobalOutlined />
                   </div>
-                  <span class="retrieval-mode-text">知识图谱</span>
+                  <span class="retrieval-mode-text">知识图谱检索</span>
                 </button>
                 <button
                   :class="['retrieval-mode-btn', { 'active': retrievalMode === 'llm' }]"
@@ -96,7 +96,7 @@
                   <div class="retrieval-mode-icon">
                     <RobotOutlined />
                   </div>
-                  <span class="retrieval-mode-text">大模型知识</span>
+                  <span class="retrieval-mode-text">大模型检索</span>
                 </button>
               </div>
             </div>
@@ -109,7 +109,7 @@
             :is-loading="isProcessing"
             :disabled="!currentAgent"
             :send-button-disabled="(!userInput || !currentAgent) && !isProcessing"
-            :show-retrieval-modes="false"
+            :show-retrieval-modes="true"
             placeholder="输入问题..."
             @send="handleSendOrStop"
             @keydown="handleKeyDown"
@@ -181,6 +181,51 @@
           </div>
         </div>
       </div>
+      <div class="knowledge-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">检索资源</div>
+            <div class="panel-subtitle">{{ retrievalModeHint }}</div>
+            <div class="panel-meta">
+              <span class="meta-label">当前选择</span>
+              <div class="meta-chips">
+                <span class="meta-chip">{{ kbSummary }}</span>
+                <span class="meta-chip">{{ graphSummary }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-mode-tag">{{ retrievalModeLabel }}</div>
+        </div>
+        <div class="panel-body">
+          <div class="panel-section">
+            <div class="section-title">
+              <span>知识库</span>
+              <span class="section-hint" v-if="!allowKbSelect">仅在混合/知识库检索可选</span>
+            </div>
+            <a-checkbox-group
+              v-model:value="selectedKbIds"
+              :options="kbOptions"
+              :disabled="!allowKbSelect"
+            />
+            <p class="section-footer" v-if="!allowKbSelect">切换到“混合检索”或“知识库检索”以选择库</p>
+          </div>
+          <div class="panel-section">
+            <div class="section-title">
+              <span>知识图谱</span>
+              <span class="section-hint" v-if="!allowGraphSelect">仅在混合/知识图谱检索可选</span>
+            </div>
+            <a-radio-group
+              v-model:value="selectedGraph"
+              :disabled="!allowGraphSelect"
+            >
+              <a-radio v-for="option in graphOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </a-radio>
+            </a-radio-group>
+            <p class="section-footer" v-if="!allowGraphSelect">切换到“混合检索”或“知识图谱检索”以选择图谱</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -198,6 +243,7 @@ import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined, RobotOutlined } f
 import { handleChatError, handleValidationError } from '@/utils/errorHandler';
 import { ScrollController } from '@/utils/scrollController';
 import { AgentValidator } from '@/utils/agentValidator';
+import { databaseApi } from '@/apis/knowledge_api';
 import { useAgentStore } from '@/stores/agent';
 import { storeToRefs } from 'pinia';
 import { MessageProcessor } from '@/utils/messageProcessor';
@@ -216,12 +262,16 @@ const agentStore = useAgentStore();
 const {
   agents,
   selectedAgentId,
-  defaultAgentId,
 } = storeToRefs(agentStore);
+const defaultAgent = computed(() => agentStore.defaultAgent);
 
 // ==================== LOCAL CHAT & UI STATE ====================
 const userInput = ref('');
-const retrievalMode = ref('mix'); // 默认使用混合检索模式
+const retrievalMode = ref('mix');
+const kbOptions = ref([]);
+const selectedKbIds = ref([]);
+const graphOptions = ref([{ label: '默认 Neo4j 图谱', value: 'neo4j' }]);
+const selectedGraph = ref('neo4j');
 
 // 从智能体元数据获取示例问题
 const exampleQuestions = computed(() => {
@@ -231,6 +281,22 @@ const exampleQuestions = computed(() => {
     text: text
   }));
 });
+
+const loadKnowledgeOptions = async () => {
+  try {
+    const res = await (databaseApi.getDatabasesForChat ? databaseApi.getDatabasesForChat() : databaseApi.getDatabases());
+    const dbs = res?.databases || res?.data || [];
+    kbOptions.value = dbs.map(db => ({
+      label: `${db.name || db.db_id}${db.kb_type ? `（${db.kb_type}）` : ''}`,
+      value: db.db_id
+    }));
+    // 保留已选择但仍然存在的ID
+    selectedKbIds.value = selectedKbIds.value.filter(id => kbOptions.value.find(opt => opt.value === id));
+  } catch (error) {
+    console.error('加载知识库列表失败:', error);
+    message.warning('获取知识库列表失败，将使用全部知识库检索');
+  }
+};
 
 const chatState = reactive({
   currentThreadId: null,
@@ -253,12 +319,18 @@ const uiState = reactive({
 });
 
 // ==================== COMPUTED PROPERTIES ====================
+const firstAgentId = computed(() => Object.keys(agents.value || {})[0] || '');
+
 const currentAgentId = computed(() => {
   if (props.singleMode) {
-    return props.agentId || defaultAgentId.value;
-  } else {
+    return props.agentId || defaultAgent.value?.id || firstAgentId.value;
+  }
+
+  if (selectedAgentId.value && agents.value[selectedAgentId.value]) {
     return selectedAgentId.value;
   }
+
+  return defaultAgent.value?.id || firstAgentId.value;
 });
 
 const currentAgentMetadata = computed(() => {
@@ -328,6 +400,36 @@ const isStreaming = computed(() => {
 const isProcessing = computed(() => isStreaming.value || chatState.creatingNewChat);
 const isSmallContainer = computed(() => uiState.containerWidth <= 520);
 const isMediumContainer = computed(() => uiState.containerWidth <= 768);
+const allowKbSelect = computed(() => ['mix', 'local'].includes(retrievalMode.value));
+const allowGraphSelect = computed(() => ['mix', 'global'].includes(retrievalMode.value));
+const kbSummary = computed(() => {
+  if (!allowKbSelect.value) return '由模式决定';
+  if (!selectedKbIds.value.length) return '全部知识库';
+  const labels = kbOptions.value
+    .filter((opt) => selectedKbIds.value.includes(opt.value))
+    .map((opt) => opt.label);
+  const preview = labels.slice(0, 2).join('、');
+  return labels.length > 2 ? `${preview} 等${labels.length}个` : preview || '全部知识库';
+});
+const graphSummary = computed(() => {
+  if (!allowGraphSelect.value) return '由模式决定';
+  const found = graphOptions.value.find((g) => g.value === selectedGraph.value);
+  return found?.label || '未选择图谱';
+});
+const retrievalModeLabels = {
+  mix: '混合检索',
+  local: '知识库检索',
+  global: '知识图谱检索',
+  llm: '大模型检索'
+};
+const retrievalModeHintsMap = {
+  mix: '同时利用知识库与知识图谱进行智能混合检索',
+  local: '只使用知识库进行语义/向量检索',
+  global: '只使用知识图谱进行检索',
+  llm: '调用大模型自身知识，不访问知识库或图谱'
+};
+const retrievalModeLabel = computed(() => retrievalModeLabels[retrievalMode.value] || '检索模式');
+const retrievalModeHint = computed(() => retrievalModeHintsMap[retrievalMode.value] || '选择合适的检索模式');
 
 // ==================== SCROLL & RESIZE HANDLING ====================
 const chatContainerRef = ref(null);
@@ -614,6 +716,14 @@ const sendMessage = async ({ agentId, threadId, text, signal = undefined }) => {
       retrieval_mode: retrievalMode.value,
     },
   };
+
+  const kbIds = selectedKbIds.value.filter(Boolean);
+  if (kbIds.length > 0 && ['mix', 'local'].includes(retrievalMode.value)) {
+    requestData.config.kb_whitelist = kbIds;
+  }
+  if (selectedGraph.value && ['mix', 'global'].includes(retrievalMode.value)) {
+    requestData.config.graph_name = selectedGraph.value;
+  }
 
   try {
     return await agentApi.sendAgentMessage(agentId, requestData, signal ? { signal } : undefined);
@@ -1286,6 +1396,7 @@ const initAll = async () => {
     if (!agentStore.isInitialized) {
       await agentStore.initialize();
     }
+    await loadKnowledgeOptions();
   } catch (error) {
     handleChatError(error, 'load');
   }
@@ -1294,6 +1405,17 @@ const initAll = async () => {
 onMounted(async () => {
   await initAll();
   scrollController.enableAutoScroll();
+});
+
+watch(retrievalMode, () => {
+  if (!allowKbSelect.value) {
+    selectedKbIds.value = [];
+  }
+  if (!allowGraphSelect.value) {
+    selectedGraph.value = null;
+  } else if (!selectedGraph.value) {
+    selectedGraph.value = graphOptions.value[0]?.value || null;
+  }
 });
 
 watch(currentAgentId, async (newAgentId, oldAgentId) => {
@@ -1328,6 +1450,128 @@ watch(conversations, () => {
   width: 100%;
   height: 100%;
   position: relative;
+}
+
+.knowledge-panel {
+  position: fixed;
+  right: 16px;
+  top: 96px;
+  width: 360px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #e3ebff;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  padding: 18px 18px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 20;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.panel-title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.panel-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.panel-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  border-radius: 10px;
+  font-size: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.14);
+}
+
+.panel-mode-tag {
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px dashed rgba(99, 102, 241, 0.12);
+  border-radius: 10px;
+  padding: 10px;
+  background: #f9fbff;
+}
+
+.panel-section {
+  border: 1px solid #eef0f3;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.section-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-left: 8px;
+}
+
+.section-footer {
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+@media (max-width: 1024px) {
+  .knowledge-panel {
+    position: static;
+    width: 100%;
+    margin-top: 12px;
+  }
 }
 
 .sidebar-backdrop {
@@ -1373,6 +1617,7 @@ watch(conversations, () => {
   box-sizing: border-box;
   overflow-y: scroll;
   transition: all 0.3s ease;
+  padding-right: 360px;
 
   .chat-header {
     user-select: none;
@@ -1570,6 +1815,18 @@ watch(conversations, () => {
 .chat::-webkit-scrollbar-thumb:hover {
   background: rgb(100, 100, 100);
   border-radius: 4px;
+}
+
+@media (max-width: 1024px) {
+  .chat {
+    padding-right: 0;
+  }
+
+  .knowledge-panel {
+    position: static;
+    width: 100%;
+    margin: 12px 0;
+  }
 }
 
 .loading-dots {

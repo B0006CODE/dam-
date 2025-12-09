@@ -38,27 +38,10 @@
           ref="chatComponentRef"
           :state="state"
           :single-mode="false"
-          @open-config="toggleConf"
           @open-agent-modal="openAgentModal"
-          @close-config-sidebar="() => state.isConfigSidebarOpen = false"
         >
-          <template #header-right>
-            <div type="button" class="agent-nav-btn" @click="toggleConf">
-              <Settings2 size="18" class="nav-btn-icon"/>
-              <span class="text">配置</span>
-            </div>
-            <div v-if="selectedAgentId" type="button" class="agent-nav-btn" @click="toggleMoreMenu">
-              <Ellipsis size="18"  class="nav-btn-icon"/>
-            </div>
-          </template>
         </AgentChatComponent>
       </div>
-
-      <!-- 配置侧边栏 -->
-      <AgentConfigSidebar
-        :isOpen="state.isConfigSidebarOpen"
-        @close="() => state.isConfigSidebarOpen = false"
-      />
 
       <!-- 反馈模态框 -->
       <FeedbackModalComponent ref="feedbackModal" :agent-id="selectedAgentId" />
@@ -98,17 +81,9 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue';
-import {
-  StarOutlined,
-  StarFilled,
-  MessageOutlined,
-  ShareAltOutlined,
-  EyeOutlined,
-} from '@ant-design/icons-vue';
+import { StarOutlined, StarFilled, MessageOutlined, ShareAltOutlined, EyeOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
-import { Settings2, Ellipsis } from 'lucide-vue-next';
 import AgentChatComponent from '@/components/AgentChatComponent.vue';
-import AgentConfigSidebar from '@/components/AgentConfigSidebar.vue';
 import FeedbackModalComponent from '@/components/dashboard/FeedbackModalComponent.vue';
 import { useUserStore } from '@/stores/user';
 import { useAgentStore } from '@/stores/agent';
@@ -132,7 +107,6 @@ const {
 } = storeToRefs(agentStore);
 const state = reactive({
   agentModalOpen: false,
-  isConfigSidebarOpen: false,
   moreMenuOpen: false,
   moreMenuPosition: { x: 0, y: 0 }
 });
@@ -195,10 +169,6 @@ const selectAgentFromModal = (agentId) => {
   state.agentModalOpen = false;
 };
 
-
-const toggleConf = () => {
-  state.isConfigSidebarOpen = !state.isConfigSidebarOpen
-}
 
 // 更多菜单相关
 const moreMenuRef = ref(null);

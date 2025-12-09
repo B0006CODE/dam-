@@ -35,7 +35,14 @@ export const useAgentStore = defineStore('agent', {
   getters: {
     // --- 智能体相关 Getters ---
     selectedAgent: (state) => state.selectedAgentId ? state.agents[state.selectedAgentId] : null,
-    defaultAgent: (state) => state.defaultAgentId ? state.agents[state.defaultAgentId] : state.agents[Object.keys(state.agents)[0]],
+    defaultAgent: (state) => {
+      const agentMap = state.agents || {};
+      const agentIds = Object.keys(agentMap);
+      if (agentIds.length === 0) return null;
+
+      const byDefault = state.defaultAgentId ? agentMap[state.defaultAgentId] : null;
+      return byDefault || agentMap[agentIds[0]];
+    },
     agentsList: (state) => Object.values(state.agents),
     isDefaultAgent: (state) => state.selectedAgentId === state.defaultAgentId,
     configurableItems: (state) => {
@@ -98,12 +105,28 @@ export const useAgentStore = defineStore('agent', {
 
       try {
         const response = await agentApi.getAgents();
+        // 过滤前端不需要展示的智能体
+        const filteredAgents = (response.agents || []).filter(
+          (agent) => agent.id !== 'ReActAgent' && agent.name !== 'ReAct (all tools)'
+        );
+        const validIds = new Set(filteredAgents.map((a) => a.id));
+
         // 将数组转换为以ID为键的对象
-        this.agents = response.agents.reduce((acc, agent) => {
+        this.agents = filteredAgents.reduce((acc, agent) => {
           acc[agent.id] = agent;
           return acc;
         }, {});
-        this.metadata = response.metadata;
+
+        // 同步清理元数据
+        const rawMetadata = response.metadata || {};
+        this.metadata = Object.fromEntries(
+          Object.entries(rawMetadata).filter(([id]) => validIds.has(id))
+        );
+
+        // 如果本地保存的默认智能体已被过滤，则重置
+        if (this.defaultAgentId && !validIds.has(this.defaultAgentId)) {
+          this.defaultAgentId = null;
+        }
       } catch (error) {
         console.error('Failed to fetch agents:', error);
         handleChatError(error, 'fetch');
@@ -118,7 +141,8 @@ export const useAgentStore = defineStore('agent', {
     async fetchDefaultAgent() {
       try {
         const response = await agentApi.getDefaultAgent();
-        this.defaultAgentId = response.default_agent_id;
+        const candidateId = response.default_agent_id;
+        this.defaultAgentId = candidateId && this.agents[candidateId] ? candidateId : null;
       } catch (error) {
         console.error('Failed to fetch default agent:', error);
         handleChatError(error, 'fetch');

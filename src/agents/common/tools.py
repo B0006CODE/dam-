@@ -10,26 +10,38 @@ from src import config, graph_base, knowledge_base
 from src.utils import logger
 
 
-@tool
-def global_knowledge_graph_search(query: Annotated[str, "The keyword to query knowledge graph."]) -> Any:
-    """使用全局知识图谱进行检索，查询实体间的关联关系和知识信息。"""
-    try:
-        logger.debug(f"Querying knowledge graph with: {query}")
-        result = graph_base.query_node(query, hops=2, return_format="triples")
-        logger.debug(
-            f"Knowledge graph query returned "
-            f"{len(result.get('triples', [])) if isinstance(result, dict) else 'N/A'} triples"
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Knowledge graph query error: {e}, {traceback.format_exc()}")
-        return f"知识图谱查询失败: {str(e)}"
+class GraphQueryModel(BaseModel):
+    query: str = Field(description="要在知识图谱中检索的关键词。")
 
 
-def get_static_tools() -> list:
+def get_static_tools(input_context: dict | None = None) -> list:
     """注册静态工具"""
+    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+    # 知识库检索/大模型检索不暴露图谱工具
+    if retrieval_mode in ("local", "llm"):
+        return []
+
+    graph_name = (input_context or {}).get("graph_name") or "neo4j"
+
+    async def graph_search(query: str) -> Any:
+        try:
+            logger.debug(f"Querying knowledge graph [{graph_name}] with: {query}")
+            result = graph_base.query_node(query, hops=2, kgdb_name=graph_name, return_format="triples")
+            return result
+        except Exception as e:
+            logger.error(f"Knowledge graph query error: {e}, {traceback.format_exc()}")
+            return f"知识图谱查询失败: {str(e)}"
+
+    graph_tool = StructuredTool.from_function(
+        coroutine=graph_search,
+        name="global_knowledge_graph_search",
+        description=f"使用全局知识图谱（数据库：{graph_name}）进行检索，查询实体间的关联关系和知识信息。",
+        args_schema=GraphQueryModel,
+        metadata={"graph_name": graph_name, "tag": ["knowledge_graph"]},
+    )
+
     static_tools = [
-        global_knowledge_graph_search,
+        graph_tool,
     ]
 
     # 网页搜索功能已移除，只保留知识库相关功能
@@ -47,12 +59,19 @@ class KnowledgeRetrieverModel(BaseModel):
 
 def get_kb_based_tools(input_context: dict = None) -> list:
     """获取所有知识库基于的工具"""
+    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+    if retrieval_mode in ("global", "llm"):
+        return []
+
     # 获取所有知识库
     kb_tools = []
     retrievers = knowledge_base.get_retrievers()
 
     # 从输入上下文中获取检索模式，默认为 "mix"
-    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+    raw_whitelist = input_context.get("kb_whitelist") if input_context else []
+    if isinstance(raw_whitelist, str):
+        raw_whitelist = [raw_whitelist]
+    kb_whitelist = set(raw_whitelist or [])
 
     def _create_retriever_wrapper(db_id: str, retriever_info: dict[str, Any]):
         """创建检索器包装函数的工厂函数，避免闭包变量捕获问题"""
@@ -75,6 +94,8 @@ def get_kb_based_tools(input_context: dict = None) -> list:
         return async_retriever_wrapper
 
     for db_id, retrieve_info in retrievers.items():
+        if kb_whitelist and db_id not in kb_whitelist:
+            continue
         try:
             # 使用改进的工具ID生成策略
             tool_id = f"query_{db_id[:8]}"
@@ -114,7 +135,7 @@ def get_buildin_tools(input_context: dict = None) -> list:
     try:
         # 获取所有知识库基于的工具
         tools.extend(get_kb_based_tools(input_context))
-        tools.extend(get_static_tools())
+        tools.extend(get_static_tools(input_context))
 
         # MySQL工具已移除，只保留知识库相关功能
         # 如需数据库功能，请手动配置

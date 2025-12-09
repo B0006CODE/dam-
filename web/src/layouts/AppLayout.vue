@@ -12,6 +12,7 @@ import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
 import { useInfoStore } from '@/stores/info'
 import { useTaskerStore } from '@/stores/tasker'
+import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import UserInfoComponent from '@/components/UserInfoComponent.vue'
 import DebugComponent from '@/components/DebugComponent.vue'
@@ -21,7 +22,9 @@ const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
 const infoStore = useInfoStore()
 const taskerStore = useTaskerStore()
+const userStore = useUserStore()
 const { activeCount: activeCountRef, isDrawerOpen } = storeToRefs(taskerStore)
+const { isAdmin } = storeToRefs(userStore)
 
 const layoutSettings = reactive({
   showDebug: false,
@@ -79,33 +82,47 @@ console.log(route)
 const activeTaskCount = computed(() => activeCountRef.value || 0)
 
 // 下面是导航菜单部分,添加智能体项
-const mainList = [{
-    name: '智能体',
+const mainList = [
+  {
+    name: '\u68c0\u7d22',
     path: '/agent',
     icon: Bot,
     activeIcon: Bot,
-  }, {
-    name: '图谱',
+    requiresAdmin: false,
+  },
+  {
+    name: '\u77e5\u8bc6\u56fe\u8c31',
     path: '/graph',
     icon: Waypoints,
     activeIcon: Waypoints,
-  }, {
-    name: '知识库',
+    requiresAdmin: false,
+  },
+  {
+    name: '\u77e5\u8bc6\u5e93',
     path: '/database',
     icon: LibraryBig,
     activeIcon: LibraryBig,
-  }, {
-    name: '水库地图',
+    requiresAdmin: true,
+  },
+  {
+    name: '\u6c34\u5e93\u5730\u56fe',
     path: '/map',
     icon: Map,
     activeIcon: Map,
-  }, {
-    name: 'Dashboard',
+    requiresAdmin: false,
+  },
+  {
+    name: '\u7ba1\u7406\u9762\u677f',
     path: '/dashboard',
     icon: BarChart3,
     activeIcon: BarChart3,
+    requiresAdmin: true,
   }
 ]
+
+const visibleNavItems = computed(() =>
+  mainList.filter((item) => !item.requiresAdmin || isAdmin.value)
+)
 </script>
 
 <template>
@@ -119,16 +136,14 @@ const mainList = [{
       <div class="nav">
         <!-- 使用mainList渲染导航项 -->
         <RouterLink
-          v-for="(item, index) in mainList"
+          v-for="(item, index) in visibleNavItems"
           :key="index"
           :to="item.path"
           v-show="!item.hidden"
           class="nav-item"
           active-class="active">
-          <a-tooltip placement="right">
-            <template #title>{{ item.name }}</template>
-            <component class="icon" :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon" size="22"/>
-          </a-tooltip>
+          <component class="icon" :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon" size="22"/>
+          <span class="nav-text">{{ item.name }}</span>
         </RouterLink>
         <div
           class="nav-item task-center"
@@ -136,17 +151,15 @@ const mainList = [{
           @click="taskerStore.openDrawer()"
           v-if="activeTaskCount > 0"
         >
-          <a-tooltip placement="right">
-            <template #title>任务中心</template>
-            <a-badge
-              :count="activeTaskCount"
-              :overflow-count="99"
-              class="task-center-badge"
-              size="small"
-            >
-              <ListChecks class="icon" size="22" />
-            </a-badge>
-          </a-tooltip>
+          <a-badge
+            :count="activeTaskCount"
+            :overflow-count="99"
+            class="task-center-badge"
+            size="small"
+          >
+            <ListChecks class="icon" size="22" />
+          </a-badge>
+          <span class="nav-text">任务中心</span>
         </div>
       </div>
       <div
@@ -173,7 +186,7 @@ const mainList = [{
         </a-tooltip>
       </div>
 
-      <RouterLink class="nav-item setting" to="/setting" active-class="active">
+      <RouterLink class="nav-item setting" to="/setting" active-class="active" v-if="isAdmin">
         <a-tooltip placement="right">
           <template #title>设置</template>
           <Settings />
@@ -181,9 +194,15 @@ const mainList = [{
       </RouterLink>
     </div>
     <div class="header-mobile">
-      <RouterLink to="/chat" class="nav-item" active-class="active">对话</RouterLink>
-      <RouterLink to="/database" class="nav-item" active-class="active">知识</RouterLink>
-      <RouterLink to="/setting" class="nav-item" active-class="active">设置</RouterLink>
+      <RouterLink
+        v-for="(item, index) in visibleNavItems"
+        :key="`mobile-${index}`"
+        :to="item.path"
+        class="nav-item"
+        active-class="active"
+      >
+        {{ item.name }}
+      </RouterLink>
     </div>
     <router-view v-slot="{ Component, route }" id="app-router-view">
       <keep-alive v-if="route.meta.keepAlive !== false">
@@ -211,7 +230,7 @@ const mainList = [{
 
 <style lang="less" scoped>
 // Less 变量定义
-@header-width: 50px;
+@header-width: 74px;
 
 .app-layout {
   display: flex;
@@ -262,8 +281,7 @@ div.header, #app-router-view {
     justify-content: center;
     align-items: center;
     position: relative;
-    // height: 45px;
-    gap: 16px;
+    gap: 12px;
   }
 
   // 添加debug触发器样式
@@ -296,11 +314,13 @@ div.header, #app-router-view {
 
   .nav-item {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 10px;
+    width: 70px;
+    min-height: 70px;
+    padding: 10px 6px;
     border: 1px solid transparent;
     border-radius: 8px;
     background-color: transparent;
@@ -346,6 +366,10 @@ div.header, #app-router-view {
       text-shadow: 0 0 15px var(--main-300);
       font-weight: bold;
       color: var(--main-color);
+      .nav-text {
+        color: var(--main-color);
+        font-weight: 600;
+      }
     }
 
     &.warning {
@@ -354,7 +378,18 @@ div.header, #app-router-view {
 
     &:hover {
       color: var(--main-color);
+      .nav-text {
+        color: var(--main-color);
+      }
     }
+  }
+
+  .nav-text {
+    font-size: 12px;
+    line-height: 1.1;
+    color: var(--gray-700);
+    text-align: center;
+    word-break: keep-all;
   }
 
   .setting {
@@ -475,9 +510,10 @@ div.header, #app-router-view {
       }
     }
 
-    .text {
+    .nav-text {
       margin-top: 0;
       font-size: 15px;
+      color: inherit;
     }
 
     &.github, &.setting {

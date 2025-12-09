@@ -19,6 +19,14 @@ export const databaseApi = {
   },
 
   /**
+   * 获取知识库列表（普通登录用户可用，聊天检索场景）
+   * @returns {Promise} - 知识库列表
+   */
+  getDatabasesForChat: async () => {
+    return apiGet('/api/knowledge/databases')
+  },
+
+  /**
    * 创建知识库
    * @param {Object} databaseData - 知识库数据
    * @returns {Promise} - 创建结果

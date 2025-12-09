@@ -96,7 +96,8 @@ const getLayoutConfig = () => {
       type: 'circular',
       startAngle: 0,
       endAngle: Math.PI * 2,
-      radius: null
+      radius: null,
+      animation: false
     };
   }
 
@@ -111,7 +112,8 @@ const getLayoutConfig = () => {
     maxSpeed: 80,
     gravity: 25,
     factor: 1,
-    interval: 0.02
+    interval: 0.02,
+    animation: false
   };
 };
 
@@ -281,7 +283,7 @@ const applyGraphData = async () => {
   graphInstance.setLayout(getLayoutConfig());
   await graphInstance.render();
   if (props.autoFit && typeof graphInstance.fitView === 'function') {
-    await graphInstance.fitView({ padding: 32 });
+    await graphInstance.fitView({ padding: 32 }, false);
   }
   emit('data-rendered');
 };
@@ -329,6 +331,7 @@ const initGraph = () => {
     autoFit: props.autoFit ? 'view' : undefined,
     autoResize: props.autoResize,
     background: '#0f172a',
+    animation: false,
     zoomRange: [0.15, 5],
     behaviors: [
       'drag-canvas',

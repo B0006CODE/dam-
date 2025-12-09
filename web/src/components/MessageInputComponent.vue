@@ -78,6 +78,7 @@
         </a-tooltip>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -145,7 +146,12 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'send', 'keydown', 'update:retrievalMode']);
+const emit = defineEmits([
+  'update:modelValue',
+  'send',
+  'keydown',
+  'update:retrievalMode'
+]);
 const slots = useSlots();
 const hasOptionsLeft = computed(() => {
   const slot = slots['options-left'];
@@ -157,16 +163,20 @@ const hasOptionsLeft = computed(() => {
 });
 
 // 图标映射
+
+
+// ????
 const iconComponents = {
   'SendOutlined': SendOutlined,
   'ArrowUpOutlined': ArrowUpOutlined,
   'PauseOutlined': PauseOutlined,
   'MergeCellsOutlined': MergeCellsOutlined,
   'DatabaseOutlined': DatabaseOutlined,
-  'GlobalOutlined': GlobalOutlined
+  'GlobalOutlined': GlobalOutlined,
+  'RobotOutlined': RobotOutlined
 };
 
-// 根据传入的图标名动态获取组件
+// ??????????????
 const getIcon = computed(() => {
   if (props.isLoading) {
     return PauseOutlined;
@@ -174,41 +184,47 @@ const getIcon = computed(() => {
   return iconComponents[props.sendIcon] || ArrowUpOutlined;
 });
 
-// 检索模式配置 - DeepSeek 风格优化
+// ??????
+
 const retrievalModes = [
   {
     value: 'mix',
-    label: '智能混合',
+    label: '混合检索',
     shortLabel: '混合',
     icon: 'MergeCellsOutlined',
-    description: 'AI 驱动的智能混合检索',
+    description: '结合知识库与知识图谱的智能混合检索',
     color: '#6366f1'
   },
   {
     value: 'local',
-    label: '语义向量',
-    shortLabel: '向量',
+    label: '知识库检索',
+    shortLabel: '知识库',
     icon: 'DatabaseOutlined',
-    description: '深度语义理解检索',
+    description: '仅使用选定知识库进行检索（语义/向量）',
     color: '#8b5cf6'
   },
   {
     value: 'global',
-    label: '知识图谱',
+    label: '知识图谱检索',
     shortLabel: '图谱',
     icon: 'GlobalOutlined',
-    description: '全局关联知识发现',
+    description: '仅使用选定知识图谱进行检索',
     color: '#3b82f6'
   },
   {
     value: 'llm',
-    label: '大模型知识',
+    label: '大模型检索',
     shortLabel: '大模型',
     icon: 'RobotOutlined',
-    description: '直接使用模型自身知识，不检索本地/图谱',
+    description: '调用大模型自身知识，不检索知识库或知识图谱',
     color: '#10b981'
   }
 ];
+
+
+
+
+
 
 // 创建本地引用以进行双向绑定
 const inputValue = computed({
@@ -655,6 +671,7 @@ onBeforeUnmount(() => {
     }
   }
 }
+
 
 @media (max-width: 520px) {
   .input-box {

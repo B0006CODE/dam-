@@ -276,7 +276,15 @@ async def chat_agent(
         user_id = str(current_user.id)
         thread_id = config.get("thread_id")
         retrieval_mode = config.get("retrieval_mode", "mix")  # 默认使用混合检索模式
+        if retrieval_mode not in {"mix", "local", "global", "llm"}:
+            retrieval_mode = "mix"
+        kb_whitelist = config.get("kb_whitelist") if retrieval_mode in {"mix", "local"} else None
+        graph_name = config.get("graph_name") if retrieval_mode in {"mix", "global"} else None
         input_context = {"user_id": user_id, "thread_id": thread_id, "retrieval_mode": retrieval_mode}
+        if kb_whitelist:
+            input_context["kb_whitelist"] = kb_whitelist
+        if graph_name:
+            input_context["graph_name"] = graph_name
 
         if not thread_id:
             thread_id = str(uuid.uuid4())

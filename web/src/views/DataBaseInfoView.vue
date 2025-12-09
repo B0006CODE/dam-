@@ -41,8 +41,8 @@
     v-model:visible="addFilesModalVisible"
   />
 
-  <div class="unified-layout">
-    <div class="left-panel" :style="{ width: leftPanelWidth + '%' }">
+  <div class="unified-layout" :class="{ 'single-column': !isRightPanelActive }">
+    <div class="left-panel" :style="leftPanelStyle">
       <FileTable
         :right-panel-visible="state.rightPanelVisible"
         @show-add-files-modal="showAddFilesModal"
@@ -50,21 +50,13 @@
       />
     </div>
 
-    <div class="resize-handle" ref="resizeHandle"></div>
+    <div class="resize-handle" ref="resizeHandle" v-show="isRightPanelActive"></div>
 
-    <div class="right-panel" :style="{ width: (100 - leftPanelWidth) + '%', display: store.state.rightPanelVisible ? 'flex' : 'none' }">
+    <div class="right-panel" v-show="isRightPanelActive" :style="rightPanelStyle">
       <KnowledgeGraphSection
         :visible="panels.graph.visible"
-        :style="computePanelStyles().graph"
+        :style="styleGraph"
         @toggle-visible="togglePanel('graph')"
-      />
-
-      <div class="resize-handle-horizontal" ref="resizeHandleHorizontal" v-show="panels.query.visible && panels.graph.visible"></div>
-
-      <QuerySection
-        :visible="panels.query.visible"
-        :style="computePanelStyles().query"
-        @toggle-visible="togglePanel('query')"
       />
     </div>
   </div>
@@ -83,7 +75,6 @@ import FileTable from '@/components/FileTable.vue';
 import FileDetailModal from '@/components/FileDetailModal.vue';
 import FileUploadModal from '@/components/FileUploadModal.vue';
 import KnowledgeGraphSection from '@/components/KnowledgeGraphSection.vue';
-import QuerySection from '@/components/QuerySection.vue';
 
 const route = useRoute();
 const store = useDatabaseStore();
@@ -104,7 +95,6 @@ const isGraphSupported = computed(() => {
 
 // 面板可见性控制
 const panels = reactive({
-  query: { visible: true },
   graph: { visible: true },
 });
 
@@ -125,42 +115,29 @@ const leftPanelWidth = ref(60);
 const isDragging = ref(false);
 const resizeHandle = ref(null);
 
-const rightPanelHeight = reactive({ query: 50, graph: 50 });
-const isDraggingVertical = ref(false);
-const resizeHandleHorizontal = ref(null);
+const isRightPanelActive = computed(() =>
+  store.state.rightPanelVisible && isGraphSupported.value
+);
 
-// 计算面板样式的方法
-const computePanelStyles = () => {
-  const queryVisible = panels.query.visible;
-  const graphVisible = panels.graph.visible && isGraphSupported.value;
-
-  if (queryVisible && graphVisible) {
-    const styles = {
-      query: { height: rightPanelHeight.query + '%', flex: 'none' },
-      graph: { height: rightPanelHeight.graph + '%', flex: 'none' }
-    };
-    console.log('Computed panel styles:', styles);
-    return styles;
-  } else if (queryVisible && !graphVisible) {
+const leftPanelStyle = computed(() => {
+  if (!isRightPanelActive.value) {
     return {
-      query: { height: '100%', flex: '1' },
-      graph: { height: '36px', flex: 'none' }
-    };
-  } else if (!queryVisible && graphVisible) {
-    return {
-      query: { height: '36px', flex: 'none' },
-      graph: { height: '100%', flex: '1' }
-    };
-  } else {
-    return {
-      query: { height: '36px', flex: 'none' },
-      graph: { height: '36px', flex: 'none' }
+      width: '100%',
+      maxWidth: '1200px',
+      margin: '0 auto',
     };
   }
-};
+  return { width: `${leftPanelWidth.value}%` };
+});
 
-// 添加调试日志
-console.log('Panel styles computed:', computePanelStyles());
+const rightPanelStyle = computed(() => ({
+  width: `${100 - leftPanelWidth.value}%`,
+}));
+
+const styleGraph = computed(() => ({
+  height: '100%',
+  flex: '1'
+}));
 
 // 添加文件弹窗
 const addFilesModalVisible = ref(false);
@@ -194,12 +171,9 @@ onMounted(() => {
   if (resizeHandle.value) {
     resizeHandle.value.addEventListener('mousedown', handleMouseDown);
   }
-  if (resizeHandleHorizontal.value) {
-    resizeHandleHorizontal.value.addEventListener('mousedown', handleMouseDownHorizontal);
-  }
 
   // 添加调试日志
-  console.log('Resize handles initialized', resizeHandle.value, resizeHandleHorizontal.value);
+  console.log('Resize handles initialized', resizeHandle.value);
 });
 
 // 组件卸载时停止示例轮播
@@ -208,13 +182,8 @@ onUnmounted(() => {
   if (resizeHandle.value) {
     resizeHandle.value.removeEventListener('mousedown', handleMouseDown);
   }
-  if (resizeHandleHorizontal.value) {
-    resizeHandleHorizontal.value.removeEventListener('mousedown', handleMouseDownHorizontal);
-  }
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', handleMouseUp);
-  document.removeEventListener('mousemove', handleMouseMoveHorizontal);
-  document.removeEventListener('mouseup', handleMouseUpHorizontal);
 });
 
 // 拖拽调整大小功能
@@ -241,43 +210,6 @@ const handleMouseUp = () => {
   isDragging.value = false;
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', handleMouseUp);
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
-};
-
-const handleMouseDownHorizontal = () => {
-  console.log('Horizontal resize handle clicked');
-  isDraggingVertical.value = true;
-  document.addEventListener('mousemove', handleMouseMoveHorizontal);
-  document.addEventListener('mouseup', handleMouseUpHorizontal);
-  document.body.style.cursor = 'row-resize';
-  document.body.style.userSelect = 'none';
-
-  // 添加调试日志
-  console.log('Current panel heights:', rightPanelHeight.graph, rightPanelHeight.query);
-};
-
-const handleMouseMoveHorizontal = (e) => {
-  if (!isDraggingVertical.value) return;
-
-  const container = document.querySelector('.right-panel');
-  if (!container) return;
-
-  const containerRect = container.getBoundingClientRect();
-  const newHeight = ((e.clientY - containerRect.top) / containerRect.height) * 100;
-
-  // 修复计算逻辑，确保两个面板的高度总和为100%
-  rightPanelHeight.graph = Math.max(10, Math.min(90, newHeight));
-  rightPanelHeight.query = 100 - rightPanelHeight.graph;
-
-  // 添加调试日志
-  console.log('Vertical resize:', rightPanelHeight.graph, rightPanelHeight.query);
-};
-
-const handleMouseUpHorizontal = () => {
-  isDraggingVertical.value = false;
-  document.removeEventListener('mousemove', handleMouseMoveHorizontal);
-  document.removeEventListener('mouseup', handleMouseUpHorizontal);
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
 };
@@ -321,6 +253,11 @@ const handleMouseUpHorizontal = () => {
   height: calc(100vh - 54px); /* Adjust based on actual header height */
   gap: 0;
 
+  &.single-column {
+    justify-content: center;
+    padding: 0 24px 16px;
+  }
+
   .left-panel,
   .right-panel {
     background-color: #fff;
@@ -343,8 +280,8 @@ const handleMouseUpHorizontal = () => {
     flex-direction: column;
   }
 
-  /* 当两个面板都可见时，确保它们正确分配空间 */
-  .right-panel > *:not(.resize-handle-horizontal) {
+  /* 当右侧面板可见时，确保它正确分配空间 */
+  .right-panel > * {
     flex: 1;
     min-height: 0;
   }
@@ -363,25 +300,11 @@ const handleMouseUpHorizontal = () => {
     }
   }
 
-  .resize-handle-horizontal {
-    height: 1px;
-    width: 100%;
-    cursor: row-resize;
-    background-color: var(--gray-200);
-    transition: background-color 0.2s ease;
-    z-index: 10;
-    flex-shrink: 0;
-
-    &:hover {
-      background-color: var(--main-40);
-    }
-  }
 }
 
 
 /* Improve the resize handle visibility */
-.resize-handle,
-.resize-handle-horizontal {
+.resize-handle {
   transition: all 0.2s ease;
   opacity: 0.6;
 

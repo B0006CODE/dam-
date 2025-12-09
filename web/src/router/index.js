@@ -35,7 +35,7 @@ const router = createRouter({
           path: '',
           name: 'AgentComp',
           component: () => import('../views/AgentView.vue'),
-          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: true }
+          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: false }
         }
       ]
     },
@@ -54,7 +54,7 @@ const router = createRouter({
           path: '',
           name: 'GraphComp',
           component: () => import('../views/GraphView.vue'),
-          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
+          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: false }
         }
       ]
     },
@@ -112,7 +112,7 @@ const router = createRouter({
           path: '',
           name: 'ReservoirMapComp',
           component: () => import('../views/ReservoirMapView.vue'),
-          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
+          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: false }
         }
       ]
     },

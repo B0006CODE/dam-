@@ -17,11 +17,12 @@
           <div class="status-indicator" :class="graphStatusClass"></div>
           <span class="status-text">{{ graphStatusText }}</span>
         </div>
-        <a-button type="default" @click="openLink('http://localhost:7474/')" :icon="h(GlobalOutlined)">
+        <a-tag v-if="isReadOnly" color="default">只读模式</a-tag>
+        <a-button v-if="isAdmin" type="default" @click="openLink('http://localhost:7474/')" :icon="h(GlobalOutlined)">
           Neo4j 浏览器
         </a-button>
-        <a-button type="primary" @click="state.showModal = true" ><UploadOutlined/> 上传文件</a-button>
-        <a-button v-if="unindexedCount > 0" type="primary" @click="indexNodes" :loading="state.indexing">
+        <a-button v-if="isAdmin" type="primary" @click="state.showModal = true" ><UploadOutlined/> 上传文件</a-button>
+        <a-button v-if="isAdmin && unindexedCount > 0" type="primary" @click="indexNodes" :loading="state.indexing">
           <SyncOutlined v-if="!state.indexing"/> 为{{ unindexedCount }}个节点添加索引
         </a-button>
       </template>
@@ -38,6 +39,16 @@
         <template #top>
           <div class="actions">
             <div class="actions-left">
+              <a-select
+                v-model:value="selectedGraph"
+                :options="graphOptions"
+                style="width: 200px"
+                :loading="state.loadingGraphs"
+                @change="handleGraphChange"
+              />
+              <a-button v-if="isAdmin" type="default" @click="openRenameModal" :icon="h(EditOutlined)">
+                重命名
+              </a-button>
               <a-input
                 v-model:value="state.searchInput"
                 placeholder="输入要查询的实体"
@@ -117,6 +128,7 @@
     </div>
 
     <a-modal
+      v-if="isAdmin"
       :open="state.showModal" title="上传文件"
       @ok="addDocumentByFile"
       @cancel="() => state.showModal = false"
@@ -175,6 +187,21 @@ LIMIT $num</code></pre>
         <p>如需查看完整的 Neo4j 数据库内容，请使用 "Neo4j 浏览器" 按钮访问原生界面。</p>
       </div>
     </a-modal>
+
+    <a-modal
+      :open="isAdmin && renameModalVisible"
+      title="重命名知识图谱"
+      @ok="confirmRename"
+      @cancel="() => (renameModalVisible = false)"
+      ok-text="保存"
+      cancel-text="取消"
+    >
+      <a-input
+        v-model:value="renameInput"
+        placeholder="输入新的图谱名称"
+        @keydown.enter.prevent="confirmRename"
+      />
+    </a-modal>
   </div>
 </template>
 
@@ -182,15 +209,19 @@ LIMIT $num</code></pre>
 import { computed, onMounted, reactive, ref, h } from 'vue';
 import { message } from 'ant-design-vue';
 import { useConfigStore } from '@/stores/config';
-import { UploadOutlined, SyncOutlined, GlobalOutlined, InfoCircleOutlined, SearchOutlined, ReloadOutlined, LoadingOutlined, HighlightOutlined } from '@ant-design/icons-vue';
+import { UploadOutlined, SyncOutlined, GlobalOutlined, InfoCircleOutlined, SearchOutlined, ReloadOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
-import { neo4jApi } from '@/apis/graph_api';
+import { neo4jApi, lightragApi, getPagedSubgraph } from '@/apis/graph_api';
 import { useUserStore } from '@/stores/user';
 import G6GraphCanvas from '@/components/G6GraphCanvas.vue';
 import DimensionFilter from '@/components/DimensionFilter.vue';
 import { buildNodeColorMap, getDimensionList, DIMENSION_COLORS } from '@/utils/nodeColorMapper';
+import { storeToRefs } from 'pinia';
 
 const configStore = useConfigStore();
+const userStore = useUserStore();
+const { isAdmin } = storeToRefs(userStore);
+const isReadOnly = computed(() => !isAdmin.value);
 const cur_embed_model = computed(() => configStore.config?.embed_model);
 const modelMatched = computed(() => !graphInfo?.value?.embed_model_name || graphInfo.value.embed_model_name === cur_embed_model.value)
 
@@ -199,6 +230,11 @@ const graphInfo = ref(null)
 const fileList = ref([]);
 const sampleNodeCount = ref(100);  // 分页加载每页数量
 const hiddenDimensions = ref([]);  // 隐藏的维度列表
+const graphOptions = ref([{ label: 'Neo4j', value: 'neo4j' }]);
+const selectedGraph = ref('neo4j');
+const graphAliases = ref(loadGraphAliases());
+const renameModalVisible = ref(false);
+const renameInput = ref('');
 const graphData = reactive({
   nodes: [],
   edges: [],
@@ -219,6 +255,7 @@ const state = reactive({
   processing: false,
   indexing: false,
   showPage: true,
+  loadingGraphs: false,
 })
 
 // 计算未索引节点数量
@@ -242,6 +279,12 @@ const loadGraphInfo = () => {
 }
 
 const addDocumentByFile = () => {
+  if (isReadOnly.value) {
+    message.warning('当前为只读模式，无法上传或写入图谱');
+    state.showModal = false;
+    return;
+  }
+
   state.processing = true
   const files = fileList.value.filter(file => file.status === 'done').map(file => file.response.file_path)
   neo4jApi.addEntities(files[0])
@@ -262,19 +305,40 @@ const addDocumentByFile = () => {
 
 const loadSampleNodes = () => {
   state.fetching = true
-  neo4jApi.getSampleNodes('neo4j', sampleNodeCount.value)
-    .then((data) => {
-      graphData.nodes = data.result.nodes
-      graphData.edges = data.result.edges
-      console.log(graphData)
-      // 初次加载后兜底刷新一次，避免容器初次可见尺寸未稳定
-      setTimeout(() => graphRef.value?.refreshGraph?.(), 500)
+  const currentGraph = selectedGraph.value || 'neo4j'
+
+  const handleResult = (data) => {
+    const result = data?.result || data?.data || data || {}
+    graphData.nodes = result.nodes || []
+    graphData.edges = result.edges || []
+    setTimeout(() => graphRef.value?.refreshGraph?.(), 200)
+  }
+
+  const handleError = (error) => {
+    console.error(error)
+    message.error(error.message || '加载节点失败');
+  }
+
+  const finallyCb = () => { state.fetching = false }
+
+  if (currentGraph === 'neo4j') {
+    neo4jApi.getSampleNodes(currentGraph, sampleNodeCount.value)
+      .then(handleResult)
+      .catch(handleError)
+      .finally(finallyCb)
+  } else {
+    getPagedSubgraph({
+      db_id: currentGraph,
+      center: '*',
+      depth: 2,
+      limit: sampleNodeCount.value,
+      page: 1,
+      fields: 'compact'
     })
-    .catch((error) => {
-      console.error(error)
-      message.error(error.message || '加载节点失败');
-    })
-    .finally(() => state.fetching = false)
+      .then(handleResult)
+      .catch(handleError)
+      .finally(finallyCb)
+  }
 }
 
 const onSearch = () => {
@@ -293,29 +357,51 @@ const onSearch = () => {
   }
 
   state.searchLoading = true
-  neo4jApi.queryNode(state.searchInput)
-    .then((data) => {
-      if (!data.result || !data.result.nodes || !data.result.edges) {
-        throw new Error('返回数据格式不正确');
-      }
-      graphData.nodes = data.result.nodes
-      graphData.edges = data.result.edges
-      if (graphData.nodes.length === 0) {
-        message.info('未找到相关实体')
-      }
-      console.log(data)
-      console.log(graphData)
-      graphRef.value?.refreshGraph?.()
+  const currentGraph = selectedGraph.value || 'neo4j'
+
+  const handleResult = (data) => {
+    const result = data?.result || data?.data || data || {}
+    if (!result.nodes || !result.edges) {
+      throw new Error('返回数据格式不正确');
+    }
+    graphData.nodes = result.nodes
+    graphData.edges = result.edges
+    if (graphData.nodes.length === 0) {
+      message.info('未找到相关实体')
+    }
+    graphRef.value?.refreshGraph?.()
+  }
+
+  const handleError = (error) => {
+    console.error('查询错误:', error);
+    message.error(`查询出错：${error.message || '未知错误'}`);
+  }
+
+  const finallyCb = () => { state.searchLoading = false }
+
+  if (currentGraph === 'neo4j') {
+    neo4jApi.queryNode(state.searchInput)
+      .then(handleResult)
+      .catch(handleError)
+      .finally(finallyCb)
+  } else {
+    getPagedSubgraph({
+      db_id: currentGraph,
+      center: state.searchInput,
+      depth: 2,
+      limit: sampleNodeCount.value,
+      page: 1,
+      fields: 'compact'
     })
-    .catch((error) => {
-      console.error('查询错误:', error);
-      message.error(`查询出错：${error.message || '未知错误'}`);
-    })
-    .finally(() => state.searchLoading = false)
+      .then(handleResult)
+      .catch(handleError)
+      .finally(finallyCb)
+  }
 };
 
 onMounted(() => {
   loadGraphInfo();
+  loadGraphOptions();
   // 自动加载节点数据
   loadSampleNodes();
 });
@@ -372,6 +458,15 @@ const legendItems = computed(() => {
 
 // 为未索引节点添加索引
 const indexNodes = () => {
+  if (isReadOnly.value) {
+    message.warning('当前为只读模式，无法添加索引');
+    return;
+  }
+
+  if (selectedGraph.value !== 'neo4j') {
+    message.info('当前仅支持 Neo4j 图谱的索引操作');
+    return;
+  }
   // 判断 embed_model_name 是否相同
   if (!modelMatched.value) {
     message.error(`向量模型不匹配，无法添加索引，当前向量模型为 ${cur_embed_model.value}，图数据库向量模型为 ${graphInfo.value?.embed_model_name}`)
@@ -400,13 +495,96 @@ const indexNodes = () => {
 };
 
 const getAuthHeaders = () => {
-  const userStore = useUserStore();
   return userStore.getAuthHeaders();
 };
 
 const openLink = (url) => {
   window.open(url, '_blank')
 }
+
+function loadGraphAliases() {
+  try {
+    const raw = localStorage.getItem('graph_aliases');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+const persistGraphAliases = () => {
+  localStorage.setItem('graph_aliases', JSON.stringify(graphAliases.value || {}));
+};
+
+const labelWithAlias = (id, fallback) => {
+  return graphAliases.value?.[id] || fallback || id;
+};
+
+const loadGraphOptions = async () => {
+  state.loadingGraphs = true;
+  const options = [{ label: labelWithAlias('neo4j', 'Neo4j'), value: 'neo4j' }];
+
+  try {
+    const res = await lightragApi.getDatabases();
+    const list = res?.databases || res?.data || res || [];
+    list.forEach((item) => {
+      const value = item.db_id || item.id || item.name;
+      const label = labelWithAlias(value, item.name || value);
+      if (value) options.push({ label, value });
+    });
+  } catch (error) {
+    console.warn('获取图谱列表失败，使用默认 Neo4j：', error);
+  } finally {
+    state.loadingGraphs = false;
+  }
+
+  const dedup = [];
+  const seen = new Set();
+  options.forEach((opt) => {
+    if (!seen.has(opt.value)) {
+      seen.add(opt.value);
+      dedup.push(opt);
+    }
+  });
+  graphOptions.value = dedup;
+
+  if (!seen.has(selectedGraph.value)) {
+    selectedGraph.value = dedup[0]?.value || 'neo4j';
+  }
+};
+
+const handleGraphChange = () => {
+  loadSampleNodes();
+};
+
+const openRenameModal = () => {
+  if (isReadOnly.value) {
+    message.warning('当前为只读模式，无法重命名');
+    return;
+  }
+
+  renameInput.value = labelWithAlias(selectedGraph.value, selectedGraph.value);
+  renameModalVisible.value = true;
+};
+
+const confirmRename = () => {
+  if (isReadOnly.value) {
+    message.warning('当前为只读模式，无法重命名');
+    return;
+  }
+
+  const newName = (renameInput.value || '').trim();
+  if (!newName) {
+    message.error('名称不能为空');
+    return;
+  }
+  graphAliases.value = { ...(graphAliases.value || {}), [selectedGraph.value]: newName };
+  persistGraphAliases();
+  graphOptions.value = graphOptions.value.map((opt) =>
+    opt.value === selectedGraph.value ? { ...opt, label: newName } : opt
+  );
+  renameModalVisible.value = false;
+  message.success('已更新图谱名称');
+};
 
 </script>
 

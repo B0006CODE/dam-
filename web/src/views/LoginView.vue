@@ -383,9 +383,10 @@ const handleLogin = async () => {
         await agentStore.initialize();
 
         // 尝试获取默认智能体
-        if (agentStore.defaultAgentId) {
+        const defaultAgent = agentStore.defaultAgent;
+        if (defaultAgent?.id) {
           // 如果存在默认智能体，直接跳转
-          router.push(`/agent/${agentStore.defaultAgentId}`);
+          router.push(`/agent/${defaultAgent.id}`);
           return;
         }
 
