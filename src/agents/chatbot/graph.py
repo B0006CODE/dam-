@@ -34,6 +34,7 @@ class ChatbotAgent(BaseAgent):
         """根据配置获取工具。
         默认不使用任何工具。
         如果配置为列表，则使用列表中的工具。
+        注意：知识图谱相关工具（搜索和统计）会始终自动包含（除非是 llm 模式）。
         """
         enabled_tools = []
 
@@ -45,10 +46,21 @@ class ChatbotAgent(BaseAgent):
                 return []
         except Exception:
             pass
+        
         self.agent_tools = self.agent_tools or self.get_tools(runtime)
+        
+        # 核心工具：知识图谱搜索和统计工具始终自动可用（不需要用户手动选择）
+        core_tool_names = {"global_knowledge_graph_search", "knowledge_graph_statistics"}
+        core_tools = [tool for tool in self.agent_tools if tool.name in core_tool_names]
+        
         if selected_tools and isinstance(selected_tools, list) and len(selected_tools) > 0:
             # 使用配置中指定的工具
             enabled_tools = [tool for tool in self.agent_tools if tool.name in selected_tools]
+        
+        # 始终添加核心工具（如果还没有被选中）
+        for core_tool in core_tools:
+            if core_tool not in enabled_tools:
+                enabled_tools.append(core_tool)
 
         if selected_mcps and isinstance(selected_mcps, list) and len(selected_mcps) > 0:
             for mcp in selected_mcps:

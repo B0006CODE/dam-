@@ -8,6 +8,8 @@
       :single-mode="props.singleMode"
       :agents="agents"
       :selected-agent-id="currentAgentId"
+      :retrieval-mode="retrievalMode"
+      v-model="resourceSelection"
       @create-chat="createNewChat"
       @select-chat="selectChat"
       @delete-chat="deleteChat"
@@ -59,7 +61,7 @@
 
         <div class="inputer-init">
           <!-- 检索模式选择器 - 独立显示 -->
-          <div class="retrieval-mode-wrapper" v-if="currentAgent">
+          <!-- <div class="retrieval-mode-wrapper" v-if="currentAgent">
             <div class="retrieval-mode-selector-standalone">
               <div class="retrieval-mode-buttons">
                 <button
@@ -100,7 +102,7 @@
                 </button>
               </div>
             </div>
-          </div>
+          </div> -->
 
           <!-- 输入框 -->
           <MessageInputComponent
@@ -181,54 +183,13 @@
           </div>
         </div>
       </div>
-      <div class="knowledge-panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">检索资源</div>
-            <div class="panel-subtitle">{{ retrievalModeHint }}</div>
-            <div class="panel-meta">
-              <span class="meta-label">当前选择</span>
-              <div class="meta-chips">
-                <span class="meta-chip">{{ kbSummary }}</span>
-                <span class="meta-chip">{{ graphSummary }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="panel-mode-tag">{{ retrievalModeLabel }}</div>
-        </div>
-        <div class="panel-body">
-          <div class="panel-section">
-            <div class="section-title">
-              <span>知识库</span>
-              <span class="section-hint" v-if="!allowKbSelect">仅在混合/知识库检索可选</span>
-            </div>
-            <a-checkbox-group
-              v-model:value="selectedKbIds"
-              :options="kbOptions"
-              :disabled="!allowKbSelect"
-            />
-            <p class="section-footer" v-if="!allowKbSelect">切换到“混合检索”或“知识库检索”以选择库</p>
-          </div>
-          <div class="panel-section">
-            <div class="section-title">
-              <span>知识图谱</span>
-              <span class="section-hint" v-if="!allowGraphSelect">仅在混合/知识图谱检索可选</span>
-            </div>
-            <a-radio-group
-              v-model:value="selectedGraph"
-              :disabled="!allowGraphSelect"
-            >
-              <a-radio v-for="option in graphOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </a-radio>
-            </a-radio-group>
-            <p class="section-footer" v-if="!allowGraphSelect">切换到“混合检索”或“知识图谱检索”以选择图谱</p>
-          </div>
-        </div>
-      </div>
+
     </div>
+
   </div>
+
 </template>
+
 
 <script setup>
 import { ref, reactive, onMounted, watch, nextTick, computed, onUnmounted } from 'vue';
@@ -239,6 +200,7 @@ import AgentMessageComponent from '@/components/AgentMessageComponent.vue'
 import ChatSidebarComponent from '@/components/ChatSidebarComponent.vue'
 import RefsComponent from '@/components/RefsComponent.vue'
 import { PanelLeftOpen, MessageCirclePlus } from 'lucide-vue-next';
+import CnkiResourceSelector from '@/components/CnkiResourceSelector.vue';
 import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined, RobotOutlined } from '@ant-design/icons-vue';
 import { handleChatError, handleValidationError } from '@/utils/errorHandler';
 import { ScrollController } from '@/utils/scrollController';
@@ -272,6 +234,7 @@ const kbOptions = ref([]);
 const selectedKbIds = ref([]);
 const graphOptions = ref([{ label: '默认 Neo4j 图谱', value: 'neo4j' }]);
 const selectedGraph = ref('neo4j');
+const resourceSelection = ref({ kbIds: [], graph: 'neo4j' });
 
 // 从智能体元数据获取示例问题
 const exampleQuestions = computed(() => {
