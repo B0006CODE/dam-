@@ -743,7 +743,7 @@ class TimeSeriesStats(BaseModel):
 
 @dashboard.get("/stats/calls/timeseries", response_model=TimeSeriesStats)
 async def get_call_timeseries_stats(
-    type: str = "models",  # models/agents/tokens/tools
+    type: str = "models",  # models/knowledge_base/knowledge_graph
     time_range: str = "7days",  # 7hours/7days/7weeks
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user),
@@ -878,6 +878,62 @@ async def get_call_timeseries_stats(
                 .group_by(tool_group_format, ToolCall.tool_name)
                 .order_by(tool_group_format)
             )
+        elif type == "knowledge_base":
+            # 知识库调用统计 - 按检索模式分类（混合检索、知识库检索）
+            from sqlalchemy import case, literal
+
+            retrieval_mode_label = case(
+                (func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "mix", literal("混合检索")),
+                (func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "local", literal("知识库检索")),
+                else_=literal("其他")
+            )
+
+            query = (
+                db.query(
+                    group_format.label("date"),
+                    func.count(Message.id).label("count"),
+                    retrieval_mode_label.label("category"),
+                )
+                .filter(
+                    Message.role == "assistant",
+                    Message.created_at >= start_time,
+                    Message.extra_metadata.isnot(None),
+                    or_(
+                        func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "mix",
+                        func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "local"
+                    )
+                )
+                .group_by(group_format, retrieval_mode_label)
+                .order_by(group_format)
+            )
+        elif type == "knowledge_graph":
+            # 知识图谱调用统计 - 按检索模式分类（混合检索、知识图谱检索）
+            from sqlalchemy import case, literal
+
+            retrieval_mode_label = case(
+                (func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "mix", literal("混合检索")),
+                (func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "global", literal("知识图谱检索")),
+                else_=literal("其他")
+            )
+
+            query = (
+                db.query(
+                    group_format.label("date"),
+                    func.count(Message.id).label("count"),
+                    retrieval_mode_label.label("category"),
+                )
+                .filter(
+                    Message.role == "assistant",
+                    Message.created_at >= start_time,
+                    Message.extra_metadata.isnot(None),
+                    or_(
+                        func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "mix",
+                        func.json_extract(Message.extra_metadata, "$.retrieval_mode") == "global"
+                    )
+                )
+                .group_by(group_format, retrieval_mode_label)
+                .order_by(group_format)
+            )
         else:
             raise HTTPException(status_code=422, detail=f"Invalid type: {type}")
 
@@ -901,6 +957,10 @@ async def get_call_timeseries_stats(
                 categories.update(["input_tokens", "output_tokens"])
             elif type == "tools":
                 categories.add("unknown_tool")
+            elif type == "knowledge_base":
+                categories.update(["混合检索", "知识库检索"])
+            elif type == "knowledge_graph":
+                categories.update(["混合检索", "知识图谱检索"])
 
         categories = sorted(list(categories))
 

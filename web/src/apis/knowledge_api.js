@@ -1,4 +1,4 @@
-import { apiAdminGet, apiAdminPost, apiAdminPut, apiAdminDelete } from './base'
+import { apiGet, apiAdminGet, apiAdminPost, apiAdminPut, apiAdminDelete } from './base'
 
 /**
  * 知识库管理API模块

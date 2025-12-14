@@ -60,9 +60,8 @@ const timeRangeOptions = [
 ]
 const dataTypeOptions = [
   { value: 'models', label: '模型调用' },
-  { value: 'agents', label: '智能体调用' },
-  { value: 'tokens', label: 'Token消耗' },
-  { value: 'tools', label: '工具调用' },
+  { value: 'knowledge_base', label: '知识库调用' },
+  { value: 'knowledge_graph', label: '知识图谱调用' },
 ]
 
 const switchTimeRange = (val) => {
@@ -189,7 +188,7 @@ const renderCallStatsChart = () => {
           result += `<span style=\"display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${param.color}\"></span>`
           result += `${truncatedName}: ${param.value}<br/>`
         })
-        const labelMap = { models: '模型调用', agents: '智能体调用', tokens: 'Token消耗', tools: '工具调用' }
+        const labelMap = { models: '模型调用', knowledge_base: '知识库调用', knowledge_graph: '知识图谱调用' }
         return `<div style=\"font-weight:bold;margin-bottom:5px\">${labelMap[callDataType.value]}</div>${result}<strong>总计: ${total}</strong>`
       }
     },

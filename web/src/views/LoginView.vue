@@ -1,6 +1,7 @@
 <template>
+  <!-- 登录页面根容器，根据服务器状态动态添加样式类 -->
   <div class="login-view" :class="{ 'has-alert': serverStatus === 'error' }">
-    <!-- 服务状态提示 -->
+    <!-- 服务状态异常时的顶部提示条 -->
     <div v-if="serverStatus === 'error'" class="server-status-alert">
       <div class="alert-content">
         <exclamation-circle-outlined class="alert-icon" />
@@ -14,14 +15,16 @@
       </div>
     </div>
 
+    <!-- 顶部操作区域 -->
     <div class="login-top-action">
       <a-button type="text" size="small" class="back-home-btn" @click="goHome">
         返回首页
       </a-button>
     </div>
 
+    <!-- 登录页面主要布局 -->
     <div class="login-layout">
-      <!-- 左侧图片区域 -->
+      <!-- 左侧品牌形象图片区域 -->
       <div class="login-image-section">
         <img :src="loginBgImage" alt="登录背景" class="login-bg-image" />
         <div class="image-overlay">
@@ -37,14 +40,18 @@
       </div>
 
       <!-- 右侧登录表单区域 -->
+      <!-- 右侧登录表单区域 -->
       <div class="login-form-section">
+        <!-- 登录框容器 -->
         <div class="login-container">
+          <!-- 登录框头部：显示欢迎语和品牌信息 -->
           <header class="login-header">
             <p class="login-title">欢迎登录</p>
             <h1 class="login-brand">{{ brandName }}</h1>
             <p v-if="!isFirstRun && brandSubtitle" class="login-subtitle">{{ brandSubtitle }}</p>
           </header>
 
+          <!-- 登录内容区域：包含表单 -->
           <div class="login-content" :class="{ 'is-initializing': isFirstRun }">
             <!-- 初始化管理员表单 -->
             <div v-if="isFirstRun" class="login-form login-form--init">
@@ -177,7 +184,7 @@
                   </a-button>
                 </a-form-item>
 
-                <!-- 第三方登录选项 -->
+                <!-- 第三方登录选项
                 <div class="third-party-login">
                   <div class="divider">
                     <span>其他登录方式</span>
@@ -199,7 +206,7 @@
                       </a-button>
                     </a-tooltip>
                   </div>
-                </div>
+                </div> -->
               </a-form>
             </div>
 
@@ -210,11 +217,11 @@
           </div>
 
           <!-- 页脚 -->
-          <div class="login-footer">
+          <!-- <div class="login-footer">
             <a href="#" @click.prevent>联系我们</a>
             <a href="#" @click.prevent>使用帮助</a>
             <a href="#" @click.prevent>隐私政策</a>
-          </div>
+          </div> -->
         </div>
       </div>
     </div>
@@ -222,33 +229,46 @@
 </template>
 
 <script setup>
+// Vue 核心功能导入
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
+// 路由功能导入
 import { useRouter } from 'vue-router';
+// 状态管理仓库导入
 import { useUserStore } from '@/stores/user';
 import { useInfoStore } from '@/stores/info';
 import { useAgentStore } from '@/stores/agent';
+// UI 组件库导入
 import { message } from 'ant-design-vue';
+// API 接口导入
 import { healthApi } from '@/apis/system_api';
+// 图标组件导入
 import { UserOutlined, LockOutlined, WechatOutlined, QrcodeOutlined, ThunderboltOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
+
+// 初始化路由和状态仓库
 const router = useRouter();
 const userStore = useUserStore();
 const infoStore = useInfoStore();
 const agentStore = useAgentStore();
 
 // 品牌展示数据
+// 品牌展示数据计算属性
+// 登录背景图，优先使用配置的背景，否则使用默认背景
 const loginBgImage = computed(() => {
   return infoStore.organization?.login_bg || '/login-bg.jpg';
 });
+// 品牌名称，优先使用配置的名称，否则使用默认名称
 const brandName = computed(() => {
   const rawName = infoStore.branding?.name ?? '';
   const trimmed = rawName.trim();
   return trimmed || '智能水利知识库';
 });
+// 品牌副标题
 const brandSubtitle = computed(() => {
   const rawSubtitle = infoStore.branding?.subtitle ?? '';
   const trimmed = rawSubtitle.trim();
   return trimmed || '大模型驱动的知识库管理工具';
 });
+// 品牌描述
 const brandDescription = computed(() => {
   const rawDescription = infoStore.branding?.description ?? '';
   const trimmed = rawDescription.trim();
@@ -256,18 +276,19 @@ const brandDescription = computed(() => {
 });
 
 // 状态
-const isFirstRun = ref(false);
-const loading = ref(false);
-const errorMessage = ref('');
-const rememberMe = ref(false);
-const serverStatus = ref('loading');
-const serverError = ref('');
-const healthChecking = ref(false);
+// 页面状态变量
+const isFirstRun = ref(false); // 是否首次运行（需要初始化管理员）
+const loading = ref(false); // 表单提交加载状态
+const errorMessage = ref(''); // 错误提示信息
+const rememberMe = ref(false); // 记住我选项
+const serverStatus = ref('loading'); // 服务器连接状态：loading, ok, error
+const serverError = ref(''); // 服务器错误信息
+const healthChecking = ref(false); // 健康检查加载状态
 
-// 登录锁定相关状态
-const isLocked = ref(false);
-const lockRemainingTime = ref(0);
-const lockCountdown = ref(null);
+// 登录锁定相关状态变量
+const isLocked = ref(false); // 账户是否被锁定
+const lockRemainingTime = ref(0); // 锁定剩余时间（秒）
+const lockCountdown = ref(null); // 倒计时定时器引用
 
 // 登录表单
 const loginForm = reactive({
@@ -284,15 +305,17 @@ const adminForm = reactive({
 });
 
 // 开发中功能提示
+// 显示功能开发中提示
 const showDevMessage = () => {
   message.info('该功能正在开发中，敬请期待！');
 };
 
+// 返回首页
 const goHome = () => {
   router.push('/');
 };
 
-// 清理倒计时器
+// 清理锁定倒计时器
 const clearLockCountdown = () => {
   if (lockCountdown.value) {
     clearInterval(lockCountdown.value);
@@ -346,6 +369,7 @@ const validateConfirmPassword = async (rule, value) => {
 };
 
 // 处理登录
+// 处理登录提交逻辑
 const handleLogin = async () => {
   // 如果当前被锁定，不允许登录
   if (isLocked.value) {
@@ -354,10 +378,12 @@ const handleLogin = async () => {
   }
 
   try {
+    // 设置加载状态并清除错误信息
     loading.value = true;
     errorMessage.value = '';
     clearLockCountdown();
 
+    // 调用 store 的登录方法
     await userStore.login({
       loginId: loginForm.loginId,
       password: loginForm.password
@@ -365,19 +391,19 @@ const handleLogin = async () => {
 
     message.success('登录成功');
 
-    // 获取重定向路径
+    // 获取重定向路径（如果存在）
     const redirectPath = sessionStorage.getItem('redirect') || '/';
     sessionStorage.removeItem('redirect'); // 清除重定向信息
 
     // 根据用户角色决定重定向目标
     if (redirectPath === '/') {
-      // 如果是管理员，直接跳转到/chat页面
+      // 如果是管理员，直接跳转到智能体管理页面
       if (userStore.isAdmin) {
         router.push('/agent');
         return;
       }
 
-      // 普通用户跳转到默认智能体
+      // 普通用户跳转到默认智能体页面
       try {
         // 初始化agentStore并获取智能体信息
         await agentStore.initialize();
@@ -429,6 +455,7 @@ const handleLogin = async () => {
         }
       }
 
+      // 如果获取到了剩余时间，启动倒计时
       if (remainingTime > 0) {
         startLockCountdown(remainingTime);
         errorMessage.value = `由于多次登录失败，账户已被锁定 ${formatTime(remainingTime)}`;
@@ -436,9 +463,11 @@ const handleLogin = async () => {
         errorMessage.value = error.message || '账户被锁定，请稍后再试';
       }
     } else {
+      // 其他登录错误
       errorMessage.value = error.message || '登录失败，请检查用户名和密码';
     }
   } finally {
+    // 无论成功失败，取消加载状态
     loading.value = false;
   }
 };
@@ -505,8 +534,9 @@ const checkServerHealth = async () => {
 };
 
 // 组件挂载时
+// 组件挂载时的生命周期钩子
 onMounted(async () => {
-  // 如果已登录，跳转到首页
+  // 如果用户已登录，直接跳转到首页
   if (userStore.isLoggedIn) {
     router.push('/');
     return;
@@ -515,28 +545,32 @@ onMounted(async () => {
   // 首先检查服务器健康状态
   await checkServerHealth();
 
-  // 检查是否是首次运行
+  // 检查系统是否是首次运行（是否需要初始化）
   await checkFirstRunStatus();
 });
 
-// 组件卸载时清理定时器
+// 组件卸载时的生命周期钩子
 onUnmounted(() => {
+  // 清理锁定倒计时器，防止内存泄漏
   clearLockCountdown();
 });
 </script>
 
 <style lang="less" scoped>
+/* 登录页面整体容器 */
 .login-view {
   height: 100vh;
   width: 100%;
   position: relative;
   padding-top: 0;
 
+  /* 当有顶部警告条时的样式调整 */
   &.has-alert {
     padding-top: 60px;
   }
 }
 
+/* 顶部操作按钮区域 */
 .login-top-action {
   position: absolute;
   top: 24px;
@@ -556,6 +590,7 @@ onUnmounted(() => {
   }
 }
 
+/* 登录布局容器：左右分栏 */
 .login-layout {
   display: flex;
   min-height: 100%;
@@ -563,12 +598,14 @@ onUnmounted(() => {
   background: var(--gray-10);
 }
 
+/* 左侧图片区域样式 */
 .login-image-section {
-  flex: 0 0 52%;
+  flex: 0 0 52%; /* 占据 52% 宽度 */
   position: relative;
   overflow: hidden;
   max-height: 100vh;
 
+  /* 背景图片样式 */
   .login-bg-image {
     width: 100%;
     height: 100%;
@@ -633,8 +670,9 @@ onUnmounted(() => {
   }
 }
 
+/* 右侧表单区域样式 */
 .login-form-section {
-  flex: 1;
+  flex: 1; /* 占据剩余宽度 */
   min-width: 420px;
   display: flex;
   justify-content: center;
@@ -643,10 +681,11 @@ onUnmounted(() => {
   background: var(--main-20);
 }
 
+/* 登录框容器样式 */
 .login-container {
   width: 100%;
-  max-width: 460px;
-  padding: 40px;
+  max-width: 560px;
+  padding: 50px;
   background: var(--gray-0);
   border-radius: 24px;
   border: 1px solid var(--gray-150);

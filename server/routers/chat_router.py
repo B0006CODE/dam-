@@ -196,12 +196,17 @@ async def chat_agent(
                             msg_dict["response_metadata"]["model_name"] = model_name[: len(model_name) // repeat_count]
 
                     # 保存 AI 消息
+                    # 从 config_dict 中提取 retrieval_mode 并添加到 extra_metadata 中
+                    retrieval_mode = config_dict.get("configurable", {}).get("retrieval_mode")
+                    if retrieval_mode:
+                        msg_dict["retrieval_mode"] = retrieval_mode
+
                     ai_msg = conv_mgr.add_message_by_thread_id(
                         thread_id=thread_id,
                         role="assistant",
                         content=content,
                         message_type="text",
-                        extra_metadata=msg_dict,  # 保存原始 model_dump
+                        extra_metadata=msg_dict,  # 保存原始 model_dump 加上 retrieval_mode
                     )
 
                     # 保存 tool_calls（如果有）- 使用 LangGraph 的 tool_call_id
@@ -356,7 +361,7 @@ async def chat_agent(
                         role="assistant",
                         content=content,
                         message_type="text",
-                        extra_metadata=msg_dict | {"error_type": "interrupted"},  # 保存原始 model_dump
+                        extra_metadata=msg_dict | {"error_type": "interrupted", "retrieval_mode": retrieval_mode},
                     )
                 finally:
                     new_db.close()
@@ -378,7 +383,7 @@ async def chat_agent(
                         role="assistant",
                         content=content,
                         message_type="text",
-                        extra_metadata=msg_dict | {"error_type": "unexpect"},  # 保存原始 model_dump
+                        extra_metadata=msg_dict | {"error_type": "unexpect", "retrieval_mode": retrieval_mode},
                     )
                 finally:
                     new_db.close()

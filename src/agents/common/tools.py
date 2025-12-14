@@ -14,6 +14,15 @@ class GraphQueryModel(BaseModel):
     query: str = Field(description="要在知识图谱中检索的关键词。")
 
 
+class GraphStatisticsModel(BaseModel):
+    """知识图谱统计工具的参数模型"""
+    keyword: str = Field(description="要统计的关键词，如'重力坝'、'病害'、'裂缝'等。")
+    stat_type: str = Field(
+        default="count_related",
+        description="统计类型：count_related(统计相关实体数量)、count_by_type(按类型分组统计)、list_entities(列出具体实体名称)"
+    )
+
+
 def get_static_tools(input_context: dict | None = None) -> list:
     """注册静态工具"""
     retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
@@ -32,6 +41,100 @@ def get_static_tools(input_context: dict | None = None) -> list:
             logger.error(f"Knowledge graph query error: {e}, {traceback.format_exc()}")
             return f"知识图谱查询失败: {str(e)}"
 
+    async def graph_statistics(keyword: str, stat_type: str = "count_related") -> Any:
+        """知识图谱统计工具 - 用于回答统计性问题"""
+        try:
+            logger.debug(f"统计知识图谱 [{graph_name}] 关键词: {keyword}, 类型: {stat_type}")
+            
+            if not graph_base.is_running():
+                return "知识图谱数据库未连接，无法进行统计查询。"
+            
+            graph_base.use_database(graph_name)
+            
+            with graph_base.driver.session() as session:
+                if stat_type == "count_related":
+                    # 统计与关键词相关的实体数量
+                    result = session.run("""
+                        MATCH (n:Entity)
+                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword)
+                        WITH count(n) as direct_count
+                        OPTIONAL MATCH (n:Entity)-[r:RELATION]-(m:Entity)
+                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword)
+                        WITH direct_count, count(DISTINCT m) as related_count, count(r) as relation_count
+                        RETURN direct_count, related_count, relation_count
+                    """, keyword=keyword).single()
+                    
+                    direct = result["direct_count"] if result else 0
+                    related = result["related_count"] if result else 0
+                    relations = result["relation_count"] if result else 0
+                    
+                    return (
+                        f"【知识图谱统计结果】\n"
+                        f"关键词：{keyword}\n"
+                        f"- 直接包含'{keyword}'的实体数量：{direct} 个\n"
+                        f"- 与'{keyword}'相关联的实体数量：{related} 个\n"
+                        f"- 相关的关系数量：{relations} 条\n"
+                        f"- 总计涉及实体：{direct + related} 个"
+                    )
+                
+                elif stat_type == "count_by_type":
+                    # 按关系类型分组统计
+                    results = session.run("""
+                        MATCH (n:Entity)-[r:RELATION]->(m:Entity)
+                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword) 
+                           OR toLower(m.entity_id) CONTAINS toLower($keyword)
+                        RETURN r.type as relation_type, count(*) as count
+                        ORDER BY count DESC
+                        LIMIT 20
+                    """, keyword=keyword)
+                    
+                    stats = []
+                    total = 0
+                    for record in results:
+                        rel_type = record["relation_type"] or "未知类型"
+                        count = record["count"]
+                        total += count
+                        stats.append(f"  - {rel_type}: {count} 条")
+                    
+                    if not stats:
+                        return f"未找到与'{keyword}'相关的统计数据。"
+                    
+                    return (
+                        f"【知识图谱分类统计】\n"
+                        f"关键词：{keyword}\n"
+                        f"按关系类型统计（共 {total} 条关系）：\n" + "\n".join(stats)
+                    )
+                
+                elif stat_type == "list_entities":
+                    # 列出具体实体名称
+                    results = session.run("""
+                        MATCH (n:Entity)
+                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword)
+                        RETURN DISTINCT n.entity_id as entity_name
+                        ORDER BY entity_name
+                        LIMIT 50
+                    """, keyword=keyword)
+                    
+                    entities = [record["entity_name"] for record in results]
+                    
+                    if not entities:
+                        return f"未找到包含'{keyword}'的实体。"
+                    
+                    entity_list = "\n".join([f"  {i+1}. {e}" for i, e in enumerate(entities)])
+                    return (
+                        f"【知识图谱实体列表】\n"
+                        f"关键词：{keyword}\n"
+                        f"共找到 {len(entities)} 个相关实体：\n{entity_list}"
+                        + (f"\n（仅显示前50个）" if len(entities) == 50 else "")
+                    )
+                
+                else:
+                    return f"不支持的统计类型: {stat_type}，支持的类型: count_related, count_by_type, list_entities"
+                    
+        except Exception as e:
+            logger.error(f"知识图谱统计错误: {e}, {traceback.format_exc()}")
+            return f"知识图谱统计查询失败: {str(e)}"
+
     graph_tool = StructuredTool.from_function(
         coroutine=graph_search,
         name="global_knowledge_graph_search",
@@ -40,8 +143,21 @@ def get_static_tools(input_context: dict | None = None) -> list:
         metadata={"graph_name": graph_name, "tag": ["knowledge_graph"]},
     )
 
+    statistics_tool = StructuredTool.from_function(
+        coroutine=graph_statistics,
+        name="knowledge_graph_statistics",
+        description=(
+            f"使用知识图谱（数据库：{graph_name}）进行统计查询。"
+            "当用户询问'有多少'、'数量是多少'、'统计一下'、'一共有几个'等统计性问题时，优先使用此工具。"
+            "可以统计与关键词相关的实体数量、按类型分组统计、或列出具体实体名称。"
+        ),
+        args_schema=GraphStatisticsModel,
+        metadata={"graph_name": graph_name, "tag": ["knowledge_graph", "statistics"]},
+    )
+
     static_tools = [
         graph_tool,
+        statistics_tool,
     ]
 
     # 网页搜索功能已移除，只保留知识库相关功能

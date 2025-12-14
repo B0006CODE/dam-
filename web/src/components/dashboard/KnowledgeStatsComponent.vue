@@ -235,9 +235,9 @@ const initFileTypeChart = () => {
       series: [{
         name: '文件类型',
         type: 'pie',
-        radius: ['30%', '70%'],
-        center: ['50%', '60%'],
-        avoidLabelOverlap: false,
+        radius: ['25%', '55%'],
+        center: ['50%', '50%'],
+        avoidLabelOverlap: true,
         itemStyle: {
           borderRadius: 6,
           borderColor: '#fff',
@@ -245,7 +245,8 @@ const initFileTypeChart = () => {
         },
         label: {
           show: true,
-          formatter: '{b}: {c}'
+          formatter: '{b}: {c}',
+          fontSize: 12
         },
         emphasis: {
           label: {
@@ -261,7 +262,9 @@ const initFileTypeChart = () => {
           }
         },
         labelLine: {
-          show: true
+          show: true,
+          length: 10,
+          length2: 15
         },
         data: data,
         color: getColorPalette()
@@ -285,9 +288,9 @@ const initFileTypeChart = () => {
       series: [{
         name: '文件类型',
         type: 'pie',
-        radius: ['30%', '70%'],
-        center: ['50%', '60%'],
-        avoidLabelOverlap: false,
+        radius: ['25%', '55%'],
+        center: ['50%', '50%'],
+        avoidLabelOverlap: true,
         itemStyle: {
           borderRadius: 6,
           borderColor: '#fff',
@@ -295,7 +298,8 @@ const initFileTypeChart = () => {
         },
         label: {
           show: true,
-          formatter: '{b}: {c}'
+          formatter: '{b}: {c}',
+          fontSize: 12
         },
         emphasis: {
           label: {
@@ -311,7 +315,9 @@ const initFileTypeChart = () => {
           }
         },
         labelLine: {
-          show: true
+          show: true,
+          length: 10,
+          length2: 15
         },
         data: [
           { name: '暂无数据', value: 1 }
@@ -402,7 +408,7 @@ defineExpose({
   }
 
   .chart {
-    height: 300px;
+    height: 220px;
     width: 100%;
   }
 

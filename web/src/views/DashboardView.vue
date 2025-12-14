@@ -22,24 +22,6 @@
         />
       </div>
 
-      <!-- AI智能体分析 - 占据1x1网格 -->
-      <div class="grid-item agent-stats">
-        <AgentStatsComponent
-          :agent-stats="allStatsData?.agents"
-          :loading="loading"
-          ref="agentStatsRef"
-        />
-      </div>
-
-      <!-- 工具调用监控 - 占据1x1网格 -->
-      <div class="grid-item tool-stats">
-        <ToolStatsComponent
-          :tool-stats="allStatsData?.tools"
-          :loading="loading"
-          ref="toolStatsRef"
-        />
-      </div>
-
       <!-- 知识库使用情况 - 占据1x1网格 -->
       <div class="grid-item knowledge-stats">
         <KnowledgeStatsComponent
@@ -135,9 +117,7 @@ import dayjs, { parseToShanghai } from '@/utils/time'
 // 导入子组件
 import StatusBar from '@/components/StatusBar.vue'
 import UserStatsComponent from '@/components/dashboard/UserStatsComponent.vue'
-import ToolStatsComponent from '@/components/dashboard/ToolStatsComponent.vue'
 import KnowledgeStatsComponent from '@/components/dashboard/KnowledgeStatsComponent.vue'
-import AgentStatsComponent from '@/components/dashboard/AgentStatsComponent.vue'
 import CallStatsComponent from '@/components/dashboard/CallStatsComponent.vue'
 import StatsOverviewComponent from '@/components/dashboard/StatsOverviewComponent.vue'
 import FeedbackModalComponent from '@/components/dashboard/FeedbackModalComponent.vue'
@@ -151,9 +131,7 @@ const conversationDetailModal = ref(null)
 const basicStats = ref({})
 const allStatsData = ref({
   users: null,
-  tools: null,
-  knowledge: null,
-  agents: null
+  knowledge: null
 })
 
 // 过滤器
@@ -241,9 +219,7 @@ const conversationColumns = [
 
 // 子组件引用
 const userStatsRef = ref(null)
-const toolStatsRef = ref(null)
 const knowledgeStatsRef = ref(null)
-const agentStatsRef = ref(null)
 
 // 加载统计数据 - 使用并行API调用
 const loadAllStats = async () => {
@@ -258,9 +234,7 @@ const loadAllStats = async () => {
     // 更新详细统计数据
     allStatsData.value = {
       users: response.users,
-      tools: response.tools,
-      knowledge: response.knowledge,
-      agents: response.agents
+      knowledge: response.knowledge
     }
 
     console.log('Dashboard 数据加载完成:', response)
@@ -392,9 +366,7 @@ const handleTableChange = (pag) => {
 // 清理函数 - 清理所有子组件的图表实例
 const cleanupCharts = () => {
   if (userStatsRef.value?.cleanup) userStatsRef.value.cleanup()
-  if (toolStatsRef.value?.cleanup) userStatsRef.value.cleanup()
   if (knowledgeStatsRef.value?.cleanup) knowledgeStatsRef.value.cleanup()
-  if (agentStatsRef.value?.cleanup) agentStatsRef.value.cleanup()
   if (callStatsRef.value?.cleanup) callStatsRef.value.cleanup()
 }
 
@@ -424,7 +396,7 @@ onUnmounted(() => {
 .dashboard-grid {
   display: grid;
   padding: 16px;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto;
   gap: 16px;
   margin-bottom: 24px;
@@ -448,40 +420,28 @@ onUnmounted(() => {
       }
     }
 
-    // 大页面布局：第一行 2x1 + 1x1，第二行 3x1x1
+    // 布局：第一行调用统计(2列) + 用户活跃度(1列)，第二行知识库(1列) + 对话记录(1列)
     &.call-stats {
-      grid-column: 1 / 3;
+      grid-column: 1 / 2;
       grid-row: 1 / 2;
       min-height: 400px;
     }
 
     &.user-stats {
-      grid-column: 3 / 4;
+      grid-column: 2 / 3;
       grid-row: 1 / 2;
       min-height: 400px;
     }
 
-    &.agent-stats {
+    &.knowledge-stats {
       grid-column: 1 / 2;
       grid-row: 2 / 3;
       min-height: 350px;
     }
 
-    &.tool-stats {
+    &.conversations {
       grid-column: 2 / 3;
       grid-row: 2 / 3;
-      min-height: 350px;
-    }
-
-    &.knowledge-stats {
-      grid-column: 3 / 4;
-      grid-row: 2 / 3;
-      min-height: 350px;
-    }
-
-    &.conversations {
-      grid-column: 1 / 4;
-      grid-row: 3 / 4;
       min-height: 300px;
     }
   }
@@ -638,45 +598,17 @@ onUnmounted(() => {
 // Dashboard 特有的响应式设计
 @media (max-width: 1200px) {
   .dashboard-grid {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
     gap: 16px;
 
     .grid-item {
-      // 小页面布局：第一行 2x1，第二行和第三行各是 2x1x1
-      &.call-stats {
-        grid-column: 1 / 3;
-        grid-row: 1 / 2;
-        min-height: 350px;
-      }
-
-      &.user-stats {
-        grid-column: 1 / 2;
-        grid-row: 2 / 3;
-        min-height: 300px;
-      }
-
-      &.agent-stats {
-        grid-column: 2 / 3;
-        grid-row: 2 / 3;
-        min-height: 300px;
-      }
-
-      &.tool-stats {
-        grid-column: 1 / 2;
-        grid-row: 3 / 4;
-        min-height: 300px;
-      }
-
-      &.knowledge-stats {
-        grid-column: 2 / 3;
-        grid-row: 3 / 4;
-        min-height: 300px;
-      }
-
+      &.call-stats,
+      &.user-stats,
+      &.knowledge-stats,
       &.conversations {
-        grid-column: 1 / 3;
-        grid-row: 4 / 5;
+        grid-column: 1 / 2;
+        grid-row: auto;
         min-height: 300px;
       }
     }
@@ -694,9 +626,7 @@ onUnmounted(() => {
 
     .grid-item {
       &.call-stats,
-      &.agent-stats,
       &.user-stats,
-      &.tool-stats,
       &.knowledge-stats,
       &.conversations {
         grid-column: 1 / 2;

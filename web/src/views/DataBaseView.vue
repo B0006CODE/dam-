@@ -124,7 +124,6 @@
         <p class="description">{{ database.description || '暂无描述' }}</p>
         <div class="tags">
           <a-tag color="blue" v-if="database.embed_info?.name">{{ database.embed_info.name }}</a-tag>
-          <!-- <a-tag color="green" v-if="database.embed_info?.dimension">{{ database.embed_info.dimension }}</a-tag> -->
           <a-tag
             :color="getKbTypeColor(database.kb_type || 'lightrag')"
             class="kb-type-tag"
@@ -134,9 +133,41 @@
           </a-tag>
         </div>
 
-        <!-- <button @click="deleteDatabase(database.collection_name)">删除</button> -->
+        <!-- 操作按钮 -->
+        <div class="card-actions" @click.stop>
+          <a-button type="text" size="small" @click="openEditModal(database)">
+            <template #icon><Pencil :size="14" /></template>
+            编辑
+          </a-button>
+          <a-button type="text" size="small" danger @click="confirmDelete(database)">
+            <template #icon><XCircle :size="14" /></template>
+            删除
+          </a-button>
+        </div>
       </div>
     </div>
+
+    <!-- 编辑知识库弹窗 -->
+    <a-modal
+      :open="state.editModalVisible"
+      title="编辑知识库"
+      @ok="saveEditDatabase"
+      @cancel="state.editModalVisible = false"
+      :confirmLoading="state.saving"
+    >
+      <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="知识库名称">
+          <a-input v-model:value="editForm.name" placeholder="请输入知识库名称" />
+        </a-form-item>
+        <a-form-item label="描述">
+          <a-textarea
+            v-model:value="editForm.description"
+            placeholder="请输入知识库描述"
+            :auto-size="{ minRows: 3, maxRows: 6 }"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -145,8 +176,9 @@ import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router';
 import { useConfigStore } from '@/stores/config';
 import { message } from 'ant-design-vue'
-import { BookPlus, Database, Zap, FileDigit,  Waypoints, Building2 } from 'lucide-vue-next';
+import { BookPlus, Database, Zap, FileDigit, Waypoints, Building2, Pencil, XCircle } from 'lucide-vue-next';
 import { databaseApi, typeApi } from '@/apis/knowledge_api';
+import { Modal } from 'ant-design-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import ModelSelectorComponent from '@/components/ModelSelectorComponent.vue';
 import dayjs, { parseToShanghai } from '@/utils/time';
@@ -160,6 +192,16 @@ const state = reactive({
   loading: false,
   creating: false,
   openNewDatabaseModel: false,
+  editModalVisible: false,
+  saving: false,
+  deleting: false,
+})
+
+// 编辑表单
+const editForm = reactive({
+  db_id: '',
+  name: '',
+  description: '',
 })
 
 const embedModelOptions = computed(() => {
@@ -188,7 +230,7 @@ const emptyEmbedInfo = {
   name: '',
   description: '',
   embed_model_name: configStore.config?.embed_model,
-  kb_type: 'chroma', // 默认为 Milvus
+  kb_type: 'milvus', // 默认为 Milvus
   // Vector 知识库特有配置
   storage: '', // 存储方式配置
   // LightRAG 特有配置
@@ -436,6 +478,62 @@ watch(() => route.path, (newPath, oldPath) => {
     loadDatabases();
   }
 });
+
+// 打开编辑弹窗
+const openEditModal = (database) => {
+  editForm.db_id = database.db_id
+  editForm.name = database.name || ''
+  editForm.description = database.description || ''
+  state.editModalVisible = true
+}
+
+// 保存编辑
+const saveEditDatabase = async () => {
+  if (!editForm.name?.trim()) {
+    message.error('知识库名称不能为空')
+    return
+  }
+
+  state.saving = true
+  try {
+    await databaseApi.updateDatabase(editForm.db_id, {
+      name: editForm.name.trim(),
+      description: editForm.description?.trim() || ''
+    })
+    message.success('修改成功')
+    state.editModalVisible = false
+    loadDatabases()
+  } catch (error) {
+    console.error('修改知识库失败:', error)
+    message.error(error.message || '修改失败')
+  } finally {
+    state.saving = false
+  }
+}
+
+// 确认删除
+const confirmDelete = (database) => {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除知识库「${database.name}」吗？此操作不可恢复！`,
+    okText: '确认删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      try {
+        state.deleting = true
+        await databaseApi.deleteDatabase(database.db_id)
+        message.success('删除成功')
+        loadDatabases()
+      } catch (error) {
+        console.error('删除知识库失败:', error)
+        message.error(error.message || '删除失败')
+      } finally {
+        state.deleting = false
+      }
+    }
+  })
+}
 
 onMounted(() => {
   loadSupportedKbTypes()
@@ -687,6 +785,7 @@ onMounted(() => {
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  position: relative;
 
   .top {
     display: flex;
@@ -746,6 +845,33 @@ onMounted(() => {
     margin-bottom: 10px;
   }
 
+  .card-actions {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    gap: 12px;
+
+    .ant-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      height: auto;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--gray-600);
+
+      &:hover {
+        background-color: #f0f0f0;
+        color: var(--main-color);
+      }
+
+      &.ant-btn-dangerous:hover {
+        color: #ff4d4f;
+      }
+    }
+  }
 
 }
 
