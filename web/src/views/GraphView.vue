@@ -124,7 +124,7 @@
       </G6GraphCanvas>
       
       <!-- 维度筛选器 -->
-      <DimensionFilter v-model="hiddenDimensions" />
+      <DimensionFilter v-if="showDimensionFilter" v-model="hiddenDimensions" />
     </div>
 
     <a-modal
@@ -215,7 +215,8 @@ import { neo4jApi, lightragApi, getPagedSubgraph } from '@/apis/graph_api';
 import { useUserStore } from '@/stores/user';
 import G6GraphCanvas from '@/components/G6GraphCanvas.vue';
 import DimensionFilter from '@/components/DimensionFilter.vue';
-import { buildNodeColorMap, getDimensionList, DIMENSION_COLORS } from '@/utils/nodeColorMapper';
+import { buildNodeColorMap, DIMENSION_COLORS } from '@/utils/nodeColorMapper';
+import { getEntityTypeColor, normalizeEntityType } from '@/utils/entityTypeColors';
 import { storeToRefs } from 'pinia';
 
 const configStore = useConfigStore();
@@ -436,8 +437,34 @@ const graphTags = computed(() => {
   return tags;
 });
 
-// ========= 维度图例 =========
+const useEntityTypes = computed(() => {
+  return (graphData.nodes || []).some(
+    (node) =>
+      node &&
+      (node.type !== undefined || node.entity_type !== undefined || node.entityType !== undefined)
+  );
+});
+
+const showDimensionFilter = computed(() => !useEntityTypes.value);
+
+// ========= 图例 =========
 const legendItems = computed(() => {
+  if (useEntityTypes.value) {
+    const counts = new Map();
+    (graphData.nodes || []).forEach((node) => {
+      const typeKey = normalizeEntityType(node?.type ?? node?.entity_type ?? node?.entityType);
+      counts.set(typeKey, (counts.get(typeKey) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => ({
+        type,
+        count,
+        color: getEntityTypeColor(type)
+      }));
+  }
+
   // 统计每个维度的节点数量
   const colorMap = buildNodeColorMap(graphData.nodes, graphData.edges);
   const dimensionCounts = new Map();

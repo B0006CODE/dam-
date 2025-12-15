@@ -3,6 +3,8 @@
  * 根据关系类型推断节点维度并分配颜色
  */
 
+import { getEntityTypeColor, normalizeEntityType } from './entityTypeColors';
+
 // 关系类型 → 维度映射
 const RELATION_TO_DIMENSION = {
     // 维度1：工程信息（红色系）
@@ -21,6 +23,20 @@ const RELATION_TO_DIMENSION = {
     // 维度4：病害处置（灰色系）
     '处置措施': 'treatment',
 };
+
+const getEdgeSourceId = (edge) =>
+    edge?.source_id ?? edge?.sourceId ?? edge?.source ?? edge?.from ?? edge?.start;
+
+const getEdgeTargetId = (edge) =>
+    edge?.target_id ?? edge?.targetId ?? edge?.target ?? edge?.to ?? edge?.end;
+
+const getEdgeRelationType = (edge) =>
+    edge?.type ?? edge?.r ?? edge?.relation ?? edge?.label ?? edge?.name ?? '';
+
+const getNodeExplicitType = (node) => node?.type ?? node?.entity_type ?? node?.entityType;
+
+const hasExplicitNodeTypes = (nodes = []) =>
+    nodes.some((node) => node && getNodeExplicitType(node) !== undefined);
 
 // 维度 → 颜色映射
 export const DIMENSION_COLORS = {
@@ -110,14 +126,16 @@ export function inferNodeDimension(nodeId, edges) {
     let bestPriority = 5;
 
     for (const edge of edges) {
-        const relationType = edge.type || edge.label || '';
+        const relationType = getEdgeRelationType(edge);
         const dimension = getDimensionByRelation(relationType);
 
         if (dimension === 'default') continue;
 
         // 检查节点是否参与这条边
-        const isSource = String(edge.source_id) === String(nodeId);
-        const isTarget = String(edge.target_id) === String(nodeId);
+        const sourceId = getEdgeSourceId(edge);
+        const targetId = getEdgeTargetId(edge);
+        const isSource = sourceId != null && String(sourceId) === String(nodeId);
+        const isTarget = targetId != null && String(targetId) === String(nodeId);
 
         if (!isSource && !isTarget) continue;
 
@@ -156,9 +174,23 @@ export function inferNodeDimension(nodeId, edges) {
  */
 export function buildNodeColorMap(nodes, edges) {
     const colorMap = new Map();
+    const useExplicitType = hasExplicitNodeTypes(nodes);
 
     for (const node of nodes) {
         const nodeId = String(node.id);
+
+        if (useExplicitType) {
+            const typeKey = normalizeEntityType(getNodeExplicitType(node));
+            const color = getEntityTypeColor(typeKey);
+
+            colorMap.set(nodeId, {
+                dimension: typeKey,
+                color,
+                lightColor: color,
+            });
+            continue;
+        }
+
         const dimension = inferNodeDimension(nodeId, edges);
         const colors = getDimensionColor(dimension);
 
@@ -199,8 +231,10 @@ export function filterByDimensions(nodes, edges, hiddenDimensions = []) {
 
     // 过滤边（两端节点都需要保留）
     const filteredEdges = edges.filter(edge => {
-        return remainingNodeIds.has(String(edge.source_id)) &&
-            remainingNodeIds.has(String(edge.target_id));
+        const s = getEdgeSourceId(edge);
+        const t = getEdgeTargetId(edge);
+        if (s == null || t == null) return false;
+        return remainingNodeIds.has(String(s)) && remainingNodeIds.has(String(t));
     });
 
     return { nodes: filteredNodes, edges: filteredEdges };

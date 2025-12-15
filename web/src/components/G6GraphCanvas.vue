@@ -48,6 +48,12 @@ const normalizedKeywords = computed(() =>
     .map((kw) => String(kw).toLowerCase())
 );
 
+const getEdgeSourceId = (edge) =>
+  edge?.source_id ?? edge?.sourceId ?? edge?.source ?? edge?.from ?? edge?.start;
+
+const getEdgeTargetId = (edge) =>
+  edge?.target_id ?? edge?.targetId ?? edge?.target ?? edge?.to ?? edge?.end;
+
 const textMeasureCtx = (() => {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
@@ -127,11 +133,14 @@ const buildGraphData = () => {
   const colorMap = buildNodeColorMap(nodes, edges);
   const degrees = new Map();
   nodes.forEach((n) => degrees.set(String(n.id), 0));
-  edges.forEach((e) => {
-    const s = String(e.source_id);
-    const t = String(e.target_id);
-    degrees.set(s, (degrees.get(s) || 0) + 1);
-    degrees.set(t, (degrees.get(t) || 0) + 1);
+  edges.forEach((edge) => {
+    const s = getEdgeSourceId(edge);
+    const t = getEdgeTargetId(edge);
+    if (s == null || t == null) return;
+    const sId = String(s);
+    const tId = String(t);
+    if (degrees.has(sId)) degrees.set(sId, (degrees.get(sId) || 0) + 1);
+    if (degrees.has(tId)) degrees.set(tId, (degrees.get(tId) || 0) + 1);
   });
 
   const keywordSet = normalizedKeywords.value;
@@ -141,8 +150,8 @@ const buildGraphData = () => {
     const label =
       node?.[props.labelField] ||
       node?.name ||
-      node?.id ||
       node?.label ||
+      node?.id ||
       '';
     return String(label);
   };
@@ -229,8 +238,12 @@ const buildGraphData = () => {
 
   const edgeData = edges
     .map((edge, idx) => {
-      const sourceId = String(edge.source_id);
-      const targetId = String(edge.target_id);
+      const sourceRaw = getEdgeSourceId(edge);
+      const targetRaw = getEdgeTargetId(edge);
+      if (sourceRaw == null || targetRaw == null) return null;
+
+      const sourceId = String(sourceRaw);
+      const targetId = String(targetRaw);
       if (!degrees.has(sourceId) || !degrees.has(targetId)) return null;
 
       const connectsHighlight =
@@ -341,34 +354,9 @@ const initGraph = () => {
     ].filter(Boolean),
     node: {
       type: 'circle',
-      style: {
-        fill: '#2b8af7',
-        stroke: '#c8dcff',
-        lineWidth: 1.4,
-        labelPlacement: 'center',
-        labelFill: '#ffffff',
-        labelFontSize: 12,
-        labelFontWeight: 700,
-        labelFontFamily: 'Microsoft YaHei, sans-serif',
-        labelWordWrap: true,
-        labelMaxWidth: '90%',
-        shadowColor: 'rgba(0, 0, 0, 0.25)',
-        shadowBlur: 12,
-        shadowOffsetY: 4
-      }
     },
     edge: {
       type: 'line',
-      style: {
-        stroke: '#e6edf7',
-        opacity: 0.7,
-        lineWidth: 1.2,
-        endArrow: true,
-        arrowSize: 10,
-        labelPlacement: 'center',
-        labelFontSize: 10,
-        labelFill: '#dbeafe'
-      }
     },
     layout: getLayoutConfig()
   });
