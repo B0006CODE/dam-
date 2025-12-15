@@ -1,53 +1,98 @@
 <template>
   <div class="knowledge-graph-result">
-    <div class="kg-header" v-if="!hideHeader">
-      <h4><DeploymentUnitOutlined /> 知识图谱推理结果</h4>
-      <div class="result-summary">
-        找到 {{ totalNodes }} 个节点、{{ totalRelations }} 个关系
+    <!-- 统计类结果展示 -->
+    <div v-if="isStatisticsResult" class="statistics-result">
+      <div class="stats-header">
+        <BarChartOutlined class="stats-icon" />
+        <span class="stats-title">知识图谱统计结果</span>
       </div>
-    </div>
-
-    <!-- 图谱可视化容器 -->
-    <div class="graph-visualization" ref="graphContainerRef" v-show="!isCollapsed && (totalNodes > 0 || totalRelations > 0)">
-      <GraphCanvas :graph-data="graphData" ref="graphContainer" style="height: 360px;">
-        <template #top>
-          <div class="graph-controls">
-            <a-button
-              @click="refreshGraph"
-              :loading="isRefreshing"
-              title="重新渲染图谱"
-              class="refresh-btn"
+      <div class="stats-summary">
+        <div class="stats-scope">{{ statisticsData.scope || '整个图谱' }}</div>
+        <div class="stats-total">
+          <span class="total-number">{{ statisticsData.total_count }}</span>
+          <span class="total-label">种类型</span>
+        </div>
+      </div>
+      <div class="stats-breakdown" v-if="Object.keys(statisticsData.results_by_type || {}).length > 0">
+        <div 
+          v-for="(typeData, typeName) in statisticsData.results_by_type" 
+          :key="typeName"
+          class="stat-category"
+        >
+          <div class="category-header">
+            <span class="category-name">{{ typeName }}</span>
+            <span class="category-count">{{ typeData.count }} 种</span>
+          </div>
+          <div class="category-entities">
+            <a-tag 
+              v-for="entity in (typeData.entities || []).slice(0, 10)" 
+              :key="entity"
+              class="entity-tag"
             >
-              <ReloadOutlined v-if="!isRefreshing" />
-            </a-button>
-            </div>
-        </template>
-      </GraphCanvas>
+              {{ entity }}
+            </a-tag>
+            <span v-if="(typeData.entities || []).length > 10" class="more-hint">
+              等 {{ (typeData.entities || []).length }} 项
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="kg-reasoning" v-show="!isCollapsed && reasoningPaths.length">
-      <div class="reasoning-header">
-        <span class="reasoning-title">推理链条</span>
-        <span class="reasoning-hint">共 {{ reasoningPaths.length }} 条路径</span>
+    <!-- 图谱搜索类结果展示 -->
+    <div v-else class="search-result">
+      <div class="kg-header" v-if="!hideHeader">
+        <h4><DeploymentUnitOutlined /> 知识图谱推理结果</h4>
+        <div class="result-summary">
+          找到 <strong>{{ totalNodes }}</strong> 个实体、<strong>{{ totalRelations }}</strong> 个关系
+          <span v-if="isTruncated" class="truncated-hint">
+            （显示前 {{ totalRelations }} 条，共 {{ totalTriplesCount }} 条）
+          </span>
+        </div>
       </div>
 
-      <div class="reasoning-path" v-for="(path, pIndex) in reasoningPaths" :key="'path_'+pIndex">
-        <a-timeline class="path-timeline">
-          <a-timeline-item v-for="(step, sIndex) in path" :key="'step_'+pIndex+'_'+sIndex">
-            <span class="entity">{{ step.source }}</span>
-            <span class="relation">{{ step.type }}</span>
-            <span class="entity">{{ step.target }}</span>
-          </a-timeline-item>
-        </a-timeline>
+      <!-- 推理链路（仅搜索类显示） -->
+      <div class="kg-reasoning" v-show="!isCollapsed && reasoningPaths.length > 0">
+        <div class="reasoning-header">
+          <span class="reasoning-title">
+            <BranchesOutlined /> 推理链路
+          </span>
+          <span class="reasoning-hint">共 {{ reasoningPaths.length }} 条路径</span>
+        </div>
+
+        <div class="reasoning-paths">
+          <div 
+            class="reasoning-path" 
+            v-for="(path, pIndex) in reasoningPaths" 
+            :key="'path_'+pIndex"
+          >
+            <div class="path-number">{{ pIndex + 1 }}</div>
+            <div class="path-content">
+              <template v-for="(step, sIndex) in path" :key="'step_'+pIndex+'_'+sIndex">
+                <span class="entity source">{{ step.source }}</span>
+                <span class="relation-arrow">
+                  <span class="arrow-line"></span>
+                  <span class="relation-label">{{ step.type }}</span>
+                  <span class="arrow-head">→</span>
+                </span>
+                <span class="entity target">{{ step.target }}</span>
+                <span v-if="sIndex < path.length - 1" class="path-separator">→</span>
+              </template>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onUpdated } from 'vue'
-import { DeploymentUnitOutlined, ReloadOutlined, CaretRightOutlined } from '@ant-design/icons-vue'
-import GraphCanvas from '../GraphCanvas.vue'
+import { computed, ref } from 'vue'
+import { 
+  DeploymentUnitOutlined, 
+  BarChartOutlined,
+  BranchesOutlined 
+} from '@ant-design/icons-vue'
 
 const props = defineProps({
   data: {
@@ -60,19 +105,59 @@ const props = defineProps({
   }
 })
 
-const activeKeys = ref(['entities'])
-const graphContainer = ref(null)
-const graphContainerRef = ref(null)
-const isVisible = ref(false)
-const isRefreshing = ref(false)
-// 内部折叠状态（默认不折叠）；当由父组件控制时，可忽略
 const isCollapsed = ref(false)
+
+// 英文关系类型到中文的映射
+const RELATION_TYPE_MAP = {
+  'OCCUR_AT': '发生于',
+  'TYPICAL_CAUSE': '典型病因',
+  'MAIN_CAUSE': '主要病因',
+  'TREATMENT_MEASURE': '处置措施',
+  'COMMON_DEFECT': '常见缺陷',
+  'TYPICAL_DEFECT': '典型缺陷',
+  'HAS_DEFECT': '存在缺陷',
+  'HAS_CAUSE': '存在病因',
+  'LOCATED_AT': '位于',
+  'BELONGS_TO': '属于',
+  'RELATED_TO': '相关',
+}
+
+// 将关系类型转换为中文
+const normalizeRelationType = (type) => {
+  if (!type) return '相关'
+  const upperType = type.toUpperCase()
+  return RELATION_TYPE_MAP[upperType] || RELATION_TYPE_MAP[type] || type
+}
+
+// 判断是否为统计类结果
+const isStatisticsResult = computed(() => {
+  if (!props.data || typeof props.data !== 'object') return false
+  return props.data.query_type === 'statistics'
+})
+
+// 统计数据
+const statisticsData = computed(() => {
+  if (!isStatisticsResult.value) return {}
+  return {
+    keyword: props.data.keyword || '',
+    query_labels: props.data.query_labels || [],
+    scope: props.data.scope || '整个图谱',
+    total_count: props.data.total_count || 0,
+    results_by_type: props.data.results_by_type || {},
+    text_summary: props.data.text_summary || ''
+  }
+})
 
 // 计算属性：解析图谱数据
 const graphData = computed(() => {
   const nodes = new Map()
   const edges = []
   let edgeId = 0
+
+  // 跳过统计类结果
+  if (isStatisticsResult.value) {
+    return { nodes: [], edges: [] }
+  }
 
   // 处理新格式数据：只关注 triples 字段
   if (props.data && typeof props.data === 'object' && 'triples' in props.data) {
@@ -103,17 +188,23 @@ const graphData = computed(() => {
           }
         }
 
-        // 添加边
+        // 添加边（避免重复）
         if (source && target && relation &&
             typeof source === 'string' &&
             typeof target === 'string' &&
             typeof relation === 'string') {
-          edges.push({
-            source_id: source,
-            target_id: target,
-            type: relation,
-            id: `edge_${edgeId++}`
-          })
+          const edgeKey = `${source}-${relation}-${target}`
+          const existingEdge = edges.find(e => 
+            e.source_id === source && e.target_id === target && e.type === relation
+          )
+          if (!existingEdge) {
+            edges.push({
+              source_id: source,
+              target_id: target,
+              type: relation,
+              id: `edge_${edgeId++}`
+            })
+          }
         }
       }
     })
@@ -125,38 +216,19 @@ const graphData = computed(() => {
   }
 })
 
-// 唯一实体列表
-const uniqueEntities = computed(() => {
-  return graphData.value.nodes
-})
-
-// 所有关系列表
-const allRelations = computed(() => {
-  return graphData.value.edges.map(edge => {
-    const sourceNode = graphData.value.nodes.find(n => n.id === edge.source_id)
-    const targetNode = graphData.value.nodes.find(n => n.id === edge.target_id)
-    return {
-      source: sourceNode?.name || edge.source_id,
-      target: targetNode?.name || edge.target_id,
-      type: edge.type
-    }
-  })
-})
-
-// 统计信息
+// 统计信息 - 使用 Set 确保准确去重
 const totalNodes = computed(() => graphData.value.nodes.length)
 const totalRelations = computed(() => graphData.value.edges.length)
 
-const reasoningTriples = computed(() => {
-  return allRelations.value.map((relation, index) => ({
-    id: `reasoning_${index}`,
-    source: relation.source || '未知实体',
-    type: relation.type || '相关',
-    target: relation.target || '未知实体'
-  }))
-})
-// 将三元组按连通关系合并为有序路径，提升可读性
+// 截断信息
+const isTruncated = computed(() => props.data?.is_truncated || false)
+const totalTriplesCount = computed(() => props.data?.total_triples || totalRelations.value)
+
+// 将三元组按连通关系合并为有序路径
 const reasoningPaths = computed(() => {
+  // 统计类不显示推理链路
+  if (isStatisticsResult.value) return []
+  
   const nodes = graphData.value.nodes
   const edges = graphData.value.edges
   if (!Array.isArray(nodes) || !Array.isArray(edges) || edges.length === 0) return []
@@ -166,379 +238,383 @@ const reasoningPaths = computed(() => {
     return node?.name || id
   }
 
+  // 构建出边映射
   const outMap = new Map()
-  const inSet = new Set()
+  const inDegree = new Map()
 
   edges.forEach(e => {
     if (!outMap.has(e.source_id)) outMap.set(e.source_id, [])
     outMap.get(e.source_id).push(e)
-    inSet.add(e.target_id)
+    
+    // 统计入度
+    inDegree.set(e.target_id, (inDegree.get(e.target_id) || 0) + 1)
   })
 
-  // 起点：有出度且入度为 0 的节点；若没有，回退到任意有出度的节点
-  let starts = Array.from(outMap.keys()).filter(k => !inSet.has(k))
-  if (starts.length === 0) starts = Array.from(outMap.keys())
+  // 找到所有入度为0的节点作为路径起点
+  const allNodeIds = new Set([...outMap.keys(), ...inDegree.keys()])
+  let startNodes = Array.from(allNodeIds).filter(id => !inDegree.has(id) || inDegree.get(id) === 0)
+  
+  // 如果没有入度为0的节点（环形图），选择有出边的节点
+  if (startNodes.length === 0) {
+    startNodes = Array.from(outMap.keys())
+  }
 
   const paths = []
-  const MAX_STEPS = 10
+  const visitedEdges = new Set()
+  const MAX_PATHS = 3  // 限制最大路径数，提高性能和可读性
+  const MAX_STEPS = 5  // 限制单条路径最大步数
 
-  for (const start of starts) {
-    let current = start
-    const visited = new Set([current])
-    const path = []
-    let steps = 0
-
-    while (outMap.has(current) && steps < MAX_STEPS) {
-      const nextEdge = outMap.get(current).find(e => !visited.has(e.target_id))
-      if (!nextEdge) break
-      path.push({
-        source: nameOf(nextEdge.source_id),
-        type: nextEdge.type || '相关',
-        target: nameOf(nextEdge.target_id)
-      })
-      current = nextEdge.target_id
-      visited.add(current)
-      steps += 1
+  for (const start of startNodes) {
+    if (paths.length >= MAX_PATHS) break
+    
+    const stack = [{ nodeId: start, path: [], visited: new Set([start]) }]
+    
+    while (stack.length > 0 && paths.length < MAX_PATHS) {
+      const { nodeId, path, visited } = stack.pop()
+      
+      const outEdges = outMap.get(nodeId) || []
+      let extended = false
+      
+      for (const edge of outEdges) {
+        const edgeKey = `${edge.source_id}-${edge.type}-${edge.target_id}`
+        
+        if (!visitedEdges.has(edgeKey) && !visited.has(edge.target_id) && path.length < MAX_STEPS) {
+          const newPath = [...path, {
+            source: nameOf(edge.source_id),
+            type: normalizeRelationType(edge.type),
+            target: nameOf(edge.target_id)
+          }]
+          
+          const newVisited = new Set(visited)
+          newVisited.add(edge.target_id)
+          
+          stack.push({
+            nodeId: edge.target_id,
+            path: newPath,
+            visited: newVisited
+          })
+          
+          visitedEdges.add(edgeKey)
+          extended = true
+        }
+      }
+      
+      // 如果无法继续扩展且路径非空，保存路径
+      if (!extended && path.length > 0) {
+        paths.push(path)
+      }
     }
-
-    if (path.length) paths.push(path)
   }
 
-  // 如果无法构成路径，则以单步形式回退（保证最少也能展示）
-  if (paths.length === 0) {
-    return reasoningTriples.value.map(t => [{ source: t.source, type: t.type, target: t.target }])
+  // 如果没有找到路径，将每个三元组作为单独的路径
+  if (paths.length === 0 && edges.length > 0) {
+    return edges.slice(0, MAX_PATHS).map(e => [{
+      source: nameOf(e.source_id),
+      type: normalizeRelationType(e.type),
+      target: nameOf(e.target_id)
+    }])
   }
 
-  return paths
+  // 去重：移除内容相同的路径（英文/中文关系类型已统一）
+  const pathKeys = new Set()
+  const uniquePaths = paths.filter(path => {
+    const key = path.map(step => `${step.source}|${step.type}|${step.target}`).join('→')
+    if (pathKeys.has(key)) return false
+    pathKeys.add(key)
+    return true
+  })
+
+  // 按路径长度排序，优先显示较长的路径
+  return uniquePaths.sort((a, b) => b.length - a.length).slice(0, MAX_PATHS)
 })
-
-// 检查容器是否可见
-const checkVisibility = () => {
-  if (graphContainerRef.value) {
-    const rect = graphContainerRef.value.getBoundingClientRect();
-    isVisible.value = rect.width > 0 && rect.height > 0;
-    console.log('GraphContainer visibility:', isVisible.value, 'dimensions:', rect.width, 'x', rect.height);
-  }
-};
-
-// 当数据变化时强制刷新图表
-watch(() => props.data, async (newData, oldData) => {
-  // 确保数据确实发生了变化
-  if (newData !== oldData) {
-    await nextTick();
-    if (graphContainer.value && typeof graphContainer.value.refreshGraph === 'function') {
-      // 增加延迟确保容器完全展开
-      setTimeout(() => {
-        graphContainer.value.refreshGraph();
-      }, 300);
-    }
-  }
-}, { deep: true });
-
-// 组件挂载后确保图表正确初始化
-onMounted(() => {
-  // 检查可见性
-  checkVisibility();
-
-  // 如果已经有数据，确保图表初始化
-  if (graphData.value.nodes.length > 0 || graphData.value.edges.length > 0) {
-    nextTick(() => {
-      if (graphContainer.value && typeof graphContainer.value.refreshGraph === 'function') {
-        // 增加延迟确保容器完全展开
-        setTimeout(() => {
-          graphContainer.value.refreshGraph();
-        }, 300);
-      }
-    });
-  }
-
-  // 添加一个间隔检查器，定期检查容器是否可见
-  const visibilityChecker = setInterval(() => {
-    checkVisibility();
-    if (isVisible.value && graphContainer.value && typeof graphContainer.value.refreshGraph === 'function') {
-      console.log('GraphContainer is now visible, rendering graph');
-      graphContainer.value.refreshGraph();
-      clearInterval(visibilityChecker);
-    }
-  }, 500);
-
-  // 5秒后清除检查器
-  setTimeout(() => {
-    clearInterval(visibilityChecker);
-  }, 5000);
-});
-
-// 组件更新后再次确保图表正确初始化
-onUpdated(() => {
-  // 检查可见性
-  checkVisibility();
-
-  // 如果已经有数据，确保图表初始化
-  if (graphData.value.nodes.length > 0 || graphData.value.edges.length > 0) {
-    nextTick(() => {
-      if (graphContainer.value && typeof graphContainer.value.refreshGraph === 'function') {
-        // 增加延迟确保容器完全展开
-        setTimeout(() => {
-          graphContainer.value.refreshGraph();
-        }, 300);
-      }
-    });
-  }
-});
-
-// 添加供父组件调用的刷新方法
-const refreshGraph = () => {
-  console.log('KnowledgeGraphResult: refreshGraph called');
-  isRefreshing.value = true;
-  if (graphContainer.value && typeof graphContainer.value.refreshGraph === 'function') {
-    // 增加延迟确保容器完全展开
-    setTimeout(() => {
-      graphContainer.value.refreshGraph();
-      setTimeout(() => {
-        isRefreshing.value = false;
-      }, 500);
-    }, 300);
-  } else {
-    isRefreshing.value = false;
-  }
-};
-
-
-// 向父组件暴露方法
-defineExpose({
-  refreshGraph
-});
 </script>
 
 <style lang="less" scoped>
 .knowledge-graph-result {
   background: var(--gray-0);
-  border-radius: 8px;
-  // border: 1px solid var(--gray-200);
+  border-radius: 12px;
 
-  .kg-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 12px 16px;
-    // border-bottom: 1px solid var(--gray-200);
-    background: var(--gray-25);
+  // ============ 统计类结果样式 ============
+  .statistics-result {
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: 12px;
+    border: 1px solid #bae6fd;
 
-    h4 {
-      margin: 0 0 4px 0;
-      color: var(--main-color);
-      font-size: 14px;
-      font-weight: 500;
+    .stats-header {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      margin-bottom: 16px;
+
+      .stats-icon {
+        font-size: 20px;
+        color: #0284c7;
+      }
+
+      .stats-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #0c4a6e;
+      }
     }
 
-    .result-summary {
-      font-size: 12px;
-      color: var(--gray-600);
-    }
-
-    .collapse-btn {
-      min-width: 24px;
-      width: 24px;
-      height: 24px;
-      padding: 0;
+    .stats-summary {
       display: flex;
       align-items: center;
-      justify-content: center;
-    }
-  }
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
-  .graph-visualization {
-    margin: 8px;
-    background: var(--gray-0);
-    border-radius: 6px;
-    border: 1px solid var(--gray-200);
-    min-height: 350px;
+      .stats-scope {
+        font-size: 14px;
+        color: #64748b;
+      }
 
-    .graph-controls {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      z-index: 1000;
-
-      .refresh-btn {
-        width: 24px;
-        height: 24px;
-        min-width: 24px;
-        padding: 0;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid var(--gray-300);
-        color: var(--gray-600);
-        font-size: 12px;
+      .stats-total {
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: baseline;
+        gap: 4px;
 
-        &:hover {
-          background: rgba(255, 255, 255, 1);
-          border-color: var(--main-color);
-          color: var(--main-color);
+        .total-number {
+          font-size: 28px;
+          font-weight: 700;
+          color: #0284c7;
+          line-height: 1;
+        }
+
+        .total-label {
+          font-size: 13px;
+          color: #64748b;
         }
       }
     }
-  }
 
-  .kg-details {
-    margin: 8px;
-    background: var(--gray-0);
-    border-radius: 6px;
-    border: 1px solid var(--gray-200);
-
-    :deep(.ant-collapse-header) {
-      background: var(--gray-50) !important;
-      border-radius: 4px !important;
-      margin-bottom: 2px;
-      font-size: 13px;
-    }
-
-    .entities-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding: 6px 0;
-
-      .entity-tag {
-        margin: 0;
-        cursor: default;
-        font-size: 11px;
-        padding: 2px 6px;
-      }
-    }
-
-    .relations-list {
+    .stats-breakdown {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 12px;
 
-      .relation-item {
-        padding: 8px 10px;
-        background: var(--gray-50);
-        border-radius: 4px;
-        border-left: 2px solid var(--main-color);
+      .stat-category {
+        background: white;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
-        .relation-content {
+        .category-header {
           display: flex;
+          justify-content: space-between;
           align-items: center;
-          gap: 8px;
-          font-size: 12px;
+          margin-bottom: 8px;
 
-          .entity-name {
-            font-weight: 500;
-            color: var(--main-color);
-            background: var(--main-50);
-            padding: 2px 6px;
-            border-radius: 10px;
+          .category-name {
+            font-weight: 600;
+            color: #1e293b;
           }
 
-          .relation-type {
-            color: var(--main-color);
-            font-weight: 500;
-            background: var(--gray-100);
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid var(--gray-300);
+          .category-count {
+            font-size: 13px;
+            color: #0284c7;
+            background: #e0f2fe;
+            padding: 2px 8px;
+            border-radius: 12px;
+          }
+        }
+
+        .category-entities {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+
+          .entity-tag {
+            margin: 0;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-size: 12px;
+          }
+
+          .more-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            align-self: center;
           }
         }
       }
     }
-
-    .raw-data {
-      background: var(--gray-50);
-      padding: 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      line-height: 1.4;
-      max-height: 200px;
-      overflow-y: auto;
-      margin: 0;
-      color: var(--gray-700);
-    }
   }
 
-  .kg-reasoning {
-    margin: 12px 8px 10px;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--gray-200);
-    background: var(--gray-0);
-
-    .reasoning-header {
+  // ============ 搜索类结果样式 ============
+  .search-result {
+    .kg-header {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 8px;
+      gap: 8px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 12px 12px 0 0;
 
-      .reasoning-title {
+      h4 {
+        margin: 0;
+        color: var(--main-color);
+        font-size: 14px;
         font-weight: 600;
-        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
 
-      .reasoning-hint {
-        font-size: 12px;
-        color: var(--gray-500);
+      .result-summary {
+        font-size: 13px;
+        color: var(--gray-600);
+
+        strong {
+          color: var(--main-color);
+          font-weight: 600;
+        }
+        
+        .truncated-hint {
+          font-size: 12px;
+          color: #f59e0b;
+          margin-left: 4px;
+        }
       }
     }
 
-    .reasoning-path {
-      background: var(--gray-0);
-      border: 1px solid var(--gray-150);
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin-bottom: 10px;
-    }
+    // ============ 推理链路样式 ============
+    .kg-reasoning {
+      margin: 12px 8px 10px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #e9d5ff;
+      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
 
-    :deep(.path-timeline.ant-timeline) {
-      margin: 0;
-      padding: 6px 0 0 0;
-    }
+      .reasoning-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
 
-    :deep(.path-timeline .ant-timeline-item) {
-      padding-bottom: 10px;
-    }
+        .reasoning-title {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-weight: 600;
+          font-size: 14px;
+          color: #7c3aed;
+        }
 
-    :deep(.path-timeline .ant-timeline-item-tail) {
-      border-inline-start: 2px solid var(--gray-200);
-    }
+        .reasoning-hint {
+          font-size: 12px;
+          color: #a78bfa;
+          background: white;
+          padding: 2px 8px;
+          border-radius: 10px;
+        }
+      }
 
-    :deep(.path-timeline .ant-timeline-item-head) {
-      background-color: var(--main-50);
-      border-color: var(--main-color);
-    }
+      .reasoning-paths {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
 
-    :deep(.path-timeline .ant-timeline-item-content) {
-      font-size: 13px;
-      color: var(--gray-900);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
+      .reasoning-path {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        background: white;
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 1px solid #ede9fe;
+        transition: all 0.2s ease;
 
-    .entity {
-      padding: 2px 6px;
-      border-radius: 10px;
-      background: var(--gray-100);
-      font-weight: 500;
-    }
+        &:hover {
+          border-color: #c4b5fd;
+          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
+        }
 
-    .relation {
-      padding: 2px 6px;
-      border-radius: 4px;
-      border: 1px solid var(--main-color);
-      color: var(--main-color);
-      font-weight: 600;
-      font-size: 12px;
+        .path-number {
+          flex-shrink: 0;
+          width: 24px;
+          height: 24px;
+          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+          color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .path-content {
+          flex: 1;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .entity {
+          padding: 3px 10px;
+          border-radius: 14px;
+          font-weight: 500;
+
+          &.source {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+          }
+
+          &.target {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534;
+            border: 1px solid #86efac;
+          }
+        }
+
+        .relation-arrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: #7c3aed;
+
+          .arrow-line {
+            width: 16px;
+            height: 2px;
+            background: linear-gradient(90deg, #c4b5fd 0%, #a78bfa 100%);
+            border-radius: 1px;
+          }
+
+          .relation-label {
+            padding: 2px 8px;
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #7c3aed;
+          }
+
+          .arrow-head {
+            color: #a78bfa;
+            font-weight: bold;
+          }
+        }
+
+        .path-separator {
+          color: #c4b5fd;
+          margin: 0 2px;
+        }
+      }
     }
   }
 }
-
 </style>

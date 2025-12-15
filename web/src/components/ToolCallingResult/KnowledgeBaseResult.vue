@@ -7,53 +7,8 @@
       </div>
     </div>
 
-    <div class="kb-results">
-      <div
-        v-for="fileGroup in fileGroups"
-        :key="fileGroup.filename"
-        class="file-group"
-      >
-        <!-- 文件级别的头部 -->
-        <div
-          class="file-header"
-          :class="{ 'expanded': expandedFiles.has(fileGroup.filename) }"
-          @click="toggleFile(fileGroup.filename)"
-        >
-          <div class="file-info">
-            <FileOutlined />
-            <span class="file-name">{{ fileGroup.filename }}</span>
-            <span class="chunk-count">{{ fileGroup.chunks.length }} chunks</span>
-          </div>
-          <div class="expand-icon">
-            <DownOutlined :class="{ 'rotated': expandedFiles.has(fileGroup.filename) }" />
-          </div>
-        </div>
+    <!-- 文件分组列表已隐藏，只显示摘要统计 -->
 
-        <!-- 展开的chunks列表 -->
-        <div
-          v-if="expandedFiles.has(fileGroup.filename)"
-          class="chunks-container"
-        >
-          <div
-            v-for="(chunk, index) in fileGroup.chunks"
-            :key="chunk.id"
-            class="chunk-item"
-            :class="{ 'high-relevance': chunk.score > 0.5 }"
-            @click="showChunkDetail(chunk, index + 1)"
-          >
-            <div class="chunk-summary">
-              <span class="chunk-index">#{{ index + 1 }}</span>
-              <div class="chunk-scores">
-                <span class="score-item">相似度 {{ (chunk.score * 100).toFixed(0) }}%</span>
-                <span v-if="chunk.rerank_score" class="score-item">重排序 {{ (chunk.rerank_score * 100).toFixed(0) }}%</span>
-              </div>
-              <span class="chunk-preview">{{ getPreviewText(chunk.content) }}</span>
-              <EyeOutlined class="view-icon" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div v-if="data.length === 0" class="no-results">
       <p>未找到相关知识库内容</p>

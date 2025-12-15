@@ -16,11 +16,28 @@ class GraphQueryModel(BaseModel):
 
 class GraphStatisticsModel(BaseModel):
     """知识图谱统计工具的参数模型"""
-    keyword: str = Field(description="要统计的关键词，如'重力坝'、'病害'、'裂缝'等。")
-    stat_type: str = Field(
-        default="count_related",
-        description="统计类型：count_related(统计相关实体数量)、count_by_type(按类型分组统计)、list_entities(列出具体实体名称)"
+    keyword: str = Field(
+        default="",
+        description="可选的实体关键词，如'重力坝'、'土石坝'、'溢洪道'等。如果用户没有指定具体实体，留空则查询整个图谱。"
     )
+    query_type: str = Field(
+        default="病害",
+        description="查询类型：'病害'(查询常见缺陷、病因等)、'解决方法'(查询处置措施、整改措施等)、'全部'(查询所有相关信息)"
+    )
+
+
+# 语义映射：用户术语 -> 实际关系类型
+SEMANTIC_MAPPING = {
+    "病害": ["常见缺陷", "COMMON_DEFECT", "典型病因", "TYPICAL_CAUSE", "主要病因", "MAIN_CAUSE", "存在隐患", "典型缺陷", "TYPICAL_DEFECT"],
+    "缺陷": ["常见缺陷", "COMMON_DEFECT", "典型缺陷", "TYPICAL_DEFECT"],
+    "病因": ["典型病因", "TYPICAL_CAUSE", "主要病因", "MAIN_CAUSE"],
+    "原因": ["典型病因", "TYPICAL_CAUSE", "主要病因", "MAIN_CAUSE"],
+    "隐患": ["存在隐患"],
+    "解决方法": ["处置措施", "TREATMENT_MEASURE", "整改措施"],
+    "措施": ["处置措施", "TREATMENT_MEASURE", "整改措施"],
+    "处理": ["处置措施", "TREATMENT_MEASURE", "整改措施"],
+    "整改": ["整改措施"],
+}
 
 
 def get_static_tools(input_context: dict | None = None) -> list:
@@ -36,100 +53,153 @@ def get_static_tools(input_context: dict | None = None) -> list:
         try:
             logger.debug(f"Querying knowledge graph [{graph_name}] with: {query}")
             result = graph_base.query_node(query, hops=2, kgdb_name=graph_name, return_format="triples")
+            # 添加查询类型元数据，便于前端区分搜索和统计查询
+            if isinstance(result, dict):
+                result["query_type"] = "search"
+                result["query"] = query
             return result
         except Exception as e:
             logger.error(f"Knowledge graph query error: {e}, {traceback.format_exc()}")
             return f"知识图谱查询失败: {str(e)}"
 
-    async def graph_statistics(keyword: str, stat_type: str = "count_related") -> Any:
+    async def graph_statistics(keyword: str = "", query_type: str = "病害") -> Any:
         """知识图谱统计工具 - 用于回答统计性问题"""
         try:
-            logger.debug(f"统计知识图谱 [{graph_name}] 关键词: {keyword}, 类型: {stat_type}")
+            logger.debug(f"统计知识图谱 [{graph_name}] 关键词: {keyword}, 查询类型: {query_type}")
             
             if not graph_base.is_running():
                 return "知识图谱数据库未连接，无法进行统计查询。"
             
             graph_base.use_database(graph_name)
             
+            # 确定要查询的关系类型
+            relation_types_to_query = []
+            query_labels = []
+            
+            # 解析查询类型（支持多种类型如"病害和解决方法"）
+            if "全部" in query_type or ("病害" in query_type and ("解决" in query_type or "措施" in query_type)):
+                relation_types_to_query.extend(SEMANTIC_MAPPING.get("病害", []))
+                relation_types_to_query.extend(SEMANTIC_MAPPING.get("解决方法", []))
+                query_labels = ["病害", "解决方法"]
+            elif "病害" in query_type or "缺陷" in query_type or "病因" in query_type or "隐患" in query_type:
+                relation_types_to_query.extend(SEMANTIC_MAPPING.get("病害", []))
+                query_labels = ["病害"]
+            elif "解决" in query_type or "措施" in query_type or "处理" in query_type or "整改" in query_type:
+                relation_types_to_query.extend(SEMANTIC_MAPPING.get("解决方法", []))
+                query_labels = ["解决方法"]
+            else:
+                # 尝试从SEMANTIC_MAPPING中查找
+                for key, values in SEMANTIC_MAPPING.items():
+                    if key in query_type:
+                        relation_types_to_query.extend(values)
+                        query_labels.append(key)
+                        break
+                
+                if not relation_types_to_query:
+                    relation_types_to_query.extend(SEMANTIC_MAPPING.get("病害", []))
+                    query_labels = ["病害"]
+            
+            # 去重
+            relation_types_to_query = list(set(relation_types_to_query))
+            
             with graph_base.driver.session() as session:
-                if stat_type == "count_related":
-                    # 统计与关键词相关的实体数量
-                    result = session.run("""
-                        MATCH (n:Entity)
-                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword)
-                        WITH count(n) as direct_count
-                        OPTIONAL MATCH (n:Entity)-[r:RELATION]-(m:Entity)
-                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword)
-                        WITH direct_count, count(DISTINCT m) as related_count, count(r) as relation_count
-                        RETURN direct_count, related_count, relation_count
-                    """, keyword=keyword).single()
-                    
-                    direct = result["direct_count"] if result else 0
-                    related = result["related_count"] if result else 0
-                    relations = result["relation_count"] if result else 0
-                    
-                    return (
-                        f"【知识图谱统计结果】\n"
-                        f"关键词：{keyword}\n"
-                        f"- 直接包含'{keyword}'的实体数量：{direct} 个\n"
-                        f"- 与'{keyword}'相关联的实体数量：{related} 个\n"
-                        f"- 相关的关系数量：{relations} 条\n"
-                        f"- 总计涉及实体：{direct + related} 个"
-                    )
+                results_by_type = {}
+                total_count = 0
                 
-                elif stat_type == "count_by_type":
-                    # 按关系类型分组统计
-                    results = session.run("""
-                        MATCH (n:Entity)-[r:RELATION]->(m:Entity)
-                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword) 
-                           OR toLower(m.entity_id) CONTAINS toLower($keyword)
-                        RETURN r.type as relation_type, count(*) as count
-                        ORDER BY count DESC
-                        LIMIT 20
-                    """, keyword=keyword)
+                for rel_type in relation_types_to_query:
+                    if keyword:
+                        # 有实体关键词：查询特定实体的相关信息
+                        results = session.run("""
+                            MATCH (n:Entity)-[r:RELATION]->(m:Entity)
+                            WHERE toLower(n.name) CONTAINS toLower($keyword)
+                              AND r.type = $rel_type
+                            RETURN DISTINCT m.name as target_entity, r.type as relation_type
+                            ORDER BY target_entity
+                        """, keyword=keyword, rel_type=rel_type)
+                    else:
+                        # 无实体关键词：查询整个图谱
+                        results = session.run("""
+                            MATCH (n:Entity)-[r:RELATION]->(m:Entity)
+                            WHERE r.type = $rel_type
+                            RETURN DISTINCT m.name as target_entity, r.type as relation_type
+                            ORDER BY target_entity
+                        """, rel_type=rel_type)
                     
-                    stats = []
-                    total = 0
+                    entities = []
                     for record in results:
-                        rel_type = record["relation_type"] or "未知类型"
-                        count = record["count"]
-                        total += count
-                        stats.append(f"  - {rel_type}: {count} 条")
+                        entity = record["target_entity"]
+                        if entity and entity not in entities:
+                            entities.append(entity)
                     
-                    if not stats:
-                        return f"未找到与'{keyword}'相关的统计数据。"
-                    
-                    return (
-                        f"【知识图谱分类统计】\n"
-                        f"关键词：{keyword}\n"
-                        f"按关系类型统计（共 {total} 条关系）：\n" + "\n".join(stats)
-                    )
+                    if entities:
+                        # 将中英文关系类型映射回中文
+                        display_type = rel_type
+                        if rel_type == "COMMON_DEFECT":
+                            display_type = "常见缺陷"
+                        elif rel_type == "TYPICAL_CAUSE":
+                            display_type = "典型病因"
+                        elif rel_type == "MAIN_CAUSE":
+                            display_type = "主要病因"
+                        elif rel_type == "TREATMENT_MEASURE":
+                            display_type = "处置措施"
+                        elif rel_type == "TYPICAL_DEFECT":
+                            display_type = "典型缺陷"
+                        
+                        if display_type not in results_by_type:
+                            results_by_type[display_type] = []
+                        results_by_type[display_type].extend(entities)
+                        total_count += len(entities)
                 
-                elif stat_type == "list_entities":
-                    # 列出具体实体名称
-                    results = session.run("""
-                        MATCH (n:Entity)
-                        WHERE toLower(n.entity_id) CONTAINS toLower($keyword)
-                        RETURN DISTINCT n.entity_id as entity_name
-                        ORDER BY entity_name
-                        LIMIT 50
-                    """, keyword=keyword)
-                    
-                    entities = [record["entity_name"] for record in results]
-                    
-                    if not entities:
-                        return f"未找到包含'{keyword}'的实体。"
-                    
-                    entity_list = "\n".join([f"  {i+1}. {e}" for i, e in enumerate(entities)])
-                    return (
-                        f"【知识图谱实体列表】\n"
-                        f"关键词：{keyword}\n"
-                        f"共找到 {len(entities)} 个相关实体：\n{entity_list}"
-                        + (f"\n（仅显示前50个）" if len(entities) == 50 else "")
-                    )
+                # 去重每个类型的结果
+                for rel_type in results_by_type:
+                    results_by_type[rel_type] = list(dict.fromkeys(results_by_type[rel_type]))
                 
-                else:
-                    return f"不支持的统计类型: {stat_type}，支持的类型: count_related, count_by_type, list_entities"
+                # 重新计算总数
+                all_entities = []
+                for entities in results_by_type.values():
+                    all_entities.extend(entities)
+                unique_entities = list(dict.fromkeys(all_entities))
+                
+                if not results_by_type:
+                    scope = f"'{keyword}'相关的" if keyword else "整个图谱中的"
+                    return {
+                        "query_type": "statistics",
+                        "keyword": keyword,
+                        "query_labels": query_labels,
+                        "total_count": 0,
+                        "results_by_type": {},
+                        "message": f"未找到{scope}{'/'.join(query_labels)}数据。"
+                    }
+                
+                # 构建结构化输出
+                scope = f"'{keyword}'相关的" if keyword else "整个图谱中的"
+                
+                # 同时生成文本摘要供大模型使用
+                output_parts = [
+                    f"【知识图谱统计结果】",
+                    f"查询范围：{scope}{'/'.join(query_labels)}",
+                    f"共找到 {len(unique_entities)} 种不同的{'/'.join(query_labels)}类型",
+                    "",
+                    "按关系类型分类统计："
+                ]
+                
+                for rel_type, entities in sorted(results_by_type.items(), key=lambda x: len(x[1]), reverse=True):
+                    count = len(entities)
+                    preview = "、".join(entities[:8])
+                    if len(entities) > 8:
+                        preview += f"...等"
+                    output_parts.append(f"  ▪ {rel_type}：{count} 种")
+                    output_parts.append(f"    包括：{preview}")
+                
+                return {
+                    "query_type": "statistics",
+                    "keyword": keyword,
+                    "query_labels": query_labels,
+                    "scope": scope,
+                    "total_count": len(unique_entities),
+                    "results_by_type": {k: {"count": len(v), "entities": v} for k, v in results_by_type.items()},
+                    "text_summary": "\n".join(output_parts)
+                }
                     
         except Exception as e:
             logger.error(f"知识图谱统计错误: {e}, {traceback.format_exc()}")
@@ -148,8 +218,10 @@ def get_static_tools(input_context: dict | None = None) -> list:
         name="knowledge_graph_statistics",
         description=(
             f"使用知识图谱（数据库：{graph_name}）进行统计查询。"
-            "当用户询问'有多少'、'数量是多少'、'统计一下'、'一共有几个'等统计性问题时，优先使用此工具。"
-            "可以统计与关键词相关的实体数量、按类型分组统计、或列出具体实体名称。"
+            "当用户询问'有多少'、'数量是多少'、'统计一下'、'有哪些'等统计性问题时，优先使用此工具。"
+            "参数说明：keyword为可选的实体关键词（如'重力坝'），不指定则查询整个图谱；"
+            "query_type可选'病害'(常见缺陷/病因)、'解决方法'(处置措施/整改措施)、'全部'、或'病害和解决方法'等组合。"
+            "例如：'有多少种病害'→keyword='', query_type='病害'；'重力坝有多少种病害和解决方法'→keyword='重力坝', query_type='病害和解决方法'"
         ),
         args_schema=GraphStatisticsModel,
         metadata={"graph_name": graph_name, "tag": ["knowledge_graph", "statistics"]},

@@ -243,18 +243,34 @@ async def get_subgraph(
 @graph.get("/lightrag/databases")
 async def get_lightrag_databases(current_user: User = Depends(get_admin_user)):
     """
-    获取所有可用的 LightRAG 数据库
+    获取所有可用的知识图谱数据库（Neo4j）
 
     Returns:
-        可用的 LightRAG 数据库列表
+        可用的图数据库列表
     """
     try:
-        lightrag_databases = knowledge_base.get_lightrag_databases()
-        return {"success": True, "data": {"databases": lightrag_databases}}
+        databases = []
+        
+        # 获取 Neo4j 图数据库信息
+        try:
+            if graph_base.is_running():
+                neo4j_info = graph_base.get_graph_info()
+                if neo4j_info:
+                    databases.append({
+                        "db_id": neo4j_info.get("graph_name", "neo4j"),
+                        "name": f"大坝安全知识图谱",
+                        "type": "neo4j",
+                        "entity_count": neo4j_info.get("entity_count", 0),
+                        "relationship_count": neo4j_info.get("relationship_count", 0),
+                    })
+        except Exception as e:
+            logger.warning(f"获取 Neo4j 数据库信息失败: {e}")
+        
+        return {"success": True, "data": {"databases": databases}}
 
     except Exception as e:
-        logger.error(f"获取 LightRAG 数据库列表失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取 LightRAG 数据库列表失败: {str(e)}")
+        logger.error(f"获取图数据库列表失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取图数据库列表失败: {str(e)}")
 
 
 # =============================================================================

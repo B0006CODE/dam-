@@ -162,19 +162,32 @@ const kbOptionsWithStats = computed(() => {
   }));
 });
 
+// 读取图谱别名（与GraphView保持一致）
+const loadGraphAliases = () => {
+  try {
+    const raw = localStorage.getItem('graph_aliases');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+};
+const graphAliases = ref(loadGraphAliases());
+
 // 带统计信息的图谱选项
 const graphOptionsWithStats = computed(() => {
   return graphOptionsRaw.value.map(db => {
     const stats = graphStats.value[db.db_id];
+    const alias = graphAliases.value[db.db_id];
     return {
       value: db.db_id,
-      name: db.name || db.db_id,
+      name: alias || db.name || db.db_id,
       entityCount: stats?.total_nodes,
       relationCount: stats?.total_edges,
       isTruncated: stats?.is_truncated || false
     };
   });
 });
+
 
 // 格式化数量显示
 const formatCount = (count) => {
@@ -258,7 +271,7 @@ const loadGraphOptions = async () => {
   try {
     // 获取 LightRAG 数据库列表
     const res = await lightragApi.getDatabases();
-    graphOptionsRaw.value = res?.databases || [];
+    graphOptionsRaw.value = res?.data?.databases || res?.databases || [];
     
     // 为每个图谱获取统计信息
     for (const db of graphOptionsRaw.value) {

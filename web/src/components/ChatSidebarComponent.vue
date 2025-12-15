@@ -10,7 +10,7 @@
           </div>
         </div>
         <div
-          v-else
+          v-if="false"
           class="agent-selector"
           @click="openAgentModal"
         >

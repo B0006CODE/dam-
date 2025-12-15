@@ -1071,7 +1071,7 @@ const parseKnowledgeGraphContent = (rawContent) => {
     } else {
       const fallbackTriples = parseTriplesFromJsonBlocks(trimmed);
       if (fallbackTriples.length > 0) {
-        return { triples: fallbackTriples };
+        return { triples: fallbackTriples, query_type: 'search' };
       }
       return null;
     }
@@ -1079,27 +1079,38 @@ const parseKnowledgeGraphContent = (rawContent) => {
 
   if (Array.isArray(data)) {
     const triples = data.map(normalizeTriple).filter(Boolean);
-    return triples.length ? { triples } : null;
+    return triples.length ? { triples, query_type: 'search' } : null;
   }
 
   if (data && typeof data === 'object') {
+    // 处理统计结果（直接返回，保留所有元数据）
+    if (data.query_type === 'statistics') {
+      return data;
+    }
+    
+    // 处理搜索结果（保留 query_type）
+    if (data.query_type === 'search' && Array.isArray(data.triples)) {
+      const triples = data.triples.map(normalizeTriple).filter(Boolean);
+      if (triples.length) return { ...data, triples };
+    }
+    
     if (Array.isArray(data.triples)) {
       const triples = data.triples.map(normalizeTriple).filter(Boolean);
-      if (triples.length) return { triples };
+      if (triples.length) return { triples, query_type: data.query_type || 'search' };
     }
 
     if (data.result && Array.isArray(data.result.triples)) {
       const triples = data.result.triples.map(normalizeTriple).filter(Boolean);
-      if (triples.length) return { triples };
+      if (triples.length) return { triples, query_type: 'search' };
     }
 
     if (Array.isArray(data.data)) {
       const triples = data.data.map(normalizeTriple).filter(Boolean);
-      if (triples.length) return { triples };
+      if (triples.length) return { triples, query_type: 'search' };
     }
 
     const singleTriple = normalizeTriple(data);
-    if (singleTriple) return { triples: [singleTriple] };
+    if (singleTriple) return { triples: [singleTriple], query_type: 'search' };
   }
 
   return null;
@@ -1235,6 +1246,7 @@ const collectKnowledgeGraphData = (messages) => {
 
   const triples = [];
   const tripleKeys = new Set();
+  let statisticsResult = null;  // 保存最后一个统计结果
 
   messages.forEach((msg) => {
     if (!msg || msg.type !== 'ai') return;
@@ -1248,6 +1260,15 @@ const collectKnowledgeGraphData = (messages) => {
       if (!rawContent) return;
 
       const parsed = parseKnowledgeGraphContent(rawContent);
+      if (!parsed) return;
+      
+      // 处理统计结果
+      if (parsed.query_type === 'statistics') {
+        statisticsResult = parsed;
+        return;
+      }
+      
+      // 处理搜索结果（三元组）
       if (parsed?.triples?.length) {
         parsed.triples.forEach((triple) => {
           const key = triple.join('||');
@@ -1260,8 +1281,14 @@ const collectKnowledgeGraphData = (messages) => {
     });
   });
 
+  // 优先返回统计结果（如果存在）
+  if (statisticsResult) {
+    return statisticsResult;
+  }
+  
+  // 返回搜索结果
   if (triples.length === 0) return null;
-  return { triples };
+  return { triples, query_type: 'search' };
 };
 
 const findLastAiMessageIndex = (messages) => {
@@ -1274,6 +1301,17 @@ const findLastAiMessageIndex = (messages) => {
 
 const isSameGraphData = (left, right) => {
   if (!left || !right) return false;
+  
+  // 不同类型的数据不相同
+  if (left.query_type !== right.query_type) return false;
+  
+  // 统计结果比较
+  if (left.query_type === 'statistics') {
+    return left.total_count === right.total_count && 
+           left.keyword === right.keyword;
+  }
+  
+  // 搜索结果比较（三元组）
   const leftTriples = Array.isArray(left.triples) ? left.triples : [];
   const rightTriples = Array.isArray(right.triples) ? right.triples : [];
   if (leftTriples.length !== rightTriples.length) return false;

@@ -57,7 +57,7 @@
                 <a-collapse-panel
                   v-for="(results, filename) in groupedKnowledgeResults"
                   :key="filename"
-                  :header="filename + '  (' + results.length + ' chunks) '"
+                  :header="'来源文档  (' + results.length + ' chunks) '"
                 >
                   <div class="results-list">
                     <div v-for="res in results" :key="res.id" class="result-item">

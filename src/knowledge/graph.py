@@ -387,7 +387,7 @@ class GraphDatabase:
         tx.run(query)
 
     def query_node(
-        self, keyword, threshold=0.9, kgdb_name="neo4j", hops=2, max_entities=8, return_format="graph", **kwargs
+        self, keyword, threshold=0.9, kgdb_name="neo4j", hops=2, max_entities=3, return_format="graph", **kwargs
     ):
         """知识图谱查询节点的入口:"""
         assert self.driver is not None, "Database is not connected"
@@ -469,7 +469,13 @@ class GraphDatabase:
                 if t not in seen_triples:
                     seen_triples.add(t)
                     dedup_triples.append(t)
-            all_query_results["triples"] = dedup_triples
+            
+            # 全局限制三元组数量，避免前端渲染性能问题
+            max_triples = 30
+            is_truncated = len(dedup_triples) > max_triples
+            all_query_results["triples"] = dedup_triples[:max_triples]
+            all_query_results["total_triples"] = len(dedup_triples)
+            all_query_results["is_truncated"] = is_truncated
 
         return all_query_results
 
@@ -529,7 +535,7 @@ class GraphDatabase:
             results = session.execute_read(query_by_vector, keyword, threshold=threshold)
             return results
 
-    def _query_specific_entity(self, entity_name, kgdb_name="neo4j", hops=2, limit=100):
+    def _query_specific_entity(self, entity_name, kgdb_name="neo4j", hops=2, limit=15):
         """查询指定实体三元组信息（无向关系）"""
         assert self.driver is not None, "Database is not connected"
         if not entity_name:

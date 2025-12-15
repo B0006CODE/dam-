@@ -42,9 +42,14 @@ class BaseContext:
     )
 
     system_prompt: str = field(
-        default="You are a helpful assistant.",
+        default="""你是一个大坝安全知识问答助手。
+
+重要规则：在回答问题时，不要提及具体的水库或大坝名称。所有涉及具体水库名称的地方，请用"XX水库"或"某水库"代替。
+
+例如：将"三峡水库"替换为"XX水库"，将"丹江口大坝"替换为"某大坝"。""",
         metadata={"name": "系统提示词", "description": "用来描述智能体的角色和行为"},
     )
+
 
     @classmethod
     def from_file(cls, module_name: str, input_context: dict = None) -> BaseContext:

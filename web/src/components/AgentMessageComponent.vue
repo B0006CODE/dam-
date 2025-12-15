@@ -29,7 +29,7 @@
 
       <div v-if="hasKnowledgeGraphData && (message.isLast || message.status === 'finished')" class="knowledge-graph-wrapper">
         <div class="kg-toggle-header">
-          <span class="kg-title">知识图谱推理结果</span>
+          <span class="kg-title">{{ kgTitle }}</span>
           <a-button
             size="small"
             class="kg-collapse-btn"
@@ -210,12 +210,28 @@ const toggleToolCall = (toolCallId) => {
   }
 };
 
-// 是否存在可视化的知识图谱数据
+// 是否存在可视化的知识图谱数据（搜索结果或统计结果）
 const hasKnowledgeGraphData = computed(() => {
   const kg = props.message && props.message.knowledgeGraphData;
   if (!kg) return false;
+  
+  // 搜索类结果：检查是否有三元组
   const triples = Array.isArray(kg.triples) ? kg.triples : [];
-  return triples.length > 0;
+  if (triples.length > 0) return true;
+  
+  // 统计类结果：检查 query_type
+  if (kg.query_type === 'statistics' && kg.total_count !== undefined) return true;
+  
+  return false;
+});
+
+// 知识图谱数据标题（根据类型动态显示）
+const kgTitle = computed(() => {
+  const kg = props.message && props.message.knowledgeGraphData;
+  if (kg && kg.query_type === 'statistics') {
+    return '知识图谱统计结果';
+  }
+  return '知识图谱推理结果';
 });
 </script>
 

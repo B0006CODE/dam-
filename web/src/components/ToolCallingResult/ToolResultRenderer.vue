@@ -135,18 +135,29 @@ const isImageResult = computed(() => {
   return data && typeof data === 'string' && data.startsWith('http')
 })
 
-// 判断是否为知识图谱查询结果
+// 判断是否为知识图谱查询结果（包括搜索和统计）
 const isKnowledgeGraphResult = computed(() => {
   const toolNameLower = props.toolName.toLowerCase()
   const isGraphTool = toolNameLower.includes('graph') ||
                      toolNameLower.includes('kg') ||
-                     toolNameLower.includes('global_knowledge_graph_search')
+                     toolNameLower.includes('global_knowledge_graph_search') ||
+                     toolNameLower.includes('knowledge_graph_statistics')
 
   if (!isGraphTool) return false
 
   const data = parsedData.value
-  // 支持新格式：包含nodes、edges、triples的对象
-  return data && typeof data === 'object' && 'triples' in data && Array.isArray(data.triples)
+  if (!data || typeof data !== 'object') return false
+  
+  // 支持新格式：包含 triples 的搜索结果
+  if ('triples' in data && Array.isArray(data.triples)) return true
+  
+  // 支持统计结果格式
+  if (data.query_type === 'statistics') return true
+  
+  // 支持搜索结果格式
+  if (data.query_type === 'search') return true
+  
+  return false
 })
 
 // 判断是否为计算器结果
