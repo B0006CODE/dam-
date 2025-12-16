@@ -44,6 +44,8 @@ let initTimer = null;
 const selectedSeedNodeIds = new Set();
 const highlightedNodeIds = new Set();
 const highlightedEdgeIds = new Set();
+const inactiveNodeIds = new Set();
+const inactiveEdgeIds = new Set();
 
 const layoutType = computed(() => props.layoutOptions.type || 'force');
 const normalizedKeywords = computed(() =>
@@ -70,7 +72,13 @@ const hasElement = (id) => {
 const applyCumulativeHighlights = async () => {
   if (!graphInstance) return;
 
-  const existingSeeds = Array.from(selectedSeedNodeIds).filter((id) => {
+  const prevSelected = new Set(selectedSeedNodeIds);
+  const prevHighlightedNodes = new Set(highlightedNodeIds);
+  const prevHighlightedEdges = new Set(highlightedEdgeIds);
+  const prevInactiveNodes = new Set(inactiveNodeIds);
+  const prevInactiveEdges = new Set(inactiveEdgeIds);
+
+  const existingSeeds = Array.from(prevSelected).filter((id) => {
     try {
       return !!graphInstance.getNodeData?.(id);
     } catch {
@@ -80,6 +88,51 @@ const applyCumulativeHighlights = async () => {
 
   selectedSeedNodeIds.clear();
   existingSeeds.forEach((id) => selectedSeedNodeIds.add(id));
+
+  const getNodeStateCode = (id, selectedSet, activeSet, inactiveSet) => {
+    if (selectedSet.has(id)) return 2;
+    if (activeSet.has(id)) return 1;
+    if (inactiveSet.has(id)) return -1;
+    return 0;
+  };
+
+  const getEdgeStateCode = (id, activeSet, inactiveSet) => {
+    if (activeSet.has(id)) return 1;
+    if (inactiveSet.has(id)) return -1;
+    return 0;
+  };
+
+  const nodeStateFromCode = (code) => {
+    if (code === 2) return ['selected'];
+    if (code === 1) return ['active'];
+    if (code === -1) return ['inactive'];
+    return [];
+  };
+
+  const edgeStateFromCode = (code) => {
+    if (code === 1) return ['active'];
+    if (code === -1) return ['inactive'];
+    return [];
+  };
+
+  if (selectedSeedNodeIds.size === 0) {
+    const updates = {};
+    [...prevSelected, ...prevHighlightedNodes, ...prevHighlightedEdges, ...prevInactiveNodes, ...prevInactiveEdges].forEach(
+      (id) => {
+        if (hasElement(id)) updates[id] = [];
+      }
+    );
+
+    highlightedNodeIds.clear();
+    highlightedEdgeIds.clear();
+    inactiveNodeIds.clear();
+    inactiveEdgeIds.clear();
+
+    if (Object.keys(updates).length > 0) {
+      await graphInstance.setElementState(updates, false);
+    }
+    return;
+  }
 
   const nextHighlightedNodes = new Set();
   const nextHighlightedEdges = new Set();
@@ -96,28 +149,43 @@ const applyCumulativeHighlights = async () => {
     });
   });
 
+  const graphData = graphInstance.getData?.() || {};
+  const allNodeIds = (graphData.nodes || []).map((n) => String(n.id));
+  const allEdgeIds = (graphData.edges || []).map((e) => String(e.id));
+
+  const focusNodeIds = new Set([...selectedSeedNodeIds, ...nextHighlightedNodes]);
+  const nextInactiveNodes = new Set(allNodeIds.filter((id) => !focusNodeIds.has(id)));
+  const nextInactiveEdges = new Set(allEdgeIds.filter((id) => !nextHighlightedEdges.has(id)));
+
   const updates = {};
 
-  const clearIfStale = (id, nextSet) => {
-    if (!nextSet.has(id) && hasElement(id)) updates[id] = [];
-  };
-
-  highlightedNodeIds.forEach((id) => clearIfStale(id, nextHighlightedNodes));
-  highlightedEdgeIds.forEach((id) => clearIfStale(id, nextHighlightedEdges));
-
-  const ensureState = (id, state) => {
+  const candidateNodeIds = new Set([...allNodeIds, ...prevSelected, ...prevHighlightedNodes, ...prevInactiveNodes]);
+  candidateNodeIds.forEach((id) => {
+    const prevCode = getNodeStateCode(id, prevSelected, prevHighlightedNodes, prevInactiveNodes);
+    const nextCode = getNodeStateCode(id, selectedSeedNodeIds, nextHighlightedNodes, nextInactiveNodes);
+    if (prevCode === nextCode) return;
     if (!hasElement(id)) return;
-    updates[id] = state;
-  };
+    updates[id] = nodeStateFromCode(nextCode);
+  });
 
-  selectedSeedNodeIds.forEach((id) => ensureState(id, ['selected']));
-  nextHighlightedNodes.forEach((id) => ensureState(id, ['active']));
-  nextHighlightedEdges.forEach((id) => ensureState(id, ['active']));
+  const candidateEdgeIds = new Set([...allEdgeIds, ...prevHighlightedEdges, ...prevInactiveEdges]);
+  candidateEdgeIds.forEach((id) => {
+    const prevCode = getEdgeStateCode(id, prevHighlightedEdges, prevInactiveEdges);
+    const nextCode = getEdgeStateCode(id, nextHighlightedEdges, nextInactiveEdges);
+    if (prevCode === nextCode) return;
+    if (!hasElement(id)) return;
+    updates[id] = edgeStateFromCode(nextCode);
+  });
 
   highlightedNodeIds.clear();
   highlightedEdgeIds.clear();
   nextHighlightedNodes.forEach((id) => highlightedNodeIds.add(id));
   nextHighlightedEdges.forEach((id) => highlightedEdgeIds.add(id));
+
+  inactiveNodeIds.clear();
+  inactiveEdgeIds.clear();
+  nextInactiveNodes.forEach((id) => inactiveNodeIds.add(id));
+  nextInactiveEdges.forEach((id) => inactiveEdgeIds.add(id));
 
   if (Object.keys(updates).length > 0) {
     await graphInstance.setElementState(updates, false);
@@ -134,12 +202,20 @@ const addSeedHighlight = async (id) => {
 
 const clearSeedHighlights = async () => {
   const updates = {};
-  [...selectedSeedNodeIds, ...highlightedNodeIds, ...highlightedEdgeIds].forEach((id) => {
+  [
+    ...selectedSeedNodeIds,
+    ...highlightedNodeIds,
+    ...highlightedEdgeIds,
+    ...inactiveNodeIds,
+    ...inactiveEdgeIds,
+  ].forEach((id) => {
     if (hasElement(id)) updates[id] = [];
   });
   selectedSeedNodeIds.clear();
   highlightedNodeIds.clear();
   highlightedEdgeIds.clear();
+  inactiveNodeIds.clear();
+  inactiveEdgeIds.clear();
   if (graphInstance && Object.keys(updates).length > 0) {
     await graphInstance.setElementState(updates, false);
   }
@@ -328,6 +404,9 @@ const buildGraphData = () => {
     const nodeSize = Math.max(MIN_NODE_SIZE, Math.min(MAX_NODE_SIZE, layout.requiredDiameter));
     const colorInfo = colorMap.get(id) || { color: '#3b82f6', dimension: 'default' };
     const muted = keywordSet.length > 0 && !isMatched;
+    const baseLabelOpacity = isDenseGraph ? 0.88 : 0.98;
+    const labelOpacity = muted ? 0.48 : baseLabelOpacity;
+    const nodeOpacity = muted ? 0.3 : 1;
 
     return {
       id,
@@ -337,16 +416,19 @@ const buildGraphData = () => {
         size: nodeSize,
         r: nodeSize / 2,
         fill: colorInfo.color,
+        fillOpacity: nodeOpacity,
         stroke: isMatched ? '#e0ecff' : '#c2d7ff',
         lineWidth: isMatched ? 2 : 1.3,
+        strokeOpacity: nodeOpacity,
         shadowColor: 'rgba(0, 0, 0, 0.18)',
         shadowBlur: 10,
         shadowOffsetY: 3,
-        opacity: muted ? 0.2 : 1,
         labelText: wrappedLabel,
         labelPlacement: 'center',
         labelTextAlign: 'center',
         labelFill: '#ffffff',
+        labelOpacity,
+        labelFillOpacity: labelOpacity,
         labelFontSize: fontSize,
         labelFontWeight: 700,
         labelFontFamily: 'Microsoft YaHei, sans-serif',
@@ -423,14 +505,14 @@ const buildGraphData = () => {
         data: edge,
         style: {
           stroke: '#ffffff',
-          opacity:
+          strokeOpacity:
             keywordSet.length === 0
               ? isDenseGraph
                 ? 0.22
-                : 0.38
+                : 0.32
               : connectsHighlight
-                ? 0.75
-                : 0.18,
+                ? 0.65
+                : 0.16,
           lineWidth:
             keywordSet.length === 0
               ? isDenseGraph
@@ -448,14 +530,14 @@ const buildGraphData = () => {
           labelOpacity:
             keywordSet.length === 0
               ? isDenseGraph
-                ? 0.6
-                : 0.92
+                ? 0.68
+                : 0.9
               : connectsHighlight
-                ? 1
-                : 0.55,
+                ? 0.95
+                : 0.5,
           labelBackground: false,
           labelBackgroundFill: 'rgba(15, 31, 61, 0.72)',
-          labelBackgroundOpacity: 0.75,
+          labelBackgroundOpacity: 0.35,
           labelPadding: 3,
           labelAutoRotate: false,
           labelTextAlign: 'center',
@@ -556,9 +638,31 @@ const initGraph = () => {
     node: {
       type: 'circle',
       state: {
-        inactive: { opacity: 0.18, labelOpacity: 0.18 },
-        active: { opacity: 1, lineWidth: 2.4, stroke: '#ffffff' },
-        selected: { opacity: 1, lineWidth: 4, stroke: '#ffffff' },
+        inactive: {
+          fillOpacity: 0.3,
+          strokeOpacity: 0.3,
+          labelOpacity: 0.4,
+          labelFill: '#ffffff',
+          labelFillOpacity: 0.4,
+        },
+        active: {
+          fillOpacity: 1,
+          strokeOpacity: 1,
+          labelOpacity: 1,
+          labelFill: '#ffffff',
+          labelFillOpacity: 1,
+          lineWidth: 2.4,
+          stroke: '#ffffff',
+        },
+        selected: {
+          fillOpacity: 1,
+          strokeOpacity: 1,
+          labelOpacity: 1,
+          labelFill: '#ffffff',
+          labelFillOpacity: 1,
+          lineWidth: 4,
+          stroke: '#ffffff',
+        },
       },
     },
     edge: {
@@ -567,19 +671,30 @@ const initGraph = () => {
         increasedLineWidthForHitTesting: 6,
       },
       state: {
-        inactive: { opacity: 0.18, labelOpacity: 0.55, labelBackground: false, endArrow: false },
+        inactive: {
+          stroke: '#ffffff',
+          strokeOpacity: 0.22,
+          labelFill: '#ffffff',
+          labelOpacity: 0.35,
+          labelBackground: false,
+          endArrow: false,
+        },
         active: {
-          opacity: 0.9,
+          stroke: '#ffffff',
+          strokeOpacity: 0.85,
           lineWidth: 2.2,
-          labelOpacity: 1,
-          labelBackground: true,
+          labelFill: '#ffffff',
+          labelOpacity: 0.85,
+          labelBackground: false,
           zIndex: 1,
         },
         selected: {
-          opacity: 0.95,
+          stroke: '#ffffff',
+          strokeOpacity: 0.95,
           lineWidth: 3,
-          labelOpacity: 1,
-          labelBackground: true,
+          labelFill: '#ffffff',
+          labelOpacity: 0.95,
+          labelBackground: false,
           zIndex: 2,
         },
       },

@@ -139,6 +139,26 @@ export const neo4jApi = {
   },
 
   /**
+   * Expand a node's 1-hop neighbors by Neo4j elementId
+   * @param {string} node_id - Neo4j elementId
+   * @param {Object} options
+   * @param {number} options.limit - Max edge count
+   */
+  expandNode: async (node_id, options = {}) => {
+    if (!node_id) {
+      throw new Error('node_id is required')
+    }
+
+    const { limit = 80 } = options || {}
+    const queryParams = new URLSearchParams({
+      node_id: String(node_id),
+      limit: String(limit),
+    })
+
+    return await apiGet(`/api/graph/neo4j/expand?${queryParams.toString()}`, {}, true)
+  },
+
+  /**
    * 閫氳繃JSONL鏂囦欢娣诲姞鍥捐氨瀹炰綋鍒癗eo4j
    * @param {string} file_path - JSONL鏂囦欢璺緞
    * @param {string} kgdb_name - Neo4j鏁版嵁搴撳悕绉帮紙榛樿涓?neo4j'锛?   * @returns {Promise} - 娣诲姞缁撴灉
@@ -244,4 +264,3 @@ export const graphApi = {
   getStats: lightragApi.getStats,
   ...neo4jApi
 }
-

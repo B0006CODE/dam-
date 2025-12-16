@@ -479,6 +479,68 @@ class GraphDatabase:
 
         return all_query_results
 
+    def expand_node_by_id(self, node_id: str, kgdb_name: str = "neo4j", limit: int = 80):
+        """Expand a node by its Neo4j elementId and return its 1-hop neighbor subgraph."""
+        assert self.driver is not None, "Database is not connected"
+        assert self.is_running(), "å›¾æ•°æ®åº“æœªå¯åŠ?"
+        if not node_id:
+            return {"nodes": [], "edges": [], "triples": []}
+
+        self.use_database(kgdb_name)
+
+        def query(tx, node_id: str, limit: int):
+            query_str = """
+            MATCH (n:Entity)
+            WHERE elementId(n) = $node_id
+            CALL {
+              WITH n
+              MATCH (n)-[rel]->(m:Entity)
+              RETURN n AS h, rel AS r, m AS t
+              UNION ALL
+              WITH n
+              MATCH (m:Entity)-[rel]->(n)
+              RETURN m AS h, rel AS r, n AS t
+            }
+            RETURN
+              {id: elementId(h), name: h.name} AS h,
+              {id: elementId(r), type: r.type, source_id: elementId(h), target_id: elementId(t)} AS r,
+              {id: elementId(t), name: t.name} AS t
+            LIMIT $limit
+            """
+
+            results = tx.run(query_str, node_id=node_id, limit=int(limit))
+            formatted_results = {"nodes": [], "edges": [], "triples": []}
+            node_ids = set()
+            edge_keys = set()
+
+            for item in results:
+                h = item.get("h") or {}
+                r = item.get("r") or {}
+                t = item.get("t") or {}
+
+                hid = h.get("id")
+                tid = t.get("id")
+                if hid and hid not in node_ids:
+                    formatted_results["nodes"].append(h)
+                    node_ids.add(hid)
+                if tid and tid not in node_ids:
+                    formatted_results["nodes"].append(t)
+                    node_ids.add(tid)
+
+                if r:
+                    edge_id = r.get("id")
+                    edge_key = edge_id or (r.get("source_id"), r.get("target_id"), r.get("type"))
+                    if edge_key not in edge_keys:
+                        edge_keys.add(edge_key)
+                        formatted_results["edges"].append(r)
+                        if h.get("name") and r.get("type") and t.get("name"):
+                            formatted_results["triples"].append((h.get("name"), r.get("type"), t.get("name")))
+
+            return formatted_results
+
+        with self.driver.session() as session:
+            return session.execute_read(query, node_id, limit)
+
     def _query_with_fuzzy_match(self, keyword, kgdb_name="neo4j"):
         """模糊查询"""
         assert self.driver is not None, "Database is not connected"

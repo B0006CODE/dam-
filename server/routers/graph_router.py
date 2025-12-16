@@ -363,6 +363,29 @@ async def get_neo4j_node(
         raise HTTPException(status_code=500, detail=f"查询图节点失败: {str(e)}")
 
 
+@graph.get("/neo4j/expand")
+async def expand_neo4j_node(
+    node_id: str = Query(..., description="Neo4j elementId"),
+    limit: int = Query(80, description="最大边数量", ge=1, le=500),
+    current_user: User = Depends(get_admin_user),
+):
+    """
+    通过 Neo4j elementId 展开一个节点的 1-hop 邻居子图
+    """
+    try:
+        if not graph_base.is_running():
+            raise HTTPException(status_code=400, detail="图数据库未启动")
+
+        result = graph_base.expand_node_by_id(node_id=node_id, limit=limit)
+        return {"success": True, "result": result, "message": "success"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"展开节点失败: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"展开节点失败: {str(e)}")
+
+
 # =============================================================================
 # === 边管理分组 ===
 # =============================================================================
