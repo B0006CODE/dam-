@@ -41,6 +41,10 @@ const rootEl = ref(null);
 let graphInstance = null;
 let initTimer = null;
 
+const selectedSeedNodeIds = new Set();
+const highlightedNodeIds = new Set();
+const highlightedEdgeIds = new Set();
+
 const layoutType = computed(() => props.layoutOptions.type || 'force');
 const normalizedKeywords = computed(() =>
   (props.highlightKeywords || [])
@@ -53,6 +57,93 @@ const getEdgeSourceId = (edge) =>
 
 const getEdgeTargetId = (edge) =>
   edge?.target_id ?? edge?.targetId ?? edge?.target ?? edge?.to ?? edge?.end;
+
+const hasElement = (id) => {
+  if (!graphInstance || id == null) return false;
+  try {
+    return !!graphInstance.getElementData?.(String(id));
+  } catch {
+    return false;
+  }
+};
+
+const applyCumulativeHighlights = async () => {
+  if (!graphInstance) return;
+
+  const existingSeeds = Array.from(selectedSeedNodeIds).filter((id) => {
+    try {
+      return !!graphInstance.getNodeData?.(id);
+    } catch {
+      return false;
+    }
+  });
+
+  selectedSeedNodeIds.clear();
+  existingSeeds.forEach((id) => selectedSeedNodeIds.add(id));
+
+  const nextHighlightedNodes = new Set();
+  const nextHighlightedEdges = new Set();
+
+  selectedSeedNodeIds.forEach((seedId) => {
+    const edges = graphInstance.getRelatedEdgesData?.(seedId, 'both') || [];
+    edges.forEach((edge) => {
+      const edgeId = edge?.id != null ? String(edge.id) : '';
+      if (edgeId) nextHighlightedEdges.add(edgeId);
+      const sourceId = edge?.source != null ? String(edge.source) : '';
+      const targetId = edge?.target != null ? String(edge.target) : '';
+      if (sourceId && !selectedSeedNodeIds.has(sourceId)) nextHighlightedNodes.add(sourceId);
+      if (targetId && !selectedSeedNodeIds.has(targetId)) nextHighlightedNodes.add(targetId);
+    });
+  });
+
+  const updates = {};
+
+  const clearIfStale = (id, nextSet) => {
+    if (!nextSet.has(id) && hasElement(id)) updates[id] = [];
+  };
+
+  highlightedNodeIds.forEach((id) => clearIfStale(id, nextHighlightedNodes));
+  highlightedEdgeIds.forEach((id) => clearIfStale(id, nextHighlightedEdges));
+
+  const ensureState = (id, state) => {
+    if (!hasElement(id)) return;
+    updates[id] = state;
+  };
+
+  selectedSeedNodeIds.forEach((id) => ensureState(id, ['selected']));
+  nextHighlightedNodes.forEach((id) => ensureState(id, ['active']));
+  nextHighlightedEdges.forEach((id) => ensureState(id, ['active']));
+
+  highlightedNodeIds.clear();
+  highlightedEdgeIds.clear();
+  nextHighlightedNodes.forEach((id) => highlightedNodeIds.add(id));
+  nextHighlightedEdges.forEach((id) => highlightedEdgeIds.add(id));
+
+  if (Object.keys(updates).length > 0) {
+    await graphInstance.setElementState(updates, false);
+  }
+};
+
+const addSeedHighlight = async (id) => {
+  if (!graphInstance || id == null) return;
+  const seedId = String(id);
+  if (!seedId) return;
+  selectedSeedNodeIds.add(seedId);
+  await applyCumulativeHighlights();
+};
+
+const clearSeedHighlights = async () => {
+  const updates = {};
+  [...selectedSeedNodeIds, ...highlightedNodeIds, ...highlightedEdgeIds].forEach((id) => {
+    if (hasElement(id)) updates[id] = [];
+  });
+  selectedSeedNodeIds.clear();
+  highlightedNodeIds.clear();
+  highlightedEdgeIds.clear();
+  if (graphInstance && Object.keys(updates).length > 0) {
+    await graphInstance.setElementState(updates, false);
+  }
+};
 
 const textMeasureCtx = (() => {
   if (typeof document === 'undefined') return null;
@@ -96,30 +187,65 @@ const TEXT_PADDING = 14;
 const FONT_SIZE_MAX = 14;
 const FONT_SIZE_MIN = 11;
 
-const getLayoutConfig = () => {
+const getLayoutConfig = (nodeSizeById) => {
+  const { type: _ignoredType, ...userOptions } = props.layoutOptions || {};
+
   if (layoutType.value === 'circular') {
     return {
       type: 'circular',
       startAngle: 0,
       endAngle: Math.PI * 2,
       radius: null,
-      animation: false
+      animation: false,
+      ...userOptions,
+      type: 'circular',
+      animation: false,
     };
   }
 
+  const getNodeSize = (node, fallbackId) => {
+    if (fallbackId != null && nodeSizeById?.get?.(String(fallbackId))) {
+      return nodeSizeById.get(String(fallbackId));
+    }
+    const dataSize = node?.data?.size ?? node?.data?.style?.size;
+    if (typeof dataSize === 'number') return dataSize;
+    if (Array.isArray(dataSize)) return Math.max(...dataSize);
+    if (dataSize && typeof dataSize === 'object' && dataSize.width && dataSize.height) {
+      return Math.max(dataSize.width, dataSize.height);
+    }
+    return 64;
+  };
+
+  const defaultLinkDistance = (edge, source, target) => {
+    const sourceId = source?.id ?? edge?.source;
+    const targetId = target?.id ?? edge?.target;
+    const sourceSize = getNodeSize(source, sourceId);
+    const targetSize = getNodeSize(target, targetId);
+    const min = (sourceSize + targetSize) / 2 + 220;
+    return Math.max(300, min);
+  };
+
   return {
     type: 'force',
-    linkDistance: 180,
-    nodeStrength: 800,
-    edgeStrength: 80,
+    linkDistance: defaultLinkDistance,
+    nodeStrength: 2200,
+    edgeStrength: 35,
     preventOverlap: true,
-    nodeSize: (d) => d?.size || 32,
+    collideStrength: 1,
+    nodeSize: (node) => node?.data?.size ?? node?.data?.style?.size ?? 32,
+    nodeSpacing: 48,
     damping: 0.9,
-    maxSpeed: 80,
-    gravity: 25,
-    factor: 1,
+    maxSpeed: 120,
+    gravity: 2,
+    factor: 2,
+    coulombDisScale: 0.004,
     interval: 0.02,
-    animation: false
+    maxIteration: 3000,
+    minMovement: 0.1,
+    animation: false,
+    ...userOptions,
+    type: 'force',
+    animation: false,
   };
 };
 
@@ -129,6 +255,8 @@ const buildGraphData = () => {
     props.graphData.edges || [],
     props.hiddenDimensions
   );
+
+  const isDenseGraph = edges.length >= 300;
 
   const colorMap = buildNodeColorMap(nodes, edges);
   const degrees = new Map();
@@ -236,6 +364,32 @@ const buildGraphData = () => {
     };
   });
 
+  const parallelOffsetByEdgeIdx = new Map();
+  const parallelGroups = new Map();
+  edges.forEach((edge, idx) => {
+    const sourceRaw = getEdgeSourceId(edge);
+    const targetRaw = getEdgeTargetId(edge);
+    if (sourceRaw == null || targetRaw == null) return;
+    const sourceId = String(sourceRaw);
+    const targetId = String(targetRaw);
+    if (!degrees.has(sourceId) || !degrees.has(targetId)) return;
+
+    const pairKey =
+      sourceId < targetId ? `${sourceId}::${targetId}` : `${targetId}::${sourceId}`;
+    const group = parallelGroups.get(pairKey) || [];
+    group.push(idx);
+    parallelGroups.set(pairKey, group);
+  });
+
+  parallelGroups.forEach((indices) => {
+    if (!Array.isArray(indices) || indices.length <= 1) return;
+    const mid = (indices.length - 1) / 2;
+    const step = 22;
+    indices.forEach((edgeIdx, pos) => {
+      parallelOffsetByEdgeIdx.set(edgeIdx, (pos - mid) * step);
+    });
+  });
+
   const edgeData = edges
     .map((edge, idx) => {
       const sourceRaw = getEdgeSourceId(edge);
@@ -258,24 +412,51 @@ const buildGraphData = () => {
       const chineseOnly = (rawLabel.match(/[\u4e00-\u9fa5]+/g) || []).join('');
       const labelText = chineseOnly || '';
 
+      const curveOffset = parallelOffsetByEdgeIdx.get(idx) || 0;
+      const labelOffsetY = Math.max(-16, Math.min(16, curveOffset * 0.35));
+
       return {
         id: edge.id ? String(edge.id) : `e-${idx}-${sourceId}-${targetId}`,
         source: sourceId,
         target: targetId,
+        type: 'line',
         data: edge,
         style: {
           stroke: '#ffffff',
-          opacity: connectsHighlight ? 0.95 : 0.25,
-          lineWidth: connectsHighlight ? 1.4 : 1,
-          endArrow: true,
-          arrowSize: 8,
+          opacity:
+            keywordSet.length === 0
+              ? isDenseGraph
+                ? 0.22
+                : 0.38
+              : connectsHighlight
+                ? 0.75
+                : 0.18,
+          lineWidth:
+            keywordSet.length === 0
+              ? isDenseGraph
+                ? 1
+                : 1.4
+              : connectsHighlight
+                ? 1.9
+                : 1.2,
+          endArrow: false,
+          ...(labelOffsetY ? { labelOffsetY } : {}),
           labelText,
           labelPlacement: 'center',
           labelFill: '#ffffff',
           labelFontSize: 10,
-          labelBackground: true,
-          labelBackgroundFill: 'rgba(15, 31, 61, 0.5)',
-          labelPadding: 2,
+          labelOpacity:
+            keywordSet.length === 0
+              ? isDenseGraph
+                ? 0.6
+                : 0.92
+              : connectsHighlight
+                ? 1
+                : 0.55,
+          labelBackground: false,
+          labelBackgroundFill: 'rgba(15, 31, 61, 0.72)',
+          labelBackgroundOpacity: 0.75,
+          labelPadding: 3,
           labelAutoRotate: false,
           labelTextAlign: 'center',
           labelTextBaseline: 'middle',
@@ -293,8 +474,14 @@ const applyGraphData = async () => {
 
   const data = buildGraphData();
   graphInstance.setData(data);
-  graphInstance.setLayout(getLayoutConfig());
+  const nodeSizeById = new Map(
+    (data.nodes || []).map((n) => [String(n.id), n?.size || n?.style?.size || 32])
+  );
+  graphInstance.setLayout(getLayoutConfig(nodeSizeById));
   await graphInstance.render();
+  if (selectedSeedNodeIds.size > 0) {
+    await applyCumulativeHighlights();
+  }
   if (props.autoFit && typeof graphInstance.fitView === 'function') {
     await graphInstance.fitView({ padding: 32 }, false);
   }
@@ -304,14 +491,21 @@ const applyGraphData = async () => {
 const bindEvents = () => {
   if (!graphInstance) return;
 
-  graphInstance.on('node:click', ({ id }) => {
+  graphInstance.on('node:click', (event) => {
+    const id = event?.target?.id;
+    if (id == null) return;
     emit('node-click', { id, data: graphInstance.getNodeData(id) });
     if (props.enableFocusNeighbor && graphInstance.focusElement) {
       graphInstance.focusElement(id, { duration: 200 });
     }
+    if (props.enableFocusNeighbor) {
+      void addSeedHighlight(id);
+    }
   });
 
-  graphInstance.on('edge:click', ({ id }) => {
+  graphInstance.on('edge:click', (event) => {
+    const id = event?.target?.id;
+    if (id == null) return;
     emit('edge-click', { id, data: graphInstance.getEdgeData(id) });
   });
 
@@ -320,6 +514,7 @@ const bindEvents = () => {
     if (props.enableFocusNeighbor && graphInstance.focusElement) {
       graphInstance.focusElement([], { duration: 150 });
     }
+    void clearSeedHighlights();
   });
 };
 
@@ -349,14 +544,45 @@ const initGraph = () => {
     behaviors: [
       'drag-canvas',
       'zoom-canvas',
-      { type: 'drag-element', key: 'drag-element' },
-      props.enableFocusNeighbor ? { type: 'focus-element', degree: 1 } : null
+      {
+        type: 'drag-element',
+        key: 'drag-element',
+        animation: false,
+        dropEffect: 'none',
+        hideEdge: 'all',
+        state: '__drag_selected__'
+      }
     ].filter(Boolean),
     node: {
       type: 'circle',
+      state: {
+        inactive: { opacity: 0.18, labelOpacity: 0.18 },
+        active: { opacity: 1, lineWidth: 2.4, stroke: '#ffffff' },
+        selected: { opacity: 1, lineWidth: 4, stroke: '#ffffff' },
+      },
     },
     edge: {
       type: 'line',
+      style: {
+        increasedLineWidthForHitTesting: 6,
+      },
+      state: {
+        inactive: { opacity: 0.18, labelOpacity: 0.55, labelBackground: false, endArrow: false },
+        active: {
+          opacity: 0.9,
+          lineWidth: 2.2,
+          labelOpacity: 1,
+          labelBackground: true,
+          zIndex: 1,
+        },
+        selected: {
+          opacity: 0.95,
+          lineWidth: 3,
+          labelOpacity: 1,
+          labelBackground: true,
+          zIndex: 2,
+        },
+      },
     },
     layout: getLayoutConfig()
   });

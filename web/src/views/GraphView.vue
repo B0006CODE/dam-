@@ -35,6 +35,7 @@
         :layout-options="layoutOptions"
         :highlight-keywords="[state.searchInput]"
         :hidden-dimensions="hiddenDimensions"
+        @node-click="handleNodeExpand"
       >
         <template #top>
           <div class="actions">
@@ -241,6 +242,73 @@ const graphData = reactive({
   edges: [],
 });
 
+const expandedNodeIds = new Set();
+const expandingNodeIds = new Set();
+
+const resetExpandState = () => {
+  expandedNodeIds.clear();
+  expandingNodeIds.clear();
+};
+
+const getEdgeSourceId = (edge) =>
+  edge?.source_id ?? edge?.sourceId ?? edge?.source ?? edge?.from ?? edge?.start;
+
+const getEdgeTargetId = (edge) =>
+  edge?.target_id ?? edge?.targetId ?? edge?.target ?? edge?.to ?? edge?.end;
+
+const edgeKeyOf = (edge) => {
+  if (!edge) return '';
+  const s = getEdgeSourceId(edge);
+  const t = getEdgeTargetId(edge);
+  if (s == null || t == null) {
+    if (edge.id != null && edge.id !== '') return `id:${String(edge.id)}`;
+    return '';
+  }
+  const type = edge?.type ?? edge?.r ?? edge?.relation ?? edge?.label ?? edge?.name ?? '';
+  return `${String(s)}->${String(t)}::${String(type)}`;
+};
+
+const mergeSubgraphIntoGraphData = (subgraph) => {
+  const nodes = subgraph?.nodes || [];
+  const edges = subgraph?.edges || [];
+
+  const nextNodes = [];
+  const seenNodeIds = new Set();
+
+  const pushNode = (node) => {
+    if (!node) return;
+    const id = node.id;
+    if (id == null) return;
+    const key = String(id);
+    if (seenNodeIds.has(key)) return;
+    seenNodeIds.add(key);
+    nextNodes.push(node);
+  };
+
+  graphData.nodes.forEach(pushNode);
+  nodes.forEach(pushNode);
+
+  const nextEdges = [];
+  const seenEdgeKeys = new Set();
+
+  const pushEdge = (edge) => {
+    if (!edge) return;
+    const s = getEdgeSourceId(edge);
+    const t = getEdgeTargetId(edge);
+    if (s == null || t == null) return;
+    const key = edgeKeyOf(edge);
+    if (!key || seenEdgeKeys.has(key)) return;
+    seenEdgeKeys.add(key);
+    nextEdges.push(edge);
+  };
+
+  graphData.edges.forEach(pushEdge);
+  edges.forEach(pushEdge);
+
+  graphData.nodes = nextNodes;
+  graphData.edges = nextEdges;
+};
+
 const layoutType = ref('force') // force | circular
 const layoutOptions = computed(() => {
   return { type: layoutType.value }
@@ -304,12 +372,57 @@ const addDocumentByFile = () => {
     .finally(() => state.processing = false)
 };
 
+const handleNodeExpand = async ({ id, data }) => {
+  const nodeId = id != null ? String(id) : '';
+  if (!nodeId) return;
+  if (state.fetching || state.searchLoading) return;
+  if (expandedNodeIds.has(nodeId)) return;
+  if (expandingNodeIds.has(nodeId)) return;
+
+  expandingNodeIds.add(nodeId);
+  const currentGraph = selectedGraph.value || 'neo4j';
+
+  try {
+    let res;
+    if (currentGraph === 'neo4j') {
+      res = await neo4jApi.expandNode(nodeId, { limit: 120 });
+    } else {
+      const rawNode = data?.data || data || {};
+      const center = rawNode?.label || rawNode?.name || rawNode?.id || nodeId;
+      res = await getPagedSubgraph({
+        db_id: currentGraph,
+        center,
+        depth: 1,
+        limit: sampleNodeCount.value,
+        page: 1,
+        fields: 'compact'
+      });
+    }
+
+    const result = res?.result || res?.data || res || {};
+    if (!Array.isArray(result.nodes) || !Array.isArray(result.edges)) {
+      throw new Error('返回数据格式不正确');
+    }
+
+    mergeSubgraphIntoGraphData(result);
+    expandedNodeIds.add(nodeId);
+    graphRef.value?.refreshGraph?.();
+    setTimeout(() => graphRef.value?.focusNode?.(nodeId), 200);
+  } catch (error) {
+    console.error('expand node error:', error);
+    message.error(error?.message || '展开相邻节点失败');
+  } finally {
+    expandingNodeIds.delete(nodeId);
+  }
+};
+
 const loadSampleNodes = () => {
   state.fetching = true
   const currentGraph = selectedGraph.value || 'neo4j'
 
   const handleResult = (data) => {
     const result = data?.result || data?.data || data || {}
+    resetExpandState();
     graphData.nodes = result.nodes || []
     graphData.edges = result.edges || []
     setTimeout(() => graphRef.value?.refreshGraph?.(), 200)
@@ -365,6 +478,7 @@ const onSearch = () => {
     if (!result.nodes || !result.edges) {
       throw new Error('返回数据格式不正确');
     }
+    resetExpandState();
     graphData.nodes = result.nodes
     graphData.edges = result.edges
     if (graphData.nodes.length === 0) {
