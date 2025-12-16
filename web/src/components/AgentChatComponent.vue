@@ -1618,7 +1618,7 @@ watch(conversations, () => {
   box-sizing: border-box;
   overflow-y: scroll;
   transition: all 0.3s ease;
-  padding-right: 360px;
+
 
   .chat-header {
     user-select: none;
