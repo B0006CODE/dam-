@@ -3,24 +3,24 @@
 
 # 组织信息
 organization:
-  name: "大坝安全知识图谱检索系统"           # 完整组织名称
+  name: "Smart Water"           # 完整组织名称
   logo: "/favicon.svg"       # Logo文件路径（放在 web/public 目录下）
   avatar: "/avatar.jpg"      # 头像文件路径（放在 web/public 目录下）
   login_bg: "/login-bg.jpg"  # 登录背景图片路径（放在 web/public 目录下）
 
 # 项目信息
 branding:
-  name: "水利大坝安全知识图谱检索系统"
-  title: "大坝安全知识图谱检索系统"                           # 系统标题
-  subtitle: "大模型驱动的知识库管理工具"          # 副标题
-  description: "结合知识库与知识图谱，提供更准确、更全面的回答"  # 描述信息
+  name: "AI 驱动的智能水利问答平台"
+  title: "AI 驱动的智能水利问答平台"                           # 系统标题
+  subtitle: "基于大模型的智能水利知识问答系统"          # 副标题
+  description: "基于大模型的智能水利知识问答系统"  # 描述信息
 
 # 功能特性
 features:
   - "📚 灵活知识库"
   - "🕸️ 知识图谱集成"
-  - "🤖 权限隔离"
+  - "🤖 多模型支持"
 
 # 页脚信息
 footer:
-  copyright: "© 水利大坝安全知识图谱检索系统 2025 v0.1.0"
+  copyright: "© Smart Water 2025 v1.0.0"

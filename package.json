@@ -1,7 +1,7 @@
 {
-  "name": "smart-water-knowledge-system",
+  "name": "smart-water",
   "version": "1.0.0",
-  "description": "智能水利知识库管理系统",
+  "description": "基于大模型的智能水利知识问答系统",
   "scripts": {
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

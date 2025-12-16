@@ -1,8 +1,6 @@
 # 快速开始指南
 
-::: tip 提示
-除了此文档网站外，小伙伴们还可以在 [Zread](https://zread.ai/xerrors/Yuxi-Know) 或 [DeepWiki](https://deepwiki.com/xerrors/Yuxi-Know) 平台查看自动生成的详细项目文档。
-:::
+
 
 
 ## 快速开始
@@ -17,7 +15,7 @@
 ```bash
 # 克隆稳定版本
 git clone --branch v0.2.2 --depth 1 #.git
-cd Yuxi-Know
+cd smart-water
 ```
 
 ::: warning 版本说明

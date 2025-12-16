@@ -320,7 +320,7 @@ def upload(
     qa_separator: str = typer.Option("\n\n\n", help="Separator for QA splitting."),
 ):
     """
-    Batch upload and process files into a Yuxi-Know knowledge base.
+    Batch upload and process files into a Smart Water knowledge base.
     """
     console.print(f"[bold green]Starting batch upload for knowledge base: {db_id}[/bold green]")
 

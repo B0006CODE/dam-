@@ -106,15 +106,15 @@ def load_info_config():
 def get_default_info_config():
     """获取默认信息配置"""
     return {
-        "organization": {"name": "江南语析", "logo": "/favicon.svg", "avatar": "/avatar.jpg"},
+        "organization": {"name": "Smart Water", "logo": "/favicon.svg", "avatar": "/avatar.jpg"},
         "branding": {
-            "name": "Yuxi-Know",
-            "title": "Yuxi-Know",
-            "subtitle": "大模型驱动的知识库管理工具",
-            "description": "结合知识库与知识图谱，提供更准确、更全面的回答",
+            "name": "AI 驱动的智能水利问答平台",
+            "title": "AI 驱动的智能水利问答平台",
+            "subtitle": "基于大模型的智能水利知识问答系统",
+            "description": "基于大模型的智能水利知识问答系统",
         },
         "features": ["📚 灵活知识库", "🕸️ 知识图谱集成", "🤖 多模型支持"],
-        "footer": {"copyright": "© 江南语析 2025 [WIP] v0.3.0"},
+        "footer": {"copyright": "© Smart Water 2025 v1.0.0"},
     }
 
 

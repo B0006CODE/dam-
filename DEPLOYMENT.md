@@ -1,6 +1,6 @@
-# Yuxi-Know 项目 Docker 部署指南
+# Smart Water 项目 Docker 部署指南
 
-> 本文档提供 Yuxi-Know 大坝安全知识系统的完整 Docker 部署说明
+> 本文档提供 Smart Water 智能水利问答平台的完整 Docker 部署说明
 
 ## 📋 目录
 
@@ -44,7 +44,7 @@ docker compose version
 
 ```bash
 git clone <repository-url>
-cd Yuxi-Know-main
+cd smart-water
 ```
 
 ### 2. 配置环境变量

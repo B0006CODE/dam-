@@ -241,8 +241,9 @@ def parse_doc(
 
 
 if __name__ == "__main__":
-    pdf_files_dir = "/home/zwj/workspace/projects/Yuxi-Know/test/struct_pdf"
-    output_dir = "/home/zwj/workspace/projects/Yuxi-Know/test/struct_pdf_output"
+    # 使用环境变量或相对路径，避免硬编码个人路径
+    pdf_files_dir = os.getenv("PDF_TEST_DIR", "./test/struct_pdf")
+    output_dir = os.getenv("PDF_OUTPUT_DIR", "./test/struct_pdf_output")
     pdf_suffixes = [".pdf"]
     image_suffixes = [".png", ".jpeg", ".jpg"]
 

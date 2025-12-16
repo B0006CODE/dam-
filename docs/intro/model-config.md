@@ -39,7 +39,7 @@ default_model: siliconflow/deepseek-ai/DeepSeek-V3.2-Exp
 ## 自定义模型供应商
 
 ::: warning
-原本网页中的自定义模型已在 `0.3.x` 版本移除，请在 `src/config/static/models.yaml` 中按如下方式配置，并重启服务后选择并使用。此外，这里也推荐一下团队的另外一个小工具 [mvllm (Manage and Route vLLM Servers)](https://github.com/xerrors/mvllm)。
+原本网页中的自定义模型已在 `0.3.x` 版本移除，请在 `src/config/static/models.yaml` 中按如下方式配置，并重启服务后选择并使用。
 :::
 
 系统理论上兼容任何 OpenAI 兼容的模型服务，包括：

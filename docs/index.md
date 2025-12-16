@@ -3,9 +3,9 @@
 layout: home
 
 hero:
-  name: "智能水利知识库"
-  text: "专业的水利工程知识管理系统"
-  tagline: 基于知识图谱技术，提供专业的水利大坝安全知识服务
+  name: "AI 驱动的智能水利问答平台"
+  text: "Smart Water"
+  tagline: 基于大模型的智能水利知识问答系统
   image:
     src: /bb.png
     alt: VitePress

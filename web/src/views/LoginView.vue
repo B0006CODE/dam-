@@ -34,7 +34,7 @@
              <p class="brand-description">{{ brandDescription }}</p>
            </div>
           <div class="brand-copyright">
-            <p>{{ infoStore.footer?.copyright || '智能水利知识库' }}. {{ infoStore.branding?.copyright || '版权所有' }}</p>
+            <p>{{ infoStore.footer?.copyright || 'Smart Water' }}. {{ infoStore.branding?.copyright || '版权所有' }}</p>
           </div>
         </div>
       </div>
@@ -260,7 +260,7 @@ const loginBgImage = computed(() => {
 const brandName = computed(() => {
   const rawName = infoStore.branding?.name ?? '';
   const trimmed = rawName.trim();
-  return trimmed || '智能水利知识库';
+  return trimmed || 'AI 驱动的智能水利问答平台';
 });
 // 品牌副标题
 const brandSubtitle = computed(() => {

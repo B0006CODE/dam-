@@ -1,7 +1,7 @@
 [project]
-name = "yuxi-know"
-version = "0.2.0.dev"
-description = "Add your description here"
+name = "smart-water"
+version = "1.0.0"
+description = "基于大模型的智能水利知识问答系统"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -11,17 +11,17 @@ export const useInfoStore = defineStore('info', () => {
 
   // 计算属性 - 组织信息
   const organization = computed(() => infoConfig.value.organization || {
-    name: "水利大坝安全知识图谱检索系统",
+    name: "Smart Water",
     logo: "/favicon.svg",
     avatar: "/avatar.jpg"
   })
 
   // 计算属性 - 品牌信息
   const branding = computed(() => infoConfig.value.branding || {
-    name: "智能水利知识库",
-    title: "智能水利知识库",
-    subtitle: "专业的水利工程知识管理系统",
-    description: "基于知识图谱技术，提供专业的水利大坝安全知识服务"
+    name: "AI 驱动的智能水利问答平台",
+    title: "AI 驱动的智能水利问答平台",
+    subtitle: "基于大模型的智能水利知识问答系统",
+    description: "基于大模型的智能水利知识问答系统"
   })
 
   // 计算属性 - 功能特性
@@ -33,7 +33,7 @@ export const useInfoStore = defineStore('info', () => {
 
   // 计算属性 - 页脚信息
   const footer = computed(() => infoConfig.value.footer || {
-    copyright: "© 智能水利知识库 2025 v1.0.0"
+    copyright: "© Smart Water 2025 v1.0.0"
   })
 
   // 动作方法
@@ -97,7 +97,7 @@ export const useInfoStore = defineStore('info', () => {
     }
   }
 
-    return {
+  return {
     // 状态
     infoConfig,
     isLoading,
