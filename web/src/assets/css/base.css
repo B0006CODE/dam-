@@ -1,6 +1,5 @@
 
-/* color palette from <https://github.com/vuejs/theme> */
-/* https://material-foundation.github.io/material-theme-builder/ */
+/* 主题配色系统 */
 :root {
   --main-1000: #01151f;
   --main-900:  #023944;

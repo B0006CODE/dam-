@@ -2,7 +2,6 @@
 import { ref, reactive, onMounted, useTemplateRef, computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import {
-  GithubOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons-vue'
 import { Bot, Waypoints, LibraryBig, Settings, BarChart3, BookOpen, ListChecks, Map } from 'lucide-vue-next';
@@ -30,8 +29,6 @@ const layoutSettings = reactive({
   showDebug: false,
   useTopBar: false, // 是否使用顶栏
 })
-
-// 已移除 GitHub stars 统计功能
 
 // Add state for debug modal
 const showDebugModal = ref(false)
@@ -64,8 +61,6 @@ const getRemoteConfig = () => {
 const getRemoteDatabase = () => {
   databaseStore.getDatabaseInfo()
 }
-
-// 已移除 GitHub 相关功能
 
 onMounted(async () => {
   // 加载信息配置

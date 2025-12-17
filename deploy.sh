@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Yuxi-Know 项目快速部署脚本 - Linux/macOS 版本
+# Smart Water 项目快速部署脚本 - Linux/macOS 版本
 # 用法: ./deploy.sh [start|stop|restart|status|logs|clean]
 
 set -e
@@ -20,7 +20,7 @@ print_color() {
 }
 
 show_help() {
-    print_color $CYAN "\n=== Yuxi-Know 快速部署脚本 ===\n"
+    print_color $CYAN "\n=== Smart Water 快速部署脚本 ===\n"
     echo "用法: ./deploy.sh [命令] [选项]"
     echo ""
     echo "可用命令:"

@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 
-# Yuxi-Know 项目快速部署脚本 - Windows PowerShell 版本
+# Smart Water 项目快速部署脚本 - Windows PowerShell 版本
 # 用法: .\deploy.ps1 [start|stop|restart|status|logs|clean]
 
 param(
@@ -22,7 +22,7 @@ function Write-ColorOutput {
 }
 
 function Show-Help {
-    Write-ColorOutput "`n=== Yuxi-Know 快速部署脚本 ===`n" "Cyan"
+    Write-ColorOutput "`n=== Smart Water 快速部署脚本 ===`n" "Cyan"
     Write-Host "用法: .\deploy.ps1 [命令] [选项]"
     Write-Host "`n可用命令:"
     Write-Host "  start      - 启动基础服务（默认）"

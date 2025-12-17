@@ -41,7 +41,7 @@ class MilvusKB(KnowledgeBase):
         # self.milvus_port = kwargs.get('milvus_port', int(os.getenv('MILVUS_PORT', '19530')))
         self.milvus_token = kwargs.get("milvus_token", os.getenv("MILVUS_TOKEN", ""))
         self.milvus_uri = kwargs.get("milvus_uri", os.getenv("MILVUS_URI", "http://localhost:19530"))
-        self.milvus_db = kwargs.get("milvus_db", "yuxi_know")
+        self.milvus_db = kwargs.get("milvus_db", "smart_water")
 
         # 连接名称
         self.connection_alias = f"milvus_{hashstr(work_dir, 6)}"
