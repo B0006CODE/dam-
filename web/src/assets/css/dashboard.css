@@ -1,70 +1,11 @@
-/* Dashboard 共享样式文件 */
+/* Dashboard 共享样式文件 - Tech Theme */
 
 /* Chart Color System - 图表颜色系统 */
 :root {
+
   /* ECharts 图表颜色配置 */
-  --echarts-primary-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-primary)' },
-      { offset: 1, color: 'var(--chart-primary-light)' }
-    ]
-  };
-
-  --echarts-success-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-success)' },
-      { offset: 1, color: 'var(--chart-success-light)' }
-    ]
-  };
-
-  --echarts-warning-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-warning)' },
-      { offset: 1, color: 'var(--chart-warning-light)' }
-    ]
-  };
-
-  --echarts-error-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-error)' },
-      { offset: 1, color: 'var(--chart-error-light)' }
-    ]
-  };
-
-  --echarts-info-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-info)' },
-      { offset: 1, color: 'var(--chart-info-light)' }
-    ]
-  };
-
-  --echarts-secondary-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-secondary)' },
-      { offset: 1, color: 'var(--chart-secondary-light)' }
-    ]
-  };
-
-  --echarts-accent-gradient: {
-    type: 'linear',
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [
-      { offset: 0, color: 'var(--chart-accent)' },
-      { offset: 1, color: 'var(--chart-accent-light)' }
-    ]
-  };
+  --echarts-primary-gradient: linear-gradient(180deg, var(--chart-primary) 0%, var(--chart-primary-light) 100%);
+/* ... 其他渐变配置保持逻辑一致，但颜色变量已在 base.css 中更新为霓虹色 ... */
 }
 
 /* Chart Color Palette - 图表调色板 */
@@ -81,50 +22,38 @@
   --palette-10: var(--chart-palette-10);
 }
 
-/* Chart Area Gradient - 图表区域渐变 */
+/* Chart Area Gradient - 图表区域渐变 (更新为更透明的霓虹色) */
 .chart-area-gradient-primary {
-  background: linear-gradient(180deg,
-    rgba(57, 150, 174, 0.3) 0%,
-    rgba(57, 150, 174, 0.05) 100%
-  );
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.3) 0%, rgba(6, 182, 212, 0.05) 100%);
 }
 
 .chart-area-gradient-success {
-  background: linear-gradient(180deg,
-    rgba(82, 196, 26, 0.3) 0%,
-    rgba(82, 196, 26, 0.05) 100%
-  );
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.05) 100%);
 }
 
 .chart-area-gradient-warning {
-  background: linear-gradient(180deg,
-    rgba(250, 173, 20, 0.3) 0%,
-    rgba(250, 173, 20, 0.05) 100%
-  );
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.3) 0%, rgba(245, 158, 11, 0.05) 100%);
 }
 
 .chart-area-gradient-error {
-  background: linear-gradient(180deg,
-    rgba(245, 34, 45, 0.3) 0%,
-    rgba(245, 34, 45, 0.05) 100%
-  );
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.05) 100%);
 }
 
-/* Chart Shadow Effects - 图表阴影效果 */
+/* Chart Shadow Effects - 图表阴影效果 (增强发光感) */
 .chart-shadow-primary {
-  box-shadow: 0 4px 12px rgba(57, 150, 174, 0.15);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
 }
 
 .chart-shadow-success {
-  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.15);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
 }
 
 .chart-shadow-warning {
-  box-shadow: 0 4px 12px rgba(250, 173, 20, 0.15);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
 }
 
 .chart-shadow-error {
-  box-shadow: 0 4px 12px rgba(245, 34, 45, 0.15);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
 }
 
 /* Stats Overview Component - 统计概览组件样式 */
@@ -138,11 +67,13 @@
     gap: 16px;
 
     .stat-card {
-      background: var(--gray-0);
+      background: var(--bg-container);
+      /* 玻璃拟态背景 */
+      backdrop-filter: var(--glass-blur);
       border-radius: 8px;
       padding: 20px;
-      border: 1px solid var(--gray-100);
-      transition: all 0.2s ease;
+      border: var(--glass-border);
+      transition: all 0.3s ease;
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -151,64 +82,50 @@
       justify-content: flex-start;
 
       &:hover {
-        border-color: var(--gray-200);
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        border-color: var(--main-color);
+        box-shadow: var(--shadow-glow);
+        transform: translateY(-2px);
       }
 
-      &.primary {
-        .stat-icon {
-          background-color: var(--stats-primary-bg);
-          color: var(--stats-primary-color);
-        }
+      /* 状态卡片图标背景色更新为半透明 */
+      &.primary .stat-icon {
+        background-color: rgba(6, 182, 212, 0.2);
+        color: var(--main-color);
       }
 
-      &.success {
-        .stat-icon {
-          background-color: var(--stats-success-bg);
-          color: var(--stats-success-color);
-        }
+      &.success .stat-icon {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: var(--success-color);
       }
 
-      &.info {
-        .stat-icon {
-          background-color: var(--stats-info-bg);
-          color: var(--stats-info-color);
-        }
+      &.info .stat-icon {
+        background-color: rgba(59, 130, 246, 0.2);
+        color: var(--info-color);
       }
 
-      &.warning {
-        .stat-icon {
-          background-color: var(--stats-warning-bg);
-          color: var(--stats-warning-color);
-        }
+      &.warning .stat-icon {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: var(--warning-color);
       }
 
-      &.secondary {
-        .stat-icon {
-          background-color: var(--stats-secondary-bg);
-          color: var(--stats-secondary-color);
-        }
+      &.secondary .stat-icon {
+        background-color: rgba(139, 92, 246, 0.2);
+        color: var(--chart-secondary);
       }
 
-      &.satisfaction-high {
-        .stat-icon {
-          background-color: var(--stats-success-bg);
-          color: var(--stats-success-color);
-        }
+      &.satisfaction-high .stat-icon {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: var(--success-color);
       }
 
-      &.satisfaction-medium {
-        .stat-icon {
-          background-color: var(--stats-warning-bg);
-          color: var(--stats-warning-color);
-        }
+      &.satisfaction-medium .stat-icon {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: var(--warning-color);
       }
 
-      &.satisfaction-low {
-        .stat-icon {
-          background-color: var(--stats-error-bg);
-          color: var(--stats-error-color);
-        }
+      &.satisfaction-low .stat-icon {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: var(--error-color);
       }
 
       .stat-icon {
@@ -236,14 +153,17 @@
         .stat-value {
           font-size: 24px;
           font-weight: 700;
-          color: var(--gray-1000);
+          color: var(--text-primary);
+          /* 白色文字 */
           line-height: 1.1;
           margin-bottom: 4px;
+          text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
         }
 
         .stat-label {
           font-size: 13px;
-          color: var(--gray-600);
+          color: var(--text-secondary);
+          /* 浅灰文字 */
           font-weight: 500;
           margin-bottom: 8px;
         }
@@ -259,18 +179,18 @@
             height: 14px;
 
             &.up {
-              color: var(--stats-success-color);
+              color: var(--success-color);
             }
 
             &.down {
-              color: var(--stats-error-color);
+              color: var(--error-color);
             }
           }
 
           .trend-text {
             font-size: 12px;
             font-weight: 500;
-            color: var(--gray-600);
+            color: var(--text-tertiary);
           }
         }
       }
@@ -280,79 +200,77 @@
 
 /* Stats Overview 响应式设计 */
 @media (max-width: 1200px) {
-  .stats-overview-container {
-    .stats-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
+  .stats-overview-container .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
   }
 }
 
 @media (max-width: 768px) {
-  .stats-overview-container {
-    .stats-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+  .stats-overview-container .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 
-      .stat-card {
-        padding: 16px;
-        min-height: 80px;
+    .stat-card {
+      padding: 16px;
+      min-height: 80px;
 
-        .stat-icon {
-          width: 36px;
-          height: 36px;
-          margin-right: 12px;
+      .stat-icon {
+        width: 36px;
+        height: 36px;
+        margin-right: 12px;
 
-          .icon {
-            width: 18px;
-            height: 18px;
-          }
+        .icon {
+          width: 18px;
+          height: 18px;
+        }
+      }
+
+      .stat-content {
+        .stat-value {
+          font-size: 20px;
         }
 
-        .stat-content {
-          .stat-value {
-            font-size: 20px;
-          }
-
-          .stat-label {
-            font-size: 12px;
-          }
+        .stat-label {
+          font-size: 12px;
         }
       }
     }
   }
 }
 
-/* 共享的卡片样式 */
+/* 共享的卡片样式 - 玻璃拟态 */
 .dashboard-card {
-  background-color: var(--gray-0);
-  border: 1px solid var(--gray-100);
+  background-color: var(--bg-container);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   height: 100%;
   display: flex;
   flex-direction: column;
 
   &:hover {
-    border-color: var(--gray-200);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    border-color: var(--main-color);
+    box-shadow: var(--shadow-glow);
   }
 }
 
-/* 使用更具体的选择器来覆盖 Ant Design 的默认样式 */
+/* Ant Design 组件样式覆盖 */
 .dashboard-card .ant-card-head {
-  /* border-bottom: 1px solid var(--gray-200) !important; */
   min-height: 56px !important;
   padding: 0 20px !important;
   flex-shrink: 0;
-  background-color: var(--gray-0) !important;
-  /* border: 1px solo; */
+  background-color: transparent !important;
+  /* 透明背景 */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 .dashboard-card .ant-card-head-title {
   font-size: 18px !important;
   font-weight: 600 !important;
-  color: var(--gray-1000) !important;
+  color: var(--text-primary) !important;
+  /* 白色标题 */
 }
 
 .dashboard-card .ant-card-body {
@@ -360,7 +278,7 @@
   padding-top: 0px !important;
   flex: 1;
   overflow: auto;
-  background-color: var(--gray-0) !important;
+  background-color: transparent !important;
 }
 
 .dashboard-card .ant-card-extra {
@@ -375,7 +293,7 @@
     .ant-statistic-title {
       font-size: 13px;
       font-weight: 500;
-      color: var(--gray-600);
+      color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 8px;
@@ -384,17 +302,19 @@
     .ant-statistic-content {
       font-size: 24px;
       font-weight: 700;
-      color: var(--gray-1000);
+      color: var(--text-primary);
     }
   }
 }
 
 /* 图表容器样式 */
 .chart-container {
-  h4, h5 {
+
+  h4,
+  h5 {
     margin-bottom: 16px;
     font-weight: 600;
-    color: var(--gray-1000);
+    color: var(--text-primary);
   }
 
   h4 {
@@ -403,25 +323,26 @@
 
   h5 {
     font-size: 14px;
-    color: var(--gray-600);
+    color: var(--text-secondary);
   }
 
   .chart {
     height: 250px;
     width: 100%;
-    background-color: var(--gray-0);
+    background-color: rgba(0, 0, 0, 0.2);
+    /* 深色半透明背景 */
     border-radius: 8px;
     padding: 10px;
-    border: 1px solid var(--gray-100);
+    border: var(--glass-border);
   }
 
   .chart-medium {
     height: 180px;
     width: 100%;
-    background-color: var(--gray-0);
+    background-color: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
     padding: 8px;
-    border: 1px solid var(--gray-100);
+    border: var(--glass-border);
   }
 
   .chart-small {
@@ -432,58 +353,59 @@
 
 /* Ant Design 组件样式覆盖 */
 .dashboard-card .ant-statistic-title {
-  color: var(--gray-600) !important;
+  color: var(--text-secondary) !important;
   font-weight: 500 !important;
 }
 
 .dashboard-card .ant-statistic-content {
-  color: var(--gray-1000);
+  color: var(--text-primary);
 }
 
 .dashboard-card .ant-divider {
-  border-color: var(--gray-200) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .dashboard-card .ant-table {
-  background-color: var(--gray-0);
+  background-color: transparent;
   border-radius: 8px;
   overflow: hidden;
 
-  .ant-table-thead > tr > th {
-    background-color: var(--gray-25);
-    border-bottom: 1px solid var(--gray-200);
+  .ant-table-thead>tr>th {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     font-weight: 600;
     padding: 12px 16px;
     font-size: 12px;
-    color: var(--gray-700);
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
-  .ant-table-tbody > tr {
+  .ant-table-tbody>tr {
     transition: background-color 0.2s ease;
 
-    > td {
-      border-bottom: 1px solid var(--gray-100);
-      color: var(--gray-1000);
+    >td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
       padding: 12px 16px;
       font-weight: 400;
     }
 
-    &:hover > td {
-      background-color: var(--gray-25);
+    &:hover>td {
+      background-color: rgba(255, 255, 255, 0.05);
     }
   }
 }
 
 .dashboard-card .ant-progress {
   .ant-progress-bg {
-    background-color: var(--main-500) !important;
+    background-color: var(--main-color) !important;
     border-radius: 4px;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
   }
 
   .ant-progress-text {
-    color: var(--gray-1000) !important;
+    color: var(--text-primary) !important;
     font-weight: 500;
     font-size: 12px;
   }
@@ -497,29 +419,29 @@
   margin-bottom: 16px;
 
   .mini-stat-card {
-    background-color: var(--gray-0);
-    border: 1px solid var(--gray-200);
+    background-color: rgba(255, 255, 255, 0.03);
+    border: var(--glass-border);
     border-radius: 6px;
     padding: 16px;
     text-align: center;
     transition: all 0.2s ease;
 
     &:hover {
-      border-color: var(--gray-300);
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      border-color: var(--main-color);
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .mini-stat-value {
       font-size: 20px;
       font-weight: 600;
-      color: var(--gray-1000);
+      color: var(--text-primary);
       line-height: 1.2;
       margin-bottom: 4px;
     }
 
     .mini-stat-label {
       font-size: 12px;
-      color: var(--gray-600);
+      color: var(--text-secondary);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.025em;
@@ -529,16 +451,16 @@
 
 /* 紧凑型图表容器 */
 .compact-chart-container {
-  background-color: var(--gray-0);
-  border: 1px solid var(--gray-200);
+  background-color: rgba(255, 255, 255, 0.03);
+  border: var(--glass-border);
   border-radius: 6px;
   padding: 16px;
   height: 240px;
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: var(--gray-300);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    border-color: var(--main-color);
+    box-shadow: var(--shadow-glow);
   }
 
   .chart-header {
@@ -550,13 +472,13 @@
     .chart-title {
       font-size: 14px;
       font-weight: 600;
-      color: var(--gray-1000);
+      color: var(--text-primary);
     }
 
     .chart-subtitle {
       font-size: 11px;
-      color: var(--gray-600);
-      background-color: var(--gray-100);
+      color: var(--text-tertiary);
+      background-color: rgba(255, 255, 255, 0.05);
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 500;
@@ -587,35 +509,38 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    background-color: var(--gray-100);
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     font-size: 12px;
     font-weight: 600;
-    color: var(--gray-600);
-    border: 1px solid var(--gray-200);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 }
 
 /* 指标值样式 */
 .metric-value {
   font-weight: 500;
-  color: var(--gray-1000);
+  color: var(--text-primary);
   font-size: 14px;
 }
 
-/* 排名样式 */
-.dashboard-card .ant-table-tbody > tr.top-rank.first {
-  background-color: #fef3c7;
+/* 排名样式 - 调整为深色背景下的高亮 */
+.dashboard-card .ant-table-tbody>tr.top-rank.first {
+  background-color: rgba(254, 243, 199, 0.1);
+  /* Amber-100 10% */
   border-radius: 4px;
 }
 
-.dashboard-card .ant-table-tbody > tr.top-rank.second {
-  background-color: var(--gray-100);
+.dashboard-card .ant-table-tbody>tr.top-rank.second {
+  background-color: rgba(241, 245, 249, 0.1);
+  /* Slate-100 10% */
   border-radius: 4px;
 }
 
-.dashboard-card .ant-table-tbody > tr.top-rank.third {
-  background-color: #fed7aa;
+.dashboard-card .ant-table-tbody>tr.top-rank.third {
+  background-color: rgba(254, 215, 170, 0.1);
+  /* Orange-200 10% */
   border-radius: 4px;
 }
 

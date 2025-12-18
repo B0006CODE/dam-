@@ -382,7 +382,10 @@ import { parseToShanghai } from '@/utils/time';
   align-items: center;
   margin-bottom: 4px;
   flex-shrink: 0;
-  padding: 4px 2px;
+  padding: 8px 12px;
+  background-color: rgba(15, 23, 42, 0.45);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .search-container {
@@ -410,7 +413,7 @@ import { parseToShanghai } from '@/utils/time';
   align-items: center;
   justify-content: space-between;
   padding: 2px 4px;
-  background-color: var(--main-5);
+  background-color: rgba(6, 182, 212, 0.1);
   border-radius: 4px;
   margin-bottom: 4px;
   flex-shrink: 0;
@@ -436,7 +439,7 @@ import { parseToShanghai } from '@/utils/time';
 }
 
 .batch-actions-compact .ant-btn:hover {
-  background-color: var(--main-20);
+  background-color: rgba(6, 182, 212, 0.2);
   color: var(--main-color);
 }
 
@@ -453,7 +456,7 @@ import { parseToShanghai } from '@/utils/time';
   line-height: 1.4;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text-primary);
   text-decoration: none;
 }
 
@@ -544,11 +547,44 @@ import { parseToShanghai } from '@/utils/time';
 }
 
 /* Table row selection styling */
+:deep(.ant-table-thead > tr > th) {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
 :deep(.ant-table-tbody > tr.ant-table-row-selected > td) {
-  background-color: var(--main-5);
+  background-color: rgba(6, 182, 212, 0.15) !important;
 }
 
 :deep(.ant-table-tbody > tr:hover > td) {
-  background-color: var(--main-5);
+  background-color: rgba(6, 182, 212, 0.1) !important;
+}
+
+:deep(.ant-table) {
+  background: transparent !important;
+}
+
+:deep(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background-color: transparent !important;
+}
+
+/* Fix sorted column background color */
+:deep(.ant-table-tbody > tr > td.ant-table-column-sort) {
+  background-color: rgba(6, 182, 212, 0.05) !important;
+}
+
+:deep(.ant-table-thead > tr > th.ant-table-column-sort) {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+}
+
+:deep(.ant-table-column-sorter) {
+  color: var(--text-secondary) !important;
+}
+
+:deep(.ant-table-column-sorter-up.active),
+:deep(.ant-table-column-sorter-down.active) {
+  color: var(--main-color) !important;
 }
 </style>

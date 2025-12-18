@@ -455,10 +455,10 @@ const sigmaSettings = {
   labelSize: 12,
   edgeLabelSize: 10,
   labelColor: {
-    color: '#000'
+    color: '#ffffff'
   },
   edgeLabelColor: {
-    color: '#666'
+    color: '#94a3b8'
   },
   minEdgeThickness: 4, // 增加最小边厚度，提高点击性
   maxEdgeThickness: 10, // 增加最大边厚度
@@ -1301,13 +1301,14 @@ defineExpose({
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: transparent;
 }
 
 .control-panel {
-  background: white;
+  background: var(--bg-container);
+  border-bottom: var(--glass-border);
+  backdrop-filter: var(--glass-blur);
   padding: 8px 0; /* Reduced from 16px */
-  border-bottom: none;
   display: flex;
   gap: 12px; /* Reduced from 16px */
   align-items: center;
@@ -1330,9 +1331,9 @@ defineExpose({
 
 .sigma-container {
   flex: 1;
-  background: white;
+  background: transparent; /* Changed from rgba(15, 23, 42, 0.35) to transparent */
   position: relative; /* 确保子元素可以相对于此容器定位 */
-  border: 1px solid var(--main-20);
+  border: var(--glass-border);
   border-radius: 8px;
   overflow: hidden;
 
@@ -1344,16 +1345,17 @@ defineExpose({
 .detail-panel {
   position: absolute;
   width: 240px; /* Reduced from 300px */
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: var(--glass-bg);
+  border: var(--glass-border);
   border-radius: 6px; /* Reduced from 8px */
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08); /* Reduced shadow */
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur);
   transition: box-shadow 0.2s ease;
   cursor: move;
   z-index: 1000;
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); /* Reduced shadow */
+    box-shadow: var(--shadow-lg);
   }
 
   &.node-panel {
@@ -1370,8 +1372,8 @@ defineExpose({
   align-items: center;
   gap: 6px; /* Reduced from 8px */
   padding: 8px 12px; /* Reduced from 12px 16px */
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
+  border-bottom: var(--glass-border);
+  background: rgba(15, 23, 42, 0.45);
   border-radius: 6px 6px 0 0; /* Reduced from 8px */
 
   h4 {
@@ -1379,7 +1381,7 @@ defineExpose({
     font-size: 12px; /* Reduced from 14px */
     font-weight: 600;
     flex: 1;
-    color: #262626;
+    color: var(--text-primary);
   }
 }
 
@@ -1416,13 +1418,13 @@ defineExpose({
 .detail-label {
   min-width: 50px; /* Reduced from 60px */
   font-weight: 600;
-  color: #595959;
+  color: var(--text-tertiary);
   font-size: 11px; /* Reduced from 12px */
   flex-shrink: 0;
 }
 
 .detail-value {
-  color: #262626;
+  color: var(--text-primary);
   font-size: 11px; /* Reduced from 12px */
   word-break: break-word;
   line-height: 1.3; /* Reduced from 1.4 */
@@ -1431,7 +1433,7 @@ defineExpose({
 .detail-actions {
   margin-top: 12px; /* Reduced from 16px */
   padding-top: 8px; /* Reduced from 12px */
-  border-top: 1px solid #f0f0f0;
+  border-top: var(--glass-border);
 }
 
 .graph-controls {
@@ -1442,12 +1444,12 @@ defineExpose({
 }
 
 .control-group {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  border: 2px solid white;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
   border-radius: 16px; /* Reduced from 20px */
   padding: 2px; /* Reduced from 4px */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Reduced shadow */
+  box-shadow: var(--shadow-md);
   display: flex;
   gap: 1px; /* Reduced from 2px */
 }
@@ -1461,7 +1463,7 @@ defineExpose({
   justify-content: center;
   border: none;
   background: transparent;
-  color: #595959;
+  color: var(--text-secondary);
   transition: all 0.2s ease;
 
   &:hover {
@@ -1474,27 +1476,27 @@ defineExpose({
   position: absolute;
   right: 12px; /* Reduced from 16px */
   top: 60px; /* Reduced from 80px */
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  border: 2px solid white;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
   border-radius: 6px; /* Reduced from 8px */
   width: 150px; /* Reduced from 180px */
   max-height: 250px; /* Reduced from 300px */
   z-index: 1000;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08); /* Reduced shadow */
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
 .legend-header {
-  background: #fafafa;
+  background: rgba(15, 23, 42, 0.45);
   padding: 6px 10px; /* Reduced from 8px 12px */
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: var(--glass-border);
 
   h4 {
     margin: 0;
     font-size: 12px; /* Reduced from 13px */
     font-weight: 600;
-    color: #262626;
+    color: var(--text-primary);
   }
 }
 
@@ -1514,11 +1516,11 @@ defineExpose({
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #d9d9d9;
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 2px;
 
     &:hover {
-      background: #bfbfbf;
+      background: rgba(255, 255, 255, 0.25);
     }
   }
 }
@@ -1540,11 +1542,11 @@ defineExpose({
     text-overflow: ellipsis;
     flex: 1;
     min-width: 0;
-    color: #595959;
+    color: var(--text-secondary);
   }
 
   &:hover {
-    background-color: #f5f5f5;
+    background-color: rgba(255, 255, 255, 0.05);
   }
 }
 
@@ -1552,14 +1554,15 @@ defineExpose({
   width: 8px; /* Reduced from 10px */
   height: 8px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
 }
 
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1571,7 +1574,7 @@ defineExpose({
 
   p {
     margin-top: 12px; /* Reduced from 16px */
-    color: #666;
+    color: var(--text-secondary);
     font-size: 12px; /* Added smaller font size */
   }
 }

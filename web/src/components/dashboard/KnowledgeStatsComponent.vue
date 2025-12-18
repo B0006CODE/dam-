@@ -1,29 +1,38 @@
 <template>
-  <a-card title="知识库使用情况" :loading="loading" class="dashboard-card">
-    <!-- 知识库概览 -->
+  <a-card class="knowledge-stats-card" :loading="loading">
+    <template #title>
+      <div class="card-title">
+        <span>📚 知识库统计</span>
+      </div>
+    </template>
+
+    <!-- 核心数据统计 -->
     <div class="stats-overview">
       <a-row :gutter="16">
         <a-col :span="8">
           <a-statistic
             title="知识库总数"
             :value="knowledgeStats?.total_databases || 0"
-            :value-style="{ color: 'var(--chart-info)' }"
+            :value-style="{ color: '#06b6d4', fontWeight: 'bold', textShadow: '0 0 10px rgba(6, 182, 212, 0.3)' }"
             suffix="个"
+            class="neon-stat"
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
             title="文件总数"
             :value="knowledgeStats?.total_files || 0"
-            :value-style="{ color: 'var(--chart-success)' }"
+            :value-style="{ color: '#10b981', fontWeight: 'bold', textShadow: '0 0 10px rgba(16, 185, 129, 0.3)' }"
             suffix="个"
+            class="neon-stat"
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
             title="存储容量"
             :value="formattedStorageSize"
-            :value-style="{ color: 'var(--chart-warning)' }"
+            :value-style="{ color: '#f59e0b', fontWeight: 'bold', textShadow: '0 0 10px rgba(245, 158, 11, 0.3)' }"
+            class="neon-stat"
           />
         </a-col>
       </a-row>
@@ -181,13 +190,13 @@ const initDbTypeChart = () => {
     animation: false,
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: 'rgba(6, 182, 212, 0.3)',
       borderWidth: 1,
-      textStyle: { color: '#666' },
+      textStyle: { color: '#fff' },
       formatter: (params) => {
         const value = params.value || 0
-        return `${params.seriesName}: ${value}/${total}`
+        return `<div style="color:#fff;font-weight:600">${params.seriesName}</div><div style="color:rgba(255,255,255,0.8)">${value}/${total}</div>`
       }
     },
     grid: { left: 0, right: 0, top: 10, bottom: 10, containLabel: false },
@@ -201,7 +210,15 @@ const initDbTypeChart = () => {
       show: false,
       data: ['all']
     },
-    series
+    series: series.map(s => ({
+      ...s,
+      itemStyle: {
+        ...s.itemStyle,
+        borderColor: 'rgba(15, 23, 42, 0.8)',
+        shadowBlur: 5,
+        shadowColor: s.itemStyle.color
+      }
+    }))
   }
 
   dbTypeChart.setOption(option, true)
@@ -224,47 +241,54 @@ const initFileTypeChart = () => {
     const option = {
       tooltip: {
         trigger: 'item',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#e8e8e8',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        borderColor: 'rgba(6, 182, 212, 0.3)',
         borderWidth: 1,
         textStyle: {
-          color: '#666'
+          color: '#fff'
         },
         formatter: '{a} <br/>{b}: {c} ({d}%)'
       },
       series: [{
         name: '文件类型',
         type: 'pie',
-        radius: ['25%', '55%'],
+        radius: ['35%', '65%'],
         center: ['50%', '50%'],
         avoidLabelOverlap: true,
         itemStyle: {
           borderRadius: 6,
-          borderColor: '#fff',
-          borderWidth: 2
+          borderColor: 'rgba(15, 23, 42, 0.8)',
+          borderWidth: 2,
+          shadowBlur: 10,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
         },
         label: {
           show: true,
           formatter: '{b}: {c}',
-          fontSize: 12
+          fontSize: 12,
+          color: 'rgba(255, 255, 255, 0.8)'
         },
         emphasis: {
           label: {
             show: true,
             fontSize: '14',
             fontWeight: 'bold',
-            color: '#333'
+            color: '#fff',
+            textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
           },
           itemStyle: {
-            shadowBlur: 10,
+            shadowBlur: 20,
             shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+            shadowColor: 'rgba(6, 182, 212, 0.5)'
           }
         },
         labelLine: {
           show: true,
           length: 10,
-          length2: 15
+          length2: 15,
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.3)'
+          }
         },
         data: data,
         color: getColorPalette()
@@ -375,15 +399,37 @@ defineExpose({
 
 <style scoped lang="less">
 // KnowledgeStatsComponent 特有的样式
+
 .chart-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
   .chart-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 
     h4 {
       margin: 0;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      &::before {
+        content: '';
+        display: block;
+        width: 4px;
+        height: 14px;
+        background: #06b6d4;
+        border-radius: 2px;
+        box-shadow: 0 0 8px #06b6d4;
+      }
     }
 
     .legend {
@@ -396,14 +442,35 @@ defineExpose({
         align-items: center;
         gap: 6px;
         font-size: 12px;
-        color: #666;
+        color: rgba(255, 255, 255, 0.6);
       }
 
       .legend-color {
-        width: 10px;
-        height: 10px;
-        border-radius: 2px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        box-shadow: 0 0 5px currentColor;
       }
+    }
+  }
+
+  h4 {
+    margin: 0 0 12px 0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 14px;
+      background: #06b6d4;
+      border-radius: 2px;
+      box-shadow: 0 0 8px #06b6d4;
     }
   }
 
@@ -415,5 +482,21 @@ defineExpose({
   .chart--thin {
     height: 80px;
   }
+}
+
+:deep(.ant-statistic-title) {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 12px !important;
+  margin-bottom: 4px !important;
+}
+
+:deep(.ant-statistic-content-suffix) {
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 12px !important;
+}
+
+:deep(.ant-divider) {
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+  margin: 16px 0 !important;
 }
 </style>

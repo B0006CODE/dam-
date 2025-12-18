@@ -7,7 +7,7 @@
         <span class="stats-title">知识图谱统计结果</span>
       </div>
       <div class="stats-summary">
-        <div class="stats-scope">{{ statisticsData.scope || '整个图谱' }}</div>
+        <div class="stats-scope" :title="statisticsData.scope || '整个图谱'">{{ statisticsData.scope || '整个图谱' }}</div>
         <div class="stats-total">
           <span class="total-number">{{ statisticsData.total_count }}</span>
           <span class="total-label">种类型</span>
@@ -20,7 +20,7 @@
           class="stat-category"
         >
           <div class="category-header">
-            <span class="category-name">{{ typeName }}</span>
+            <span class="category-name" :title="typeName">{{ typeName }}</span>
             <span class="category-count">{{ typeData.count }} 种</span>
           </div>
           <div class="category-entities">
@@ -28,6 +28,7 @@
               v-for="entity in (typeData.entities || []).slice(0, 10)" 
               :key="entity"
               class="entity-tag"
+              :title="entity"
             >
               {{ entity }}
             </a-tag>
@@ -331,15 +332,15 @@ const reasoningPaths = computed(() => {
 
 <style lang="less" scoped>
 .knowledge-graph-result {
-  background: var(--gray-0);
+  background: transparent;
   border-radius: 12px;
 
   // ============ 统计类结果样式 ============
   .statistics-result {
     padding: 16px;
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    background: rgba(6, 182, 212, 0.05); /* 极淡的青色背景 */
     border-radius: 12px;
-    border: 1px solid #bae6fd;
+    border: 1px solid rgba(6, 182, 212, 0.2);
 
     .stats-header {
       display: flex;
@@ -349,13 +350,13 @@ const reasoningPaths = computed(() => {
 
       .stats-icon {
         font-size: 20px;
-        color: #0284c7;
+        color: var(--main-color);
       }
 
       .stats-title {
         font-size: 15px;
         font-weight: 600;
-        color: #0c4a6e;
+        color: var(--text-primary);
       }
     }
 
@@ -364,14 +365,19 @@ const reasoningPaths = computed(() => {
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      background: white;
+      background: var(--bg-elevated);
       border-radius: 8px;
       margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: var(--glass-border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
       .stats-scope {
         font-size: 14px;
-        color: #64748b;
+        color: var(--text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 60%;
       }
 
       .stats-total {
@@ -382,13 +388,14 @@ const reasoningPaths = computed(() => {
         .total-number {
           font-size: 28px;
           font-weight: 700;
-          color: #0284c7;
+          color: var(--main-color);
           line-height: 1;
+          text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
         }
 
         .total-label {
           font-size: 13px;
-          color: #64748b;
+          color: var(--text-secondary);
         }
       }
     }
@@ -399,10 +406,11 @@ const reasoningPaths = computed(() => {
       gap: 12px;
 
       .stat-category {
-        background: white;
+        background: var(--bg-elevated);
         border-radius: 8px;
         padding: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        border: var(--glass-border);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
         .category-header {
           display: flex;
@@ -412,15 +420,20 @@ const reasoningPaths = computed(() => {
 
           .category-name {
             font-weight: 600;
-            color: #1e293b;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 70%;
           }
 
           .category-count {
             font-size: 13px;
-            color: #0284c7;
-            background: #e0f2fe;
+            color: var(--main-color);
+            background: rgba(6, 182, 212, 0.1);
             padding: 2px 8px;
             border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
           }
         }
 
@@ -431,15 +444,27 @@ const reasoningPaths = computed(() => {
 
           .entity-tag {
             margin: 0;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            color: #475569;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
             font-size: 12px;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            vertical-align: middle;
+            
+            &:hover {
+              color: var(--text-primary);
+              border-color: var(--main-color);
+              background: rgba(6, 182, 212, 0.1);
+            }
           }
 
           .more-hint {
             font-size: 12px;
-            color: #94a3b8;
+            color: var(--text-tertiary);
             align-self: center;
           }
         }
@@ -455,8 +480,9 @@ const reasoningPaths = computed(() => {
       justify-content: space-between;
       gap: 8px;
       padding: 12px 16px;
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      background: rgba(255, 255, 255, 0.03);
       border-radius: 12px 12px 0 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
       h4 {
         margin: 0;
@@ -470,7 +496,7 @@ const reasoningPaths = computed(() => {
 
       .result-summary {
         font-size: 13px;
-        color: var(--gray-600);
+        color: var(--text-secondary);
 
         strong {
           color: var(--main-color);
@@ -490,8 +516,8 @@ const reasoningPaths = computed(() => {
       margin: 12px 8px 10px;
       padding: 16px;
       border-radius: 12px;
-      border: 1px solid #e9d5ff;
-      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      background: rgba(124, 58, 237, 0.05);
 
       .reasoning-header {
         display: flex;
@@ -505,13 +531,13 @@ const reasoningPaths = computed(() => {
           gap: 6px;
           font-weight: 600;
           font-size: 14px;
-          color: #7c3aed;
+          color: #a78bfa;
         }
 
         .reasoning-hint {
           font-size: 12px;
-          color: #a78bfa;
-          background: white;
+          color: #c4b5fd;
+          background: rgba(0, 0, 0, 0.2);
           padding: 2px 8px;
           border-radius: 10px;
         }
@@ -527,15 +553,15 @@ const reasoningPaths = computed(() => {
         display: flex;
         align-items: flex-start;
         gap: 12px;
-        background: white;
+        background: var(--bg-elevated);
         padding: 12px 14px;
         border-radius: 8px;
-        border: 1px solid #ede9fe;
+        border: var(--glass-border);
         transition: all 0.2s ease;
 
         &:hover {
-          border-color: #c4b5fd;
-          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
+          border-color: #8b5cf6;
+          box-shadow: 0 0 10px rgba(139, 92, 246, 0.2);
         }
 
         .path-number {
@@ -560,6 +586,7 @@ const reasoningPaths = computed(() => {
           gap: 6px;
           font-size: 13px;
           line-height: 1.6;
+          color: var(--text-secondary);
         }
 
         .entity {
@@ -568,15 +595,15 @@ const reasoningPaths = computed(() => {
           font-weight: 500;
 
           &.source {
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            color: #1e40af;
-            border: 1px solid #93c5fd;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
           }
 
           &.target {
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            color: #166534;
-            border: 1px solid #86efac;
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
           }
         }
 
@@ -584,23 +611,23 @@ const reasoningPaths = computed(() => {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          color: #7c3aed;
+          color: #a78bfa;
 
           .arrow-line {
             width: 16px;
             height: 2px;
-            background: linear-gradient(90deg, #c4b5fd 0%, #a78bfa 100%);
+            background: linear-gradient(90deg, #a78bfa 0%, #8b5cf6 100%);
             border-radius: 1px;
           }
 
           .relation-label {
             padding: 2px 8px;
-            background: #f5f3ff;
-            border: 1px solid #ddd6fe;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
             border-radius: 4px;
             font-size: 11px;
             font-weight: 600;
-            color: #7c3aed;
+            color: #c4b5fd;
           }
 
           .arrow-head {
@@ -610,7 +637,7 @@ const reasoningPaths = computed(() => {
         }
 
         .path-separator {
-          color: #c4b5fd;
+          color: #8b5cf6;
           margin: 0 2px;
         }
       }

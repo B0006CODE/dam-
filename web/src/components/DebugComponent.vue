@@ -437,7 +437,9 @@ const printAgentConfig = async () => {
 
 <style scoped>
 .log-viewer {
-  background: white;
+  background: var(--bg-elevated);
+  border: var(--glass-border);
+  border-radius: 12px;
 }
 
 .log-viewer.fullscreen {

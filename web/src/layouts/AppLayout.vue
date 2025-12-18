@@ -265,10 +265,13 @@ div.header, #app-router-view {
   flex: 0 0 @header-width;
   justify-content: flex-start;
   align-items: center;
-  background-color: var(--main-10);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   height: 100%;
   width: @header-width;
-  border-right: 1px solid var(--gray-100);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
 
   .nav {
     display: flex;
@@ -276,126 +279,97 @@ div.header, #app-router-view {
     justify-content: center;
     align-items: center;
     position: relative;
-    gap: 12px;
-  }
-
-  // 添加debug触发器样式
-  .debug-trigger {
-    position: relative;
-    height: 100%;
-    width: 100%;
-    min-height: 20px;
-    flex-grow: 1;
+    gap: 16px;
+    margin-top: 20px;
   }
 
   .logo {
-    width: 34px;
-    height: 34px;
-    margin: 12px 0 20px 0;
+    width: 42px;
+    height: 42px;
+    margin: 24px 0;
+    padding: 2px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
 
     img {
       width: 100%;
       height: 100%;
-      border-radius: 4px;  // 50% for circle
-    }
-
-    & > a {
-      text-decoration: none;
-      font-size: 24px;
-      font-weight: bold;
-      color: #333;
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
     }
   }
 
   .nav-item {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
     justify-content: center;
-    width: 70px;
-    min-height: 70px;
-    padding: 10px 6px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background-color: transparent;
-    color: #222;
-    font-size: 20px;
-    transition: background-color 0.2s ease-in-out;
-    margin: 0;
+    width: 60px;
+    min-height: 60px;
+    padding: 8px;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
     cursor: pointer;
 
-    &.github {
-      padding: 10px 12px;
-      margin-bottom: 16px;
-      &:hover {
-        background-color: transparent;
-        border: 1px solid transparent;
-      }
-
-          }
-
-    &.api-docs {
-      padding: 10px 12px;
+    .icon {
+      transition: transform 0.3s ease;
     }
-    &.docs {
-      padding: 10px 12px;
-      margin-bottom: 12px;
 
-      .docs-link {
-        display: flex;
-        align-items: center;
-        color: inherit;
-      }
-    }
-    &.task-center {
-      .task-center-badge {
-        width: 100%;
-        display: flex;
-        justify-content: center;
+    &:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+      .icon {
+        transform: scale(1.1);
       }
     }
 
     &.active {
-      text-shadow: 0 0 15px var(--main-300);
-      font-weight: bold;
-      color: var(--main-color);
-      .nav-text {
-        color: var(--main-color);
-        font-weight: 600;
+      color: #06b6d4;
+      background: rgba(6, 182, 212, 0.1);
+      box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.1);
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        width: 3px;
+        height: 24px;
+        background: #06b6d4;
+        border-radius: 0 4px 4px 0;
+        box-shadow: 0 0 10px #06b6d4;
       }
-    }
 
-    &.warning {
-      color: red;
-    }
-
-    &:hover {
-      color: var(--main-color);
       .nav-text {
-        color: var(--main-color);
+        color: #06b6d4;
+        font-weight: 600;
+        text-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
       }
     }
   }
 
   .nav-text {
-    font-size: 12px;
-    line-height: 1.1;
-    color: var(--gray-700);
+    font-size: 11px;
+    line-height: 1;
+    color: inherit;
     text-align: center;
-    word-break: keep-all;
+    margin-top: 4px;
+  }
+
+  .user-info, .setting {
+    margin-top: auto;
+    margin-bottom: 20px;
   }
 
   .setting {
-    width: auto;
-    font-size: 20px;
-    color: #333;
-    margin-bottom: 8px;
-    padding: 16px 12px;
-
+    margin-top: 10px;
+    margin-bottom: 24px;
+    color: rgba(255, 255, 255, 0.5);
+    
     &:hover {
-      cursor: pointer;
+      color: #06b6d4;
     }
   }
 }

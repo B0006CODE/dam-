@@ -260,7 +260,7 @@ const handleMouseUp = () => {
 
   .left-panel,
   .right-panel {
-    background-color: #fff;
+    background-color: var(--glass-bg);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -269,8 +269,9 @@ const handleMouseUp = () => {
   .left-panel {
     flex-shrink: 0;
     flex-grow: 1;
-    background-color: var(--gray-0);
+    background-color: rgba(15, 23, 42, 0.3);
     padding: 8px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .right-panel {
@@ -332,14 +333,7 @@ const handleMouseUp = () => {
   }
 }
 
-/* Table row selection styling */
-:deep(.ant-table-tbody > tr.ant-table-row-selected > td) {
-  background-color: var(--main-5);
-}
 
-:deep(.ant-table-tbody > tr:hover > td) {
-  background-color: var(--main-5);
-}
 </style>
 
 <style lang="less">
@@ -434,8 +428,8 @@ const handleMouseUp = () => {
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    border-bottom: 1px solid #f0f0f0;
-    background-color: #fafafa;
+    border-bottom: var(--glass-border);
+    background-color: rgba(15, 23, 42, 0.45);
 
     .header-left {
       display: flex;
@@ -446,7 +440,7 @@ const handleMouseUp = () => {
     .section-title {
       font-size: 14px;
       font-weight: 500;
-      color: var(--gray-700);
+      color: var(--text-primary);
       margin: 0;
     }
 

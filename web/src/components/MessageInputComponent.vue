@@ -376,16 +376,15 @@ onBeforeUnmount(() => {
   flex-direction: column;
   width: 100%;
   margin: 0 auto;
-  border: 1.5px solid rgba(226, 232, 240, 0.8);
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
-  backdrop-filter: blur(12px);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.05),
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   gap: 0;
   position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Default: Multi-line layout */
   padding: 1.6rem 1rem 1.2rem 1rem;
@@ -406,20 +405,13 @@ onBeforeUnmount(() => {
   }
 
   &:focus-within {
-    border-color: rgba(99, 102, 241, 0.5);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.08),
-      0 2px 10px rgba(0, 0, 0, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border-color: #06b6d4;
+    background: rgba(15, 23, 42, 0.6);
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.15);
   }
 
   &:hover {
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.08),
-      0 2px 8px rgba(0, 0, 0, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border-color: rgba(6, 182, 212, 0.3);
   }
 
   &.single-line {
@@ -456,7 +448,7 @@ onBeforeUnmount(() => {
   background-color: transparent;
   border: none;
   margin: 0;
-  color: #222222;
+  color: var(--text-primary);
   font-size: 15px;
   outline: none;
   resize: none;
@@ -471,7 +463,7 @@ onBeforeUnmount(() => {
   }
 
   &::placeholder {
-    color: #888888;
+    color: var(--text-tertiary);
   }
 }
 
@@ -488,12 +480,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gray-600);
+  color: var(--text-secondary);
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: var(--gray-100);
-    color: var(--main-500);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--main-color);
   }
 
   .anticon {
@@ -512,31 +504,31 @@ onBeforeUnmount(() => {
   max-width: 300px;
 
   .no-options {
-    color: var(--gray-700);
+    color: var(--text-secondary);
     font-size: 12px;
     text-align: center;
   }
 
   :deep(.opt-item) {
     border-radius: 12px;
-    border: 1px solid var(--gray-300);
+    border: 1px solid var(--border-color-base);
     padding: 5px 10px;
     cursor: pointer;
     font-size: 12px;
-    color: var(--gray-700);
+    color: var(--text-secondary);
     transition: all 0.2s ease;
     margin: 4px;
     display: inline-block;
 
     &:hover {
-      background-color: var(--main-10);
+      background-color: rgba(6, 182, 212, 0.1);
       color: var(--main-color);
     }
 
     &.active {
       color: var(--main-color);
-      border: 1px solid var(--main-500);
-      background-color: var(--main-10);
+      border: 1px solid var(--main-color);
+      background-color: rgba(6, 182, 212, 0.1);
     }
   }
 }
@@ -545,13 +537,10 @@ onBeforeUnmount(() => {
   height: 36px;
   width: 36px;
   cursor: pointer;
-  background: linear-gradient(135deg, #6366f1 0%, color-mix(in srgb, #6366f1 85%, #000) 100%);
-  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  border-radius: 12px;
   border: none;
-  box-shadow:
-    0 2px 8px color-mix(in srgb, #6366f1 30%, transparent),
-    0 1px 4px color-mix(in srgb, #6366f1 20%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
   color: white;
   padding: 0;
   display: flex;
@@ -561,22 +550,16 @@ onBeforeUnmount(() => {
   position: relative;
 
   &:hover {
-    background: linear-gradient(135deg, #5b5ce6 0%, color-mix(in srgb, #5b5ce6 85%, #000) 100%);
-    box-shadow:
-      0 4px 16px color-mix(in srgb, #6366f1 40%, transparent),
-      0 2px 8px color-mix(in srgb, #6366f1 25%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
+    box-shadow: 0 4px 16px rgba(6, 182, 212, 0.4);
   }
 
   &:active {
-    box-shadow:
-      0 2px 8px color-mix(in srgb, #6366f1 25%, transparent),
-      0 1px 4px color-mix(in srgb, #6366f1 15%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(6, 182, 212, 0.2);
   }
 
   &:disabled {
-    background: linear-gradient(135deg, #94a3b8 0%, color-mix(in srgb, #94a3b8 85%, #000) 100%);
+    background: var(--text-tertiary);
     cursor: not-allowed;
     box-shadow: none;
     opacity: 0.7;
@@ -623,7 +606,7 @@ onBeforeUnmount(() => {
     border-radius: 0;
     cursor: pointer;
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-secondary);
     font-weight: 400;
     position: relative;
     min-width: 60px;
@@ -632,7 +615,7 @@ onBeforeUnmount(() => {
 
     .retrieval-mode-icon {
       font-size: 12px;
-      color: #64748b;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -644,20 +627,20 @@ onBeforeUnmount(() => {
     }
 
     &:hover {
-      background: rgba(var(--mode-color-rgb, 99, 102, 241), 0.08);
-      color: var(--mode-color, #6366f1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--main-color);
 
       .retrieval-mode-icon {
-        color: var(--mode-color, #6366f1);
+        color: var(--main-color);
       }
 
       .retrieval-mode-text {
-        color: var(--mode-color, #6366f1);
+        color: var(--main-color);
       }
     }
 
     &.active {
-      background: var(--mode-color, #6366f1);
+      background: var(--main-color);
       color: white;
 
       .retrieval-mode-icon {
@@ -687,17 +670,11 @@ onBeforeUnmount(() => {
     }
 
     &:focus-within {
-      box-shadow:
-        0 3px 16px rgba(0, 0, 0, 0.06),
-        0 2px 8px rgba(0, 0, 0, 0.04),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
     }
 
     &:hover {
-      box-shadow:
-        0 3px 12px rgba(0, 0, 0, 0.06),
-        0 2px 6px rgba(0, 0, 0, 0.04),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.05);
     }
   }
 
@@ -725,10 +702,8 @@ onBeforeUnmount(() => {
       gap: 1px;
       padding: 2px;
       border-radius: 12px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
-      box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.04),
-        0 1px 1px rgba(0, 0, 0, 0.06);
+      background: rgba(0, 0, 0, 0.2);
+      box-shadow: none;
     }
 
     .retrieval-mode-btn {
@@ -790,13 +765,13 @@ onBeforeUnmount(() => {
 @media (prefers-contrast: high) {
   .retrieval-mode-selector {
     .retrieval-mode-buttons {
-      border: 2px solid #000;
-      background: #fff;
+      border: 2px solid #fff;
+      background: #000;
     }
 
     .retrieval-mode-btn {
-      color: #000;
-      border: 1px solid #ccc;
+      color: #fff;
+      border: 1px solid #666;
 
       &:hover {
         background: #f0f0f0;

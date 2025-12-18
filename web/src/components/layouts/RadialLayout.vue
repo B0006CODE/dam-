@@ -473,11 +473,12 @@ onUnmounted(() => {
   position: absolute;
   top: 16px;
   left: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
   border-radius: 8px;
   padding: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -505,28 +506,29 @@ onUnmounted(() => {
 
 .node-detail-panel {
   position: absolute;
-  background: white;
+  background: var(--glass-bg);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--glass-blur);
   width: 260px;
   min-height: 120px;
   z-index: 1001;
-  border: 1px solid #e8e8e8;
+  border: var(--glass-border);
 
   .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #f0f0f0;
-    background: #fafafa;
+    border-bottom: var(--glass-border);
+    background: rgba(15, 23, 42, 0.45);
     border-radius: 8px 8px 0 0;
 
     h4 {
       margin: 0;
       font-size: 14px;
       font-weight: 600;
-      color: #262626;
+      color: var(--text-primary);
     }
   }
 
@@ -545,13 +547,13 @@ onUnmounted(() => {
       .label {
         min-width: 60px;
         font-weight: 600;
-        color: #595959;
+        color: var(--text-tertiary);
         font-size: 12px;
         flex-shrink: 0;
       }
 
       .value {
-        color: #262626;
+        color: var(--text-primary);
         font-size: 12px;
         word-break: break-word;
         flex: 1;
@@ -576,8 +578,8 @@ onUnmounted(() => {
 
   .labels text {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    fill: #262626;
-    background: white;
+    fill: var(--text-primary);
+    background: transparent;
   }
 }
 </style>

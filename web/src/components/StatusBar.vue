@@ -121,14 +121,13 @@ onUnmounted(() => {
 
 <style scoped lang="less">
 .status-bar {
-  // background: white;
-  // backdrop-filter: blur(10px);
-  // height: 60px;
   display: flex;
   align-items: center;
-  // position: sticky;
   top: 0;
   z-index: 100;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .status-bar-content {
@@ -137,7 +136,6 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  // padding-bottom: 0;
 }
 
 .status-left {
@@ -155,13 +153,14 @@ onUnmounted(() => {
   .system-name {
     font-size: 20px;
     font-weight: 600;
-    color: #111827;
+    color: #fff;
     line-height: 1.4;
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
   }
 
   .system-subtitle {
     font-size: 13px;
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.6);
     line-height: 1.2;
   }
 }
@@ -190,10 +189,11 @@ onUnmounted(() => {
   gap: 6px;
   padding: 4px 12px;
   border-radius: 999px;
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 13px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .task-center-button .icon {
@@ -206,12 +206,15 @@ onUnmounted(() => {
 }
 
 .task-center-entry:hover .task-center-button {
-  background-color: var(--main-40, #e5f0ff);
-  color: var(--main-500, #1d4ed8);
+  background-color: rgba(6, 182, 212, 0.2);
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.3);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
 }
 
 .task-center-badge :deep(.ant-badge-count) {
-  background-color: var(--main-color, #1d4ed8);
+  background-color: #06b6d4;
+  box-shadow: 0 0 5px rgba(6, 182, 212, 0.5);
 }
 
 .time-info,
@@ -220,17 +223,19 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.6);
 
   .icon {
     width: 14px;
     height: 14px;
+    color: #06b6d4;
   }
 }
 
 .current-time,
 .user-greeting {
   font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 // 响应式设计

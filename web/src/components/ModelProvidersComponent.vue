@@ -295,8 +295,8 @@ const filteredModels = computed(() => {
 
 <style lang="less" scoped>
 .model-provider-card {
-  border: 1px solid var(--gray-150);
-  background-color: white;
+  border: var(--glass-border);
+  background-color: var(--glass-bg);
   border-radius: 8px;
   margin-bottom: 16px;
   padding: 0;
@@ -335,16 +335,16 @@ const filteredModels = computed(() => {
   // 未配置provider的样式
   &.unconfigured-provider {
     .card-header {
-      background: #fafafa;
-      border-bottom: 1px solid var(--gray-150);
+      background: rgba(15, 23, 42, 0.45);
+      border-bottom: var(--glass-border);
 
       h3 {
         color: var(--gray-700);
       }
 
       .missing-keys {
-        background: #fff7ed;
-        border: 1px solid #fed7aa;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.25);
         border-radius: 4px;
         padding: 4px 8px;
         margin: 0;
@@ -358,7 +358,7 @@ const filteredModels = computed(() => {
     gap: 12px;
     cursor: pointer;
     padding: 8px 16px;
-    background: white;
+    background: rgba(15, 23, 42, 0.35);
     transition: all 0.3s ease;
 
     &:hover {
@@ -478,7 +478,7 @@ const filteredModels = computed(() => {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    background: white;
+    background: transparent;
 
     &.expanded {
       max-height: 800px;
@@ -502,7 +502,7 @@ const filteredModels = computed(() => {
       justify-content: space-between;
       align-items: center;
       box-sizing: border-box;
-      background: white;
+      background: rgba(30, 41, 59, 0.35);
       transition: all 0.3s ease;
       min-height: 48px;
 
@@ -527,7 +527,7 @@ const filteredModels = computed(() => {
         flex: 0 0 16px;
         border-radius: 50%;
         border: 2px solid var(--gray-300);
-        background: white;
+        background: transparent;
         transition: all 0.2s ease;
 
         &:hover {
@@ -545,9 +545,9 @@ const filteredModels = computed(() => {
       gap: 8px;
       cursor: pointer;
       min-height: 72px;
-      background: white;
+      background: rgba(30, 41, 59, 0.35);
       border-radius: 6px;
-      border: 1px solid var(--gray-150);
+      border: var(--glass-border);
       transition: all 0.3s ease;
 
       &:hover {
@@ -621,7 +621,7 @@ const filteredModels = computed(() => {
       // 添加模型的special样式
       &.add-model {
         border: 2px dashed var(--gray-300);
-        background: white;
+        background: transparent;
         justify-content: center;
         align-items: center;
         text-align: center;
@@ -629,7 +629,7 @@ const filteredModels = computed(() => {
 
         &:hover {
           border-color: var(--main-color);
-          background: #fafafa;
+          background: rgba(255, 255, 255, 0.04);
         }
 
         .card-models__header {
@@ -729,8 +729,8 @@ const filteredModels = computed(() => {
             margin-bottom: 4px;
             padding: 4px 6px;
             border-radius: 6px;
-            background-color: white;
-            border: 1px solid var(--gray-150);
+            background-color: rgba(30, 41, 59, 0.35);
+            border: var(--glass-border);
 
             &:hover {
               background-color: var(--gray-50);

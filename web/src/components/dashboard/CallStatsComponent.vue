@@ -152,55 +152,68 @@ const renderCallStatsChart = () => {
   }))
 
   const option = {
+    backgroundColor: 'transparent',
     grid: {
       left: '3%',
       right: '4%',
-      top: '5%',     /* 减少顶部留白 */
-      bottom: 50,    /* 减少底部留白，从60减少到50 */
+      top: '15%',
+      bottom: '10%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: xAxisData,
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
       axisTick: { show: false },
-      axisLabel: { color: '#6b7280', fontSize: 12 }
+      axisLabel: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 12 }
     },
     yAxis: {
       type: 'value',
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#6b7280', fontSize: 12 },
-      splitLine: { lineStyle: { color: '#f3f4f6' } }
+      axisLabel: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 12 },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } }
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e5e7eb',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: 'rgba(6, 182, 212, 0.3)',
       borderWidth: 1,
-      textStyle: { color: '#374151', fontSize: 12 },
+      textStyle: { color: '#fff', fontSize: 12 },
       formatter: (params) => {
         let total = 0
-        let result = `${params[0].name}<br/>`
+        let result = `<div style="margin-bottom: 8px; font-weight: 600; color: #fff;">${params[0].name}</div>`
         params.forEach(param => {
           total += param.value
           const truncatedName = truncateLegend(param.seriesName)
-          result += `<span style=\"display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${param.color}\"></span>`
-          result += `${truncatedName}: ${param.value}<br/>`
+          result += `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${param.color};box-shadow: 0 0 5px ${param.color}"></span>
+            <span style="color: rgba(255,255,255,0.8)">${truncatedName}:</span>
+            <span style="color: #fff; font-weight: 500; margin-left: auto;">${param.value}</span>
+          </div>`
         })
         const labelMap = { models: '模型调用', knowledge_base: '知识库调用', knowledge_graph: '知识图谱调用' }
-        return `<div style=\"font-weight:bold;margin-bottom:5px\">${labelMap[callDataType.value]}</div>${result}<strong>总计: ${total}</strong>`
+        return `<div style="font-weight:bold;margin-bottom:8px;color:#06b6d4">${labelMap[callDataType.value]}</div>${result}<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;display:flex;justify-content:space-between;color:#fff;font-weight:600"><span>总计</span><span>${total}</span></div>`
       }
     },
     legend: {
       data: categories.map(cat => (cat === 'None' ? '未知模型' : cat)),
-      bottom: 5,        /* 调整图例位置，从0改为5 */
-      textStyle: { color: '#6b7280', fontSize: 12 },
-      itemWidth: 14,
-      itemHeight: 14,
-      formatter: (name) => truncateLegend(name)
+      bottom: 0,
+      textStyle: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 12 },
+      itemWidth: 12,
+      itemHeight: 12,
+      formatter: (name) => truncateLegend(name),
+      pageIconColor: '#06b6d4',
+      pageTextStyle: { color: '#fff' }
     },
-    series,
+    series: series.map(s => ({
+      ...s,
+      itemStyle: {
+        ...s.itemStyle,
+        shadowBlur: 10,
+        shadowColor: s.itemStyle.color
+      }
+    })),
   }
 
   callStatsChart.setOption(option)
@@ -258,8 +271,9 @@ onUnmounted(() => {
 <style scoped lang="less">
 
 /* 复用 dashboard.css 样式：此处仅做最小覆盖以避免重复 */
+/* 复用 dashboard.css 样式：此处仅做最小覆盖以避免重复 */
 .call-stats-section {
-  background-color: var(--gray-0);
+  background-color: transparent;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -268,8 +282,8 @@ onUnmounted(() => {
 :deep(.ant-card-body) {
   flex: 1;
   display: flex;
-  padding: 16px; /* 减少padding从20px到16px */
-  overflow-x: hidden; /* 防止横向滚动条 */
+  padding: 16px;
+  overflow-x: hidden;
 }
 
 .call-stats-container {
@@ -281,15 +295,15 @@ onUnmounted(() => {
 .call-stats .chart-container {
   height: 100%;
   flex: 1;
-  padding: 0; /* 移除默认padding */
+  padding: 0;
 }
 
 .call-stats .chart {
   height: 100% !important;
   width: 100%;
-  padding: 0; /* 移除chart的padding */
-  border: none; /* 移除chart的border */
-  background-color: transparent; /* 移除背景色 */
+  padding: 0;
+  border: none;
+  background-color: transparent;
 }
 
 .simple-controls {
@@ -301,19 +315,17 @@ onUnmounted(() => {
 .simple-toggle-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.simple-toggle-label {
-  font-size: 12px;
-  color: #6b7280;
-  margin-right: 4px;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .simple-toggle {
-  padding: 4px 8px;
+  padding: 4px 12px;
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -321,19 +333,21 @@ onUnmounted(() => {
 }
 
 .simple-toggle:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .simple-toggle.active {
-  background-color: #3996ae;
-  color: white;
+  background-color: rgba(6, 182, 212, 0.2);
+  color: #06b6d4;
+  font-weight: 500;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.1);
 }
 
 .divider {
   width: 1px;
   height: 16px;
-  background-color: #e5e7eb;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style>
 

@@ -1,112 +1,174 @@
-
-/* 主题配色系统 */
+/* Tech Theme Palette - 科技风格调色板 */
 :root {
-  --main-1000: #01151f;
-  --main-900:  #023944;
-  --main-800:  #035065;
-  --main-700:  #046a82;
-  --main-600:  #24839a;
-  --main-500:  #3996ae;
-  --main-400:  #5faec2;
-  --main-300:  #82c3d6;
-  --main-200:  #a3d8e8;
-  --main-100:  #c4eaf5;
-  --main-50:   #e1f6fb;
-  --main-40:   #eaf3f5;
-  --main-30:   #f7fbfd;
-  --main-20:   #f6f9fa;
-  --main-10:   #fafcfd;
-  --main-5:    #fcfefe;
-  --main-1:    #fefefe;
-  --main-0:    #ffffff;
+  /* 核心主色调 - Cyan/Teal */
+  --main-color: #06b6d4;
+  /* Cyan-500 */
+  --main-hover: #22d3ee;
+  /* Cyan-400 */
+  --main-active: #0891b2;
+  /* Cyan-600 */
 
+  /* 辅助色 - Blue */
+  --secondary-color: #3b82f6;
+  /* Blue-500 */
 
-  --gray-10000: #000000; /* 保持纯黑 */
-  --gray-2000:  #0c0d0d; /* 更精致的暗灰，用于极深背景 */
-  --gray-1000:  #151616; /* 深灰黑，适用于主文本 */
-  --gray-900:   #1e1f1f;
-  --gray-800:   #323333; /* 标准深灰，适合背景 */
-  --gray-700:   #4c4d4d;
-  --gray-600:   #697070; /* 调和中灰，适合次要文本 */
-  --gray-500:   #979999; /* 更柔和的中灰色 */
-  --gray-400:   #bdbfbf;
-  --gray-300:   #d7d9d9; /* 修正了原300/200重复 */
-  --gray-200:   #e4e6e6; /* 稍微加深一点，便于分层 */
-  --gray-150:   #eef0f0;
-  --gray-100:   #eff2f2;
-  --gray-50:    #f5f7f7;
-  --gray-25:    #f8fafa;
-  --gray-10:    #fafcfc;
-  --gray-0:     #ffffff;
+  /* 状态色 */
+  --success-color: #10b981;
+  /* Emerald-500 */
+  --warning-color: #f59e0b;
+  /* Amber-500 */
+  --error-color: #ef4444;
+  /* Red-500 */
+  --info-color: #0ea5e9;
+  /* Sky-500 */
 
-  --main-color: #016179;
-  /* 鲜艳一点的 */
-  --main-bright: #0188a6;
-  --secondry-color: #4e616d;
-  --error-color: #ba1a1a;
-  --color-primary: #1c7796;
-  --color-primary-bg: #d6eef1;
-  --color-success: #45b30e;
-  --color-error: #c73234;
-  --color-info: #0058d4;
+  /* 背景色系 - 深邃蓝灰 (Slate) */
+  --bg-body: #020617;
+  /* Slate-950 */
+  --bg-container: rgba(30, 41, 59, 0.7);
+  /* Slate-800 + Opacity */
+  --bg-elevated: #1e293b;
+  /* Slate-800 */
+  --bg-input: rgba(15, 23, 42, 0.6);
+  /* Slate-900 + Opacity */
 
-  /* Chart Colors - 图表颜色系统 */
-  --chart-primary: var(--main-500);        /* 主色调 - 用于主要数据 */
-  --chart-primary-light: var(--main-400);  /* 主色调浅色 - 用于渐变 */
-  --chart-primary-dark: var(--main-600);   /* 主色调深色 - 用于强调 */
+  /* 玻璃拟态变量 */
+  --glass-bg: rgba(30, 41, 59, 0.6);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+  --glass-blur: blur(12px);
 
-  --chart-success: #52c41a;               /* 成功色 - 绿色 */
-  --chart-success-light: #95de64;        /* 成功色浅色 */
-  --chart-success-dark: #389e0d;         /* 成功色深色 */
+  /* 文本色系 - 反转为深色模式 */
+  --text-primary: #f8fafc;
+  /* Slate-50 */
+  --text-secondary: #94a3b8;
+  /* Slate-400 */
+  --text-tertiary: #64748b;
+  /* Slate-500 */
+  --text-disabled: #475569;
+  /* Slate-600 */
 
-  --chart-warning: #faad14;               /* 警告色 - 橙色 */
-  --chart-warning-light: #ffd666;        /* 警告色浅色 */
-  --chart-warning-dark: #d48806;         /* 警告色深色 */
+  /* 兼容旧变量名 - 映射到新色板 (Variable Mapping) */
+  /* 重新定义灰阶，使其适应暗色模式 */
+  --gray-25: #0f172a;
+  /* Slate-900 (原最浅背景 -> 现深背景) */
+  --gray-50: #1e293b;
+  /* Slate-800 */
+  --gray-100: #334155;
+  /* Slate-700 */
+  --gray-150: #3d4c63;
+  /* 中间色 */
+  --gray-200: #475569;
+  /* Slate-600 */
+  --gray-300: #64748b;
+  /* Slate-500 */
+  --gray-400: #94a3b8;
+  /* Slate-400 */
+  --gray-500: #cbd5e1;
+  /* Slate-300 */
+  --gray-600: #e2e8f0;
+  /* Slate-200 (原深灰文字 -> 现浅灰文字) */
+  --gray-700: #f1f5f9;
+  /* Slate-100 */
+  --gray-800: #f8fafc;
+  /* Slate-50 */
+  --gray-900: #ffffff;
+  /* White (原最深文字 -> 现纯白文字) */
+  --gray-950: #ffffff;
+  --gray-1000: #ffffff;
+  --gray-0: rgba(30, 41, 59, 0.4);
+  /* 原纯白背景 -> 现半透明卡片背景 */
 
-  --chart-error: #f5222d;                /* 错误色 - 红色 */
-  --chart-error-light: #ff7875;          /* 错误色浅色 */
-  --chart-error-dark: #cf1322;          /* 错误色深色 */
+  /* 语义色兼容 */
+  --success-50: rgba(16, 185, 129, 0.1);
+  --success-500: #10b981;
+  --success-600: #059669;
+  --warning-50: rgba(245, 158, 11, 0.1);
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --error-50: rgba(239, 68, 68, 0.1);
+  --error-500: #ef4444;
+  --error-600: #dc2626;
 
-  --chart-info: #1890ff;                 /* 信息色 - 蓝色 */
-  --chart-info-light: #69c0ff;           /* 信息色浅色 */
-  --chart-info-dark: #096dd9;            /* 信息色深色 */
+  /* Chart Colors - 图表颜色系统 (Neon/Dark Mode) */
+  --chart-primary: #06b6d4;
+  /* Cyan */
+  --chart-primary-light: #67e8f9;
+  --chart-primary-dark: #0891b2;
 
-  --chart-secondary: #722ed1;           /* 次要色 - 紫色 */
-  --chart-secondary-light: #b37feb;      /* 次要色浅色 */
-  --chart-secondary-dark: #531dab;       /* 次要色深色 */
+  --chart-success: #10b981;
+  /* Emerald */
+  --chart-success-light: #6ee7b7;
+  --chart-success-dark: #059669;
 
-  --chart-accent: #13c2c2;               /* 强调色 - 青色 */
-  --chart-accent-light: #5cdbd3;        /* 强调色浅色 */
-  --chart-accent-dark: #08979c;          /* 强调色深色 */
+  --chart-warning: #f59e0b;
+  /* Amber */
+  --chart-warning-light: #fcd34d;
+  --chart-warning-dark: #d97706;
+
+  --chart-error: #ef4444;
+  /* Red */
+  --chart-error-light: #fca5a5;
+  --chart-error-dark: #dc2626;
+
+  --chart-info: #3b82f6;
+  /* Blue */
+  --chart-info-light: #93c5fd;
+  --chart-info-dark: #2563eb;
+
+  --chart-secondary: #8b5cf6;
+  /* Violet */
+  --chart-secondary-light: #c4b5fd;
+  --chart-secondary-dark: #7c3aed;
+
+  --chart-accent: #f472b6;
+  /* Pink */
+  --chart-accent-light: #fbcfe8;
+  --chart-accent-dark: #db2777;
 
   /* Chart Palette - 图表调色板 */
-  --chart-palette-1: var(--chart-primary);
-  --chart-palette-2: #11cbe3;            /* 浅一点的青蓝 */
-  --chart-palette-3: #00b8a9;            /* 明亮青绿（邻近色） */
-  --chart-palette-4: #f2c94c;            /* 柔和金黄（对比色） */
-  --chart-palette-5: #eb5757;            /* 温暖红橙（强调） */
-  --chart-palette-6: #2f80ed;            /* 明亮蓝色（辅助） */
-  --chart-palette-7: #9b51e0;            /* 紫色（分类区分） */
-  --chart-palette-8: #56ccf2;            /* 天蓝色（柔和点缀） */
-  --chart-palette-9: #6fcf97;            /* 淡绿色（平衡） */
-  --chart-palette-10: #333333;           /* 深灰（中性补充） */
+  --chart-palette-1: #06b6d4;
+  --chart-palette-2: #3b82f6;
+  --chart-palette-3: #10b981;
+  --chart-palette-4: #f59e0b;
+  --chart-palette-5: #ef4444;
+  --chart-palette-6: #8b5cf6;
+  --chart-palette-7: #ec4899;
+  --chart-palette-8: #14b8a6;
+  --chart-palette-9: #6366f1;
+  --chart-palette-10: #84cc16;
 
-  /* Stats Card Colors - 统计卡片颜色系统 */
-  --stats-primary-bg: #eff6ff;           /* 主色调背景 */
-  --stats-primary-color: #2563eb;        /* 主色调文字 */
-  --stats-success-bg: #f0fdf4;          /* 成功色背景 */
-  --stats-success-color: #16a34a;       /* 成功色文字 */
-  --stats-info-bg: #f0f9ff;              /* 信息色背景 */
-  --stats-info-color: #0284c7;           /* 信息色文字 */
-  --stats-warning-bg: #fffbeb;           /* 警告色背景 */
-  --stats-warning-color: #d97706;        /* 警告色文字 */
-  --stats-secondary-bg: #faf5ff;        /* 次要色背景 */
-  --stats-secondary-color: #9333ea;     /* 次要色文字 */
-  --stats-error-bg: #fef2f2;            /* 错误色背景 */
-  --stats-error-color: #dc2626;          /* 错误色文字 */
+  /* Stats Card Colors - 统计卡片颜色系统 (Dark Mode) */
+  --stats-primary-bg: rgba(6, 182, 212, 0.15);
+  --stats-primary-color: #22d3ee;
+  --stats-success-bg: rgba(16, 185, 129, 0.15);
+  --stats-success-color: #34d399;
+  --stats-info-bg: rgba(59, 130, 246, 0.15);
+  --stats-info-color: #60a5fa;
+  --stats-warning-bg: rgba(245, 158, 11, 0.15);
+  --stats-warning-color: #fbbf24;
+  --stats-secondary-bg: rgba(139, 92, 246, 0.15);
+  --stats-secondary-color: #a78bfa;
+  --stats-error-bg: rgba(239, 68, 68, 0.15);
+  --stats-error-color: #f87171;
 
-  --bg-sider: var(--main-5);
-  --color-text: var(--c-black);
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 15px rgba(6, 182, 212, 0.3);
+  /* 发光效果 */
 
-  --min-width: 400px;
+  /* 圆角 */
+  --radius-sm: 0.25rem;
+  --radius: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 9999px;
+
+  --header-height: 60px;
+  --min-width: 450px;
 }

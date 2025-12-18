@@ -114,7 +114,7 @@ const highlightedChunkIndex = ref(null);
 const chunkPanelVisible = ref(true);
 
 // 主题设置
-const theme = ref('light');
+const theme = ref('dark');
 const previewTheme = ref('github');
 const codeTheme = ref('atom');
 
@@ -182,9 +182,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   overflow: hidden;
+  background: var(--bg-elevated); /* 使用系统提升背景色，与整体背景保持一致 */
+  backdrop-filter: blur(10px);
 }
 
 .viewer-header {
@@ -192,8 +194,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 4px 16px;
-  background: #fafafa;
-  border-bottom: 1px solid #e8e8e8;
+  background: rgba(15, 23, 42, 0.8);
+  border-bottom: var(--glass-border);
 }
 
 .header-controls {
@@ -203,9 +205,9 @@ onUnmounted(() => {
 }
 
 .toggle-btn {
-  /* background: var(--main-color); */
-  /* color: white; */
-  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   width: 28px;
   height: 24px;
@@ -216,20 +218,23 @@ onUnmounted(() => {
 }
 
 .toggle-btn:hover {
-  background: var(--gray-200);
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--main-color);
+  border-color: var(--main-color);
 }
 
 .viewer-header h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .header-info {
   display: flex;
   gap: 16px;
   font-size: 12px;
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 .viewer-container {
@@ -242,8 +247,8 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background: white;
-  border-right: 1px solid #e8e8e8;
+  background: transparent;
+  border-right: var(--glass-border);
   min-height: 0; /* 关键：确保flex项目可以缩小 */
 }
 
@@ -256,6 +261,7 @@ onUnmounted(() => {
 .markdown-content :deep(.md-editor) {
   /* height: auto !important; */
   min-height: 100%;
+  background: transparent !important;
 }
 
 .markdown-content :deep(.md-editor-preview) {
@@ -264,18 +270,32 @@ onUnmounted(() => {
   /* height: auto !important; */
   font-size: small;
   min-height: 100%;
+  background: transparent !important;
+  color: var(--text-primary);
 }
 
 .markdown-content :deep(.md-editor-preview-wrapper) {
   padding: 0;
-  /* height: auto !important; */
   min-height: 100%;
+  background: transparent !important;
+}
+
+.markdown-content :deep(.md-editor-dark) {
+  --md-bk-color: transparent !important; /* 强制编辑器背景透明 */
+}
+
+.markdown-content :deep(.md-editor) {
+  background: transparent !important;
+}
+
+.markdown-content :deep(.md-editor-preview) {
+  background: transparent !important;
 }
 
 .chunk-panel {
   width: 300px;
   overflow-y: auto;
-  background: #fafafa;
+  background: rgba(15, 23, 42, 0.45);
   padding: 16px;
   min-height: 0; /* 确保flex项目可以缩小 */
 }
@@ -287,8 +307,8 @@ onUnmounted(() => {
 }
 
 .chunk-item {
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: var(--bg-elevated);
+  border: var(--glass-border);
   border-radius: 6px;
   padding: 12px;
   /* cursor: pointer; */
@@ -358,10 +378,10 @@ onUnmounted(() => {
 
 .chunk-tooltip {
   position: fixed;
-  background: white;
-  border: 1px solid var(--gray-300);
+  background: var(--bg-elevated);
+  border: var(--glass-border);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
   padding: 12px;
   z-index: 1000;
   min-width: 250px;

@@ -198,16 +198,16 @@ watch(() => props.agentId, () => {
 
 // 反馈卡片 - 紧凑设计
 .feedback-card {
-  background: white;
-  border: 1px solid var(--gray-100);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
 
   &:hover {
     border-color: var(--main-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
   }
 }
 
@@ -217,9 +217,9 @@ watch(() => props.agentId, () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--gray-100);
-  background: #fafafa;
-  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 12px 12px 0 0;
 }
 
 .user-info {
@@ -234,8 +234,8 @@ watch(() => props.agentId, () => {
 
 .user-details {
   .username {
-    font-weight: 500;
-    color: var(--gray-900);
+    font-weight: 600;
+    color: #fff;
     font-size: 13px;
     line-height: 1.2;
   }
@@ -260,13 +260,13 @@ watch(() => props.agentId, () => {
 }
 
 .message-content {
-  background: #f8f9fa;
+  background: rgba(15, 23, 42, 0.35);
   padding: 10px;
   border-radius: 6px;
   // border-left: 3px solid var(--main-color);
   font-size: 13px;
   line-height: 1.4;
-  color: var(--gray-800);
+  color: var(--text-secondary);
   word-break: break-word;
 }
 
@@ -304,22 +304,22 @@ watch(() => props.agentId, () => {
 }
 
 .reason-content {
-  background: #fff7e6;
+  background: rgba(245, 158, 11, 0.12);
   padding: 10px;
   border-radius: 6px;
   border-left: 3px solid #faad14;
   font-size: 13px;
   line-height: 1.4;
-  color: var(--gray-800);
+  color: var(--text-secondary);
   word-break: break-word;
 }
 
 // 卡片底部 - 紧凑
 .card-footer {
   padding: 8px 16px;
-  border-top: 1px solid var(--gray-100);
-  background: #fafafa;
-  border-radius: 0 0 8px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 0 0 12px 12px;
 }
 
 .time-info {

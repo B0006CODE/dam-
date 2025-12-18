@@ -6,7 +6,7 @@
     :footer="null"
     wrap-class-name="file-detail"
     @after-open-change="afterOpenChange"
-    :bodyStyle="{ height: '80vh', padding: '0' }"
+    :bodyStyle="{ height: '80vh', padding: '0', background: 'transparent' }"
   >
     <div class="file-detail-content" v-if="file">
       <div class="file-content-section" v-if="file.lines && file.lines.length > 0">
@@ -81,6 +81,31 @@ import MarkdownContentViewer from './MarkdownContentViewer.vue';
 .file-detail {
   .ant-modal {
     top: 20px;
+    padding-bottom: 0;
+  }
+
+  .ant-modal-content {
+    background: #020617 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    padding: 0;
+    
+    .ant-modal-header {
+      background: transparent;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      
+      .ant-modal-title {
+        color: #e2e8f0;
+      }
+    }
+    
+    .ant-modal-close {
+      color: #94a3b8;
+      
+      &:hover {
+        color: #e2e8f0;
+      }
+    }
   }
 }
 </style>

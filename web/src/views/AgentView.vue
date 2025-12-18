@@ -261,7 +261,6 @@ const handlePreview = () => {
 }
 
 .agent-view-body {
-  --gap-radius: 6px;
   display: flex;
   flex-direction: row;
   width: 100%;
@@ -269,11 +268,13 @@ const handlePreview = () => {
   height: 100%;
   overflow: hidden;
   position: relative;
+  background: transparent;
 
   .content {
     flex: 1;
     display: flex;
     flex-direction: column;
+    background: transparent;
   }
 
   .no-agent-selected {
@@ -281,28 +282,25 @@ const handlePreview = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--bg-content);
+    background: transparent;
   }
 
   .no-agent-content {
     text-align: center;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.5);
 
     svg {
       margin-bottom: 16px;
       opacity: 0.6;
+      color: #06b6d4;
     }
 
     h3 {
       margin-bottom: 16px;
-      color: var(--text-primary);
+      color: #fff;
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
     }
   }
-
-  // .content {
-  //   border-radius: var(--gap-radius);
-  //   border: 1px solid var(--gray-300);
-  // }
 }
 
 .content {
@@ -310,483 +308,94 @@ const handlePreview = () => {
   overflow: hidden;
 }
 
-// 配置弹窗内容样式
-.conf-content {
-  max-height: 70vh;
-  overflow-y: auto;
-
-  .agent-info {
-    padding: 0;
-    width: 100%;
-    overflow-y: visible;
-    max-height: none;
-  }
-}
-
-
-
-.agent-model {
-  width: 100%;
-}
-
-.config-modal-content {
-  user-select: text;
-
-  div[role="alert"] {
-    margin-bottom: 10px;
-  }
-
-  .description {
-    font-size: 12px;
-    color: var(--gray-700);
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-    gap: 10px;
-
-    .form-actions-left,
-    .form-actions-right {
-      display: flex;
-      gap: 10px;
-    }
-  }
-}
-
-// 添加新按钮的样式
-.agent-action-buttons {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.action-button {
-  background-color: white;
-  border: 1px solid var(--main-20);
-  text-align: left;
-  height: auto;
-  padding: 8px 12px;
-
-  &:hover {
-    background-color: var(--main-20);
-  }
-
-  &.primary-action {
-    color: var(--main-color);
-    border-color: var(--main-color);
-
-    &:disabled {
-      color: var(--main-color);
-      background-color: var(--main-20);
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-  }
-
-  .anticon {
-    margin-right: 8px;
-  }
-}
-
-.agent-option {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  .agent-option-content {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-
-    p {
-      margin: 0;
-    }
-
-    .agent-option-description {
-      font-size: 12px;
-      color: var(--gray-700);
-      word-break: break-word;
-      white-space: pre-wrap;
-    }
-  }
-
-  .default-icon {
-    color: #faad14;
-    font-size: 14px;
-    margin-left: 4px;
-  }
-}
-// 工具选择器样式（与项目风格一致）
-.tools-selector {
-  .tools-summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    // margin-bottom: 8px;
-    padding: 8px 12px;
-    background: var(--gray-50);
-    border-radius: 8px;
-    border: 1px solid var(--gray-200);
-    font-size: 14px;
-    color: var(--gray-700);
-    transition: border-color 0.2s ease;
-
-    .tools-summary-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      .tools-count {
-        color: var(--gray-900);
-      }
-    }
-
-    .select-tools-btn {
-      background: var(--main-color);
-      border: none;
-      color: #fff;
-      border-radius: 6px;
-      padding: 4px 12px;
-      font-size: 13px;
-      font-weight: 500;
-      height: 28px;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background: var(--main-color);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-    }
-  }
-
-  .selected-tools-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 0;
-    background: none;
-    border: none;
-    min-height: 32px;
-    :deep(.ant-tag) {
-      margin: 0;
-      padding: 4px 10px;
-      border-radius: 6px;
-      background: var(--gray-100);
-      border: 1px solid var(--gray-300);
-      color: var(--gray-900);
-      font-size: 13px;
-      font-weight: 400;
-      .anticon-close {
-        color: var(--gray-600);
-        margin-left: 4px;
-        &:hover {
-          color: var(--gray-900);
-        }
-      }
-    }
-  }
-}
-
-// 工具选择弹窗样式（与项目风格一致）
-.tools-modal {
-  :deep(.ant-modal-content) {
-    border-radius: 8px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    overflow: hidden;
-  }
-  :deep(.ant-modal-header) {
-    background: #fff;
-    border-bottom: 1px solid var(--gray-200);
-    padding: 16px 20px;
-    .ant-modal-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--gray-900);
-    }
-  }
-  :deep(.ant-modal-body) {
-    padding: 20px;
-    background: #fff;
-  }
-  .tools-modal-content {
-    .tools-search {
-      margin-bottom: 16px;
-      :deep(.ant-input) {
-        border-radius: 8px;
-        border: 1px solid var(--gray-300);
-        padding: 8px 12px;
-        font-size: 14px;
-        &:focus {
-          border-color: var(--main-color);
-          box-shadow: none;
-        }
-      }
-    }
-    .tools-list {
-      max-height: 350px;
-      overflow-y: auto;
-      border: 1px solid var(--gray-200);
-      border-radius: 8px;
-      margin-bottom: 16px;
-      background: #fff;
-      .tool-item {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--gray-100);
-        cursor: pointer;
-        transition: background 0.2s, border 0.2s;
-        border-left: 3px solid transparent;
-        &:last-child { border-bottom: none; }
-        &:hover {
-          background: var(--gray-50);
-        }
-        &.selected {
-          background: var(--main-10);
-          border-left: 3px solid var(--main-color);
-        }
-        .tool-content {
-          .tool-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-            .tool-name {
-              font-weight: 500;
-              color: var(--gray-900);
-              font-size: 14px;
-            }
-            .tool-indicator { display: none; }
-          }
-          .tool-description {
-            font-size: 13px;
-            color: var(--gray-700);
-            margin-bottom: 6px;
-            line-height: 1.5;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-        }
-      }
-    }
-    .tools-modal-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0 0 0;
-      border-top: 1px solid var(--gray-200);
-      .selected-count {
-        font-size: 13px;
-        color: var(--gray-700);
-        background: none;
-        padding: 0;
-        border: none;
-      }
-      .modal-actions {
-        display: flex;
-        gap: 10px;
-        :deep(.ant-btn) {
-          border-radius: 8px;
-          font-weight: 500;
-          padding: 6px 18px;
-          height: 36px;
-          font-size: 14px;
-          &.ant-btn-default {
-            border: 1px solid var(--gray-300);
-            color: var(--gray-900);
-            background: #fff;
-            &:hover {
-              border-color: var(--main-color);
-              color: var(--main-color);
-              background: var(--main-10);
-            }
-          }
-          &.ant-btn-primary {
-            background: var(--main-color);
-            border: none;
-            color: #fff;
-            &:hover {
-              background: var(--main-color);
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-// 多选卡片样式
-.multi-select-cards {
-  .multi-select-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    font-size: 12px;
-    color: var(--gray-600);
-    height: 24px;
-  }
-
-  .options-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 8px;
-  }
-
-  .option-card {
-    border: 1px solid var(--gray-300);
-    border-radius: 8px;
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: white;
-    user-select: none;
-
-    &:hover {
-      border-color: var(--main-color);
-    }
-
-    &.selected {
-      border-color: var(--main-color);
-      background: var(--main-10);
-
-      .option-indicator {
-        color: var(--main-color);
-      }
-
-      .option-text {
-        color: var(--main-color);
-        font-weight: 500;
-      }
-    }
-
-    &.unselected {
-      .option-indicator {
-        color: var(--gray-400);
-      }
-
-      .option-text {
-        color: var(--gray-700);
-      }
-    }
-
-    .option-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .option-text {
-      flex: 1;
-      font-size: 14px;
-      line-height: 1.4;
-      word-break: break-word;
-    }
-
-    .option-indicator {
-      flex-shrink: 0;
-      font-size: 16px;
-      transition: color 0.2s ease;
-    }
-  }
-}
-
-// 响应式适配
-@media (max-width: 768px) {
-  .multi-select-cards {
-    .options-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .conf-content {
-    max-height: 60vh;
-  }
-}
-
-// 智能体选择器样式
-.agent-selector {
-  border: 1px solid var(--gray-300);
-  border-radius: 8px;
-  padding: 8px 12px;
-  background: white;
-  transition: border-color 0.2s ease;
-
-  &:hover {
-    border-color: var(--main-color);
-  }
-
-  .selected-agent-display {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    .agent-name {
-      font-size: 14px;
-      color: var(--gray-900);
-      font-weight: 500;
-    }
-
-    .default-icon {
-      color: #faad14;
-      font-size: 14px;
-    }
-  }
-}
-
 // 智能体选择弹窗样式
 .agent-modal {
   :deep(.ant-modal-content) {
-    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
     overflow: hidden;
   }
 
   :deep(.ant-modal-header) {
-    background: #fff;
-    border-bottom: 1px solid var(--gray-200);
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding: 16px 20px;
 
     .ant-modal-title {
       font-size: 16px;
       font-weight: 600;
-      color: var(--gray-900);
+      color: #fff;
     }
   }
 
   :deep(.ant-modal-body) {
     padding: 20px;
-    background: #fff;
+    background: transparent;
   }
 
   .agent-modal-content {
     .agents-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 12px;
+      gap: 16px;
       max-height: 500px;
       overflow-y: auto;
+      padding-right: 8px;
+
+      // Custom scrollbar
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        &:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      }
     }
 
     .agent-card {
-      border: 1px solid var(--gray-200);
-      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
       padding: 16px;
       cursor: pointer;
-      transition: border-color 0.2s ease;
-      background: white;
+      transition: all 0.3s ease;
+      background: rgba(30, 41, 59, 0.4);
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
 
       &:hover {
-        border-color: var(--main-color);
+        border-color: rgba(6, 182, 212, 0.5);
+        background: rgba(30, 41, 59, 0.6);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(6, 182, 212, 0.15);
+
+        &::before {
+          opacity: 1;
+        }
+
+        .agent-card-header .agent-card-title .agent-card-name {
+          color: #fff;
+          text-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+        }
       }
 
       .agent-card-header {
@@ -794,6 +403,8 @@ const handlePreview = () => {
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 12px;
+        position: relative;
+        z-index: 1;
 
         .agent-card-title {
           display: flex;
@@ -804,54 +415,58 @@ const handlePreview = () => {
           .agent-card-name {
             font-size: 16px;
             font-weight: 600;
-            color: var(--gray-900);
+            color: rgba(255, 255, 255, 0.9);
             line-height: 1.4;
+            transition: all 0.3s ease;
           }
 
           .default-icon {
-            color: #faad14;
+            color: #f59e0b;
             font-size: 16px;
             flex-shrink: 0;
+            filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5));
           }
         }
       }
 
       .agent-card-description {
         font-size: 14px;
-        color: var(--gray-700);
-        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.5);
+        line-height: 1.6;
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
+        position: relative;
+        z-index: 1;
+        transition: color 0.3s ease;
       }
 
-
       &.selected {
-        border-color: var(--main-color);
-        background: var(--main-20);
-        // outline: 2px solid var(--main-color);
+        border-color: #06b6d4;
+        background: rgba(6, 182, 212, 0.1);
+        box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: #06b6d4;
+          box-shadow: 0 0 10px #06b6d4;
+        }
 
         .agent-card-header .agent-card-title .agent-card-name {
-          color: var(--main-color);
+          color: #06b6d4;
+          text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
         }
 
         .agent-card-description {
-          color: var(--gray-900);
+          color: rgba(255, 255, 255, 0.8);
         }
-      }
-
-    }
-  }
-}
-
-// 响应式适配智能体弹窗
-@media (max-width: 768px) {
-  .agent-modal {
-    .agent-modal-content {
-      .agents-grid {
-        grid-template-columns: 1fr;
       }
     }
   }
@@ -861,10 +476,11 @@ const handlePreview = () => {
 .more-popup-menu {
   position: fixed;
   min-width: 130px;
-  background: white;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(12px);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid var(--gray-100);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 6px;
   z-index: 9999;
 
@@ -872,44 +488,32 @@ const handlePreview = () => {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 6px 14px;
+    padding: 8px 14px;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
     font-size: 14px;
-    color: var(--gray-900);
-    position: relative;
+    color: rgba(255, 255, 255, 0.8);
     user-select: none;
 
     .menu-icon {
       font-size: 16px;
-      color: var(--gray-600);
-      transition: color 0.15s ease;
-      flex-shrink: 0;
-    }
-
-    .menu-text {
-      font-weight: 400;
-      letter-spacing: 0.01em;
+      color: rgba(255, 255, 255, 0.5);
     }
 
     &:hover {
-      background: var(--gray-50);
-      // color: var(--main-700);
+      background: rgba(6, 182, 212, 0.15);
+      color: #06b6d4;
 
-      // .menu-icon {
-      //   color: var(--main-600);
-      // }
-    }
-
-    &:active {
-      background: var(--gray-100);
+      .menu-icon {
+        color: #06b6d4;
+      }
     }
   }
 
   .menu-divider {
     height: 1px;
-    background: var(--gray-100);
+    background: rgba(255, 255, 255, 0.05);
     margin: 4px 8px;
   }
 }
@@ -942,60 +546,6 @@ const handlePreview = () => {
   to {
     opacity: 0;
     transform: translateY(-4px);
-  }
-}
-
-// 响应式优化
-@media (max-width: 520px) {
-  .more-popup-menu {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
-  }
-}
-
-
-</style>
-
-
-<style lang="less">
-.toggle-conf {
-  cursor: pointer;
-
-  &.nav-btn {
-    height: 2.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 8px;
-    color: var(--gray-900);
-    cursor: pointer;
-    font-size: 15px;
-    width: auto;
-    padding: 0.5rem 1rem;
-    transition: background-color 0.3s;
-    overflow: hidden;
-
-    .text {
-      margin-left: 10px;
-    }
-
-    &:hover {
-      background-color: var(--main-20);
-    }
-
-    .nav-btn-icon {
-      width: 1.5rem;
-      height: 1.5rem;
-    }
-  }
-}
-
-
-// 针对 Ant Design Select 组件的深度样式修复
-:deep(.ant-select-item-option-content) {
-  .agent-option-name {
-    color: var(--main-color);
-    font-size: 14px;
-    font-weight: 500;
   }
 }
 </style>

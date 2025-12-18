@@ -386,38 +386,35 @@ onUnmounted(() => {
 <style scoped lang="less">
 
 .dashboard-container {
-  // padding: 0 24px 24px 24px;
-  background-color: var(--gray-25);
-  min-height: calc(100vh - 64px);
+  background: transparent;
+  min-height: 100vh;
   overflow-x: hidden;
 }
 
 // Dashboard 特有的网格布局
 .dashboard-grid {
   display: grid;
-  padding: 16px;
+  padding: 24px;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto;
-  gap: 16px;
+  gap: 24px;
   margin-bottom: 24px;
   min-height: 600px;
 
   .grid-item {
-    border-radius: 8px;
+    border-radius: 16px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 300px;
-    background-color: transparent;
-    border: none;
-    transition: all 0.2s ease;
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
 
     &:hover {
-      .conversations-section,
-      .call-stats-section {
-        border-color: var(--gray-200);
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-      }
+      border-color: rgba(6, 182, 212, 0.4);
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
     }
 
     // 布局：第一行调用统计(2列) + 用户活跃度(1列)，第二行知识库(1列) + 对话记录(1列)
@@ -450,39 +447,92 @@ onUnmounted(() => {
 // Dashboard 特有的卡片样式
 .conversations-section,
 .call-stats-section {
-  background-color: var(--gray-0);
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  transition: all 0.3s ease;
   box-shadow: none;
 
-  &:hover {
-    background-color: var(--gray-25);
-    border-color: var(--gray-200);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  }
-
   :deep(.ant-card-head) {
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     min-height: 56px;
     padding: 0 20px;
-    background-color: var(--gray-0);
+    background: transparent;
 
     .ant-card-head-title {
       font-size: 16px;
       font-weight: 600;
-      color: var(--gray-1000);
+      color: #fff;
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
     }
   }
 
   :deep(.ant-card-body) {
     padding: 16px 20px;
-    background-color: var(--gray-0);
+    background: transparent;
   }
 
   :deep(.ant-card-extra) {
     .ant-space {
       gap: 8px;
+    }
+  }
+
+  // 表格样式覆盖
+  :deep(.ant-table) {
+    background: transparent;
+    color: #fff;
+  }
+
+  :deep(.ant-table-thead > tr > th) {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+  }
+
+  :deep(.ant-table-tbody > tr > td) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s;
+  }
+
+  :deep(.ant-table-tbody > tr:hover > td) {
+    background: rgba(6, 182, 212, 0.1) !important;
+  }
+
+  :deep(.ant-table-placeholder) {
+    background: transparent !important;
+    
+    .ant-empty-description {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  :deep(.ant-pagination-item),
+  :deep(.ant-pagination-prev),
+  :deep(.ant-pagination-next) {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.2);
+    
+    a {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    &:hover {
+      border-color: #06b6d4;
+      a {
+        color: #06b6d4;
+      }
+    }
+  }
+
+  :deep(.ant-pagination-item-active) {
+    background: rgba(6, 182, 212, 0.2);
+    border-color: #06b6d4;
+    
+    a {
+      color: #06b6d4;
     }
   }
 }
@@ -494,13 +544,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: var(--gray-600);
+  color: rgba(255, 255, 255, 0.5);
 
   .placeholder-icon {
     width: 64px;
     height: 64px;
-    background-color: var(--gray-100);
-    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -509,40 +559,40 @@ onUnmounted(() => {
     .icon {
       width: 32px;
       height: 32px;
-      color: var(--gray-500);
+      color: #06b6d4;
     }
   }
 
   .placeholder-text {
     font-size: 18px;
     font-weight: 600;
-    color: var(--gray-800);
+    color: #fff;
     margin-bottom: 8px;
   }
 
   .placeholder-subtitle {
     font-size: 14px;
-    color: var(--gray-600);
+    color: rgba(255, 255, 255, 0.4);
   }
 }
 
 // Dashboard 特有的对话记录样式
 .conversations-section {
   .conversation-title {
-    color: var(--main-500);
+    color: #06b6d4;
     text-decoration: none;
     font-weight: 500;
     font-size: 13px;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
 
     &:hover {
-      color: var(--main-600);
-      text-decoration: underline;
+      color: #22d3ee;
+      text-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
     }
   }
 
   .time-text {
-    color: var(--gray-600);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 12px;
   }
 }
@@ -557,23 +607,32 @@ onUnmounted(() => {
       margin-bottom: 24px;
 
       .summary-card {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
         padding: 12px;
         text-align: center;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(6, 182, 212, 0.05);
+          border-color: rgba(6, 182, 212, 0.2);
+        }
 
         .summary-value {
-          font-size: 16px;
-          font-weight: 600;
-          color: #1e293b;
+          font-size: 18px;
+          font-weight: 700;
+          color: #fff;
           margin-bottom: 4px;
+          text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
         }
 
         .summary-label {
           font-size: 11px;
-          color: #64748b;
+          color: rgba(255, 255, 255, 0.5);
           font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
       }
     }
@@ -582,15 +641,9 @@ onUnmounted(() => {
       .chart {
         width: 100%;
         height: 280px;
-        border-radius: 8px;
+        border-radius: 12px;
         overflow: hidden;
       }
-    }
-  }
-
-  :deep(.ant-card-extra) {
-    .ant-space {
-      gap: 8px;
     }
   }
 }
@@ -600,7 +653,7 @@ onUnmounted(() => {
   .dashboard-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
-    gap: 16px;
+    gap: 20px;
 
     .grid-item {
       &.call-stats,
@@ -622,7 +675,8 @@ onUnmounted(() => {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 16px;
+    padding: 12px;
 
     .grid-item {
       &.call-stats,
@@ -660,29 +714,6 @@ onUnmounted(() => {
           height: 200px;
         }
       }
-    }
-  }
-
-  .placeholder-content {
-    height: 150px;
-
-    .placeholder-icon {
-      width: 48px;
-      height: 48px;
-      margin-bottom: 12px;
-
-      .icon {
-        width: 24px;
-        height: 24px;
-      }
-    }
-
-    .placeholder-text {
-      font-size: 16px;
-    }
-
-    .placeholder-subtitle {
-      font-size: 12px;
     }
   }
 }

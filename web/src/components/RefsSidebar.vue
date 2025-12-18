@@ -322,7 +322,7 @@ defineExpose({
   right: calc(-1 * var(--refs-sidebar-floating-width)); /* 初始状态隐藏在右侧 - 使用更大宽度 */
   width: var(--refs-sidebar-floating-width); /* 未固定时的宽度 */
   height: 100vh;
-  background: white;
+  background: var(--bg-elevated);
   z-index: 1000;
   transition: right 0.3s ease, width 0.3s ease; /* 添加宽度过渡效果 */
   display: flex;
@@ -361,13 +361,13 @@ defineExpose({
   &.pinned {
     width: var(--refs-sidebar-pinned-width); /* 固定时的宽度 */
     box-shadow: none;
-    border-left: 1px solid var(--gray-200);
+    border-left: var(--glass-border);
   }
 
   &.visible:not(.pinned) {
     box-shadow: -2px 0 15px rgba(0, 0, 0, 0.15);
     .refs-sidebar {
-      background-color: white;
+      background-color: transparent;
     }
   }
 
@@ -383,7 +383,7 @@ defineExpose({
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: var(--glass-border);
 
     h3 {
       margin: 0;
@@ -546,14 +546,14 @@ defineExpose({
     gap: 16px;
 
     .web-result-card {
-      background-color: #ffffff;
+      background-color: rgba(30, 41, 59, 0.35);
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--shadow-md);
       transition: all 0.3s ease;
-      border: 1px solid var(--gray-200);
+      border: var(--glass-border);
 
       &:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        box-shadow: var(--shadow-lg);
       }
 
       .card-header {
@@ -579,7 +579,7 @@ defineExpose({
       .card-footer {
         background-color: var(--gray-100);
         padding: 12px 16px;
-        border-top: 1px solid var(--gray-200);
+        border-top: var(--glass-border);
 
         .score-info {
           display: flex;

@@ -197,15 +197,23 @@ const handleSelectModel = async (provider, name) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 4px 8px;
+  padding: 6px 12px;
   cursor: pointer;
-  border: 1px solid var(--gray-200);
-  border-radius: @border-radius;
-  background-color: var(--gray-0);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background-color: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(8px);
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: #06b6d4;
+    background-color: rgba(6, 182, 212, 0.1);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+  }
 
   // 修饰符类
   &.borderless {
@@ -241,8 +249,9 @@ const handleSelectModel = async (provider, name) => {
       .model-text {
         overflow: hidden;
         text-overflow: ellipsis;
-        color: var(--gray-1000);
+        color: #fff;
         white-space: nowrap;
+        font-weight: 500;
       }
 
       .model-provider {
@@ -284,6 +293,11 @@ const handleSelectModel = async (provider, name) => {
       .status-check-button {
         font-size: @status-check-button-font-size;
         padding: @status-check-button-padding;
+        color: #06b6d4;
+        &:hover {
+          color: #22d3ee;
+          background: rgba(6, 182, 212, 0.1);
+        }
       }
     }
   }
@@ -317,10 +331,49 @@ const handleSelectModel = async (provider, name) => {
 
 <style lang="less" scoped>
 // 将全局样式移到scoped中以避免样式污染
+// 将全局样式移到scoped中以避免样式污染
 :deep(.ant-dropdown-menu) {
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+
   &.scrollable-menu {
     max-height: 300px;
     overflow-y: auto;
+  }
+
+  .ant-dropdown-menu-item-group-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    padding: 8px 12px 4px;
+  }
+
+  .ant-dropdown-menu-item {
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 4px;
+    margin: 2px 0;
+
+    &:hover {
+      background: rgba(6, 182, 212, 0.15);
+      color: #06b6d4;
+    }
+  }
+
+  // Custom scrollbar
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 }
 </style>

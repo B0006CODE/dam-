@@ -833,8 +833,9 @@ const confirmRename = () => {
 
 /* 图例样式 */
 .legend {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #f0f0f0;
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  backdrop-filter: var(--glass-blur);
   border-radius: 6px;
   max-height: 180px;
   overflow-y: auto;
@@ -843,7 +844,7 @@ const confirmRename = () => {
 }
 .legend-header {
   padding: 2px 0 6px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: var(--glass-border);
   margin-bottom: 6px;
   display: flex;
   justify-content: space-between;
@@ -854,14 +855,14 @@ const confirmRename = () => {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #262626;
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 .legend-stats {
   display: flex;
   gap: 12px;
   font-size: 11px;
-  color: #595959;
+  color: var(--text-secondary);
 }
 .legend-stats .stat-item {
   white-space: nowrap;
@@ -880,6 +881,6 @@ const confirmRename = () => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 </style>

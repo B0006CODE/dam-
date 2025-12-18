@@ -271,28 +271,30 @@ const openAgentModal = () => emit('open-agent-modal');
 </script>
 
 <style lang="less" scoped>
-/* 变量定义 - 模拟 DeepSeek 配色 */
+/* 变量定义 - 适配 Tech Theme */
 :deep(:root) {
-  --ds-bg: #f9fafb;
-  --ds-hover: #e5e7eb;
-  --ds-active: #e5e7eb;
-  --ds-text: #1f2937;
-  --ds-text-sub: #6b7280;
-  --ds-primary: #2563eb;
+  --ds-bg: var(--bg-elevated);
+  --ds-hover: rgba(255, 255, 255, 0.05);
+  --ds-active: rgba(255, 255, 255, 0.1);
+  --ds-text: var(--text-primary);
+  --ds-text-sub: var(--text-secondary);
+  --ds-primary: var(--main-color);
 }
 
 .chat-sidebar {
   width: 0;
   height: 100%;
-  background-color: #f9fafb; /* DeepSeek 浅灰背景 */
-  border-right: 1px solid #e5e7eb;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
   &.sidebar-open {
-    width: 260px; /* DeepSeek 侧边栏宽度通常较窄 */
+    width: 260px;
   }
   
   &.no-transition {
@@ -304,7 +306,7 @@ const openAgentModal = () => emit('open-agent-modal');
     height: 100%;
     display: flex;
     flex-direction: column;
-    background-color: #f9fafb;
+    background: transparent;
   }
 }
 
@@ -316,11 +318,12 @@ const openAgentModal = () => emit('open-agent-modal');
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
   .header-title {
     font-size: 16px;
     font-weight: 600;
-    color: #111827;
+    color: var(--text-primary);
     
     .logo-area {
         display: flex;
@@ -338,52 +341,54 @@ const openAgentModal = () => emit('open-agent-modal');
     gap: 4px;
     cursor: pointer;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-secondary);
     font-size: 15px;
-    &:hover { color: #000; }
+    &:hover { color: var(--text-primary); }
   }
 
   .nav-btn {
     cursor: pointer;
     opacity: 0.6;
-    &:hover { opacity: 1; }
+    color: var(--text-secondary);
+    &:hover { opacity: 1; color: var(--text-primary); }
   }
 }
 
-/* 开启新对话按钮 - DeepSeek 风格 */
+/* 开启新对话按钮 */
 .action-bar {
-  padding: 0 12px 12px 12px;
+  padding: 12px;
   flex-shrink: 0;
   
   .new-chat-btn {
     width: 100%;
     height: 40px;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    color: #374151;
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: 10px;
+    color: #06b6d4;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* 左对齐 */
+    justify-content: flex-start;
     padding-left: 12px;
     gap: 10px;
     transition: all 0.2s;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 
-    .icon-plus { font-size: 16px; color: #6b7280; }
+    .icon-plus { font-size: 16px; color: #06b6d4; }
 
     &:hover {
-      background-color: #f3f4f6;
-      border-color: #d1d5db;
-      color: #000;
+      background-color: rgba(6, 182, 212, 0.2);
+      border-color: #06b6d4;
+      color: #06b6d4;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
     }
   }
 }
 
-/* 列表样式 - 核心复刻区 */
+/* 列表样式 */
 .conversation-list {
   flex: 1;
   overflow-y: auto;
@@ -392,26 +397,26 @@ const openAgentModal = () => emit('open-agent-modal');
   .chat-group-title {
     padding: 16px 12px 6px;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-tertiary);
     font-weight: 500;
   }
 
   .conversation-item {
     position: relative;
-    height: 38px; /* 较矮的高度 */
+    height: 38px;
     display: flex;
     align-items: center;
     padding: 0 10px;
     margin-bottom: 2px;
     border-radius: 6px;
     cursor: pointer;
-    color: #374151;
+    color: var(--text-secondary);
     transition: background-color 0.15s;
 
     .chat-icon {
         margin-right: 10px;
         font-size: 14px;
-        color: #9ca3af;
+        color: var(--text-tertiary);
         display: flex;
         align-items: center;
     }
@@ -422,7 +427,7 @@ const openAgentModal = () => emit('open-agent-modal');
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      padding-right: 24px; /* 为按钮留空间 */
+      padding-right: 24px;
     }
 
     /* 悬浮显示更多按钮 */
@@ -431,7 +436,7 @@ const openAgentModal = () => emit('open-agent-modal');
       right: 4px;
       top: 50%;
       transform: translateY(-50%);
-      display: none; /* 默认隐藏 */
+      display: none;
       
       .more-btn {
         width: 24px;
@@ -440,28 +445,30 @@ const openAgentModal = () => emit('open-agent-modal');
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        color: #6b7280;
+        color: var(--text-secondary);
         &:hover {
-          background-color: #d1d5db;
-          color: #000;
+          background-color: rgba(255, 255, 255, 0.1);
+          color: var(--text-primary);
         }
       }
     }
 
     &:hover {
-      background-color: #e5e7eb; /* 悬浮背景 */
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
       
       .conversation-actions {
-        display: block; /* 悬浮显示 */
+        display: block;
       }
     }
 
     &.active {
-      background-color: #e5e7eb;
-      color: #000;
-      font-weight: 500;
+      background: rgba(6, 182, 212, 0.15);
+      color: #06b6d4;
+      font-weight: 600;
+      box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.1);
       
-      .chat-icon { color: #4b5563; }
+      .chat-icon { color: #06b6d4; }
     }
   }
 }
@@ -469,7 +476,7 @@ const openAgentModal = () => emit('open-agent-modal');
 /* 底部样式 */
 .sidebar-footer {
     padding: 16px;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     
     .user-profile {
         display: flex;
@@ -478,13 +485,13 @@ const openAgentModal = () => emit('open-agent-modal');
         cursor: pointer;
         padding: 6px;
         border-radius: 6px;
-        &:hover { background: #e5e7eb; }
+        &:hover { background: rgba(255, 255, 255, 0.05); }
         
         .avatar-circle {
             width: 28px;
             height: 28px;
-            background: #dbeafe;
-            color: #2563eb;
+            background: rgba(6, 182, 212, 0.2);
+            color: var(--main-color);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -494,14 +501,14 @@ const openAgentModal = () => emit('open-agent-modal');
         }
         
         .user-info { flex: 1; }
-        .user-name { font-size: 14px; font-weight: 500; color: #374151; }
-        .setting-icon { color: #9ca3af; }
+        .user-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+        .setting-icon { color: var(--text-secondary); }
     }
 }
 
 /* 折叠分组样式 */
 .collapsible-section {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   
   .section-header {
     display: flex;
@@ -509,20 +516,20 @@ const openAgentModal = () => emit('open-agent-modal');
     padding: 12px 16px;
     cursor: pointer;
     user-select: none;
-    color: #374151;
+    color: var(--text-secondary);
     font-weight: 600;
     font-size: 13px;
-    background: #f3f4f6;
+    background: rgba(0, 0, 0, 0.2);
     transition: all 0.15s;
     
     &:hover {
-      background: #e5e7eb;
-      color: #1f2937;
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text-primary);
     }
     
     .collapse-icon {
       margin-right: 8px;
-      color: #6b7280;
+      color: var(--text-tertiary);
     }
     
     .section-title {
@@ -532,7 +539,7 @@ const openAgentModal = () => emit('open-agent-modal');
   
   .section-content {
     padding: 0;
-    background: #fff;
+    background: transparent;
     
     :deep(.cnki-resource-selector) {
       padding: 8px 12px;
@@ -549,9 +556,11 @@ const openAgentModal = () => emit('open-agent-modal');
           border-bottom: none;
           border-radius: 6px;
           font-size: 13px;
+          color: var(--text-secondary);
           
           &:hover {
-            background: #f3f4f6;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
           }
         }
         
@@ -564,9 +573,11 @@ const openAgentModal = () => emit('open-agent-modal');
           padding: 6px 10px;
           border-radius: 4px;
           font-size: 13px;
+          color: var(--text-secondary);
           
           &:hover {
-            background: #f3f4f6;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
           }
         }
       }
@@ -605,8 +616,8 @@ const openAgentModal = () => emit('open-agent-modal');
 
 /* 滚动条美化 */
 .scrollbar-custom::-webkit-scrollbar { width: 4px; }
-.scrollbar-custom::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
-.scrollbar-custom:hover::-webkit-scrollbar-thumb { background: #d1d5db; }
+.scrollbar-custom::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+.scrollbar-custom:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
 
 </style>
 
@@ -614,10 +625,11 @@ const openAgentModal = () => emit('open-agent-modal');
 /* 这里的样式为了能够作用到挂载在 body 上的 dropdown */
 .deepseek-dropdown {
     .ant-dropdown-content {
-        background: #fff;
-        border-radius: 12px; /* 大圆角 */
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        border: 1px solid #f3f4f6;
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(12px);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         padding: 6px;
         min-width: 140px;
         
@@ -625,6 +637,7 @@ const openAgentModal = () => emit('open-agent-modal');
             box-shadow: none;
             border-radius: 0;
             padding: 0;
+            background: transparent;
         }
         
         .ant-dropdown-menu-item {
@@ -632,29 +645,30 @@ const openAgentModal = () => emit('open-agent-modal');
             padding: 8px 12px;
             margin-bottom: 2px;
             font-size: 13px;
-            color: #374151;
+            color: var(--text-secondary);
             
             &:hover {
-                background-color: #f3f4f6;
+                background-color: rgba(255, 255, 255, 0.1);
+                color: var(--text-primary);
             }
             
             .anticon {
                 margin-right: 8px;
-                color: #6b7280;
+                color: var(--text-tertiary);
             }
         }
         
         .ant-dropdown-menu-item-divider {
             margin: 4px 6px;
-            background-color: #f3f4f6;
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         /* 红色删除项 */
         .danger-item {
             color: #ef4444;
             &:hover {
-                background-color: #fef2f2;
-                color: #dc2626;
+                background-color: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
             }
             .anticon { color: #ef4444; }
         }

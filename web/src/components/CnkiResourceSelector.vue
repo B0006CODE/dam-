@@ -317,29 +317,44 @@ watch(() => props.retrievalMode, (newMode) => {
 }
 
 .cnki-filter-group {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
   overflow: hidden;
+  margin-bottom: 8px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
+  }
   
   .filter-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    background: #fafafa;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
     cursor: pointer;
     user-select: none;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
     
     &:hover {
-      background: #f5f5f5;
+      background: rgba(255, 255, 255, 0.08);
+      
+      .filter-title {
+        color: #fff;
+        text-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+      }
     }
     
     .filter-title {
       font-weight: 600;
-      color: #1a1a1a;
+      color: rgba(255, 255, 255, 0.9);
       font-size: 14px;
+      transition: all 0.2s ease;
     }
     
     .filter-header-right {
@@ -348,12 +363,13 @@ watch(() => props.retrievalMode, (newMode) => {
       gap: 8px;
       
       .filter-stats-icon {
-        color: #1890ff;
+        color: #06b6d4;
         font-size: 14px;
+        filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.5));
       }
       
       .collapse-icon {
-        color: #999;
+        color: rgba(255, 255, 255, 0.4);
         font-size: 12px;
         transition: transform 0.2s;
       }
@@ -364,19 +380,35 @@ watch(() => props.retrievalMode, (newMode) => {
     padding: 8px 0;
     max-height: 280px;
     overflow-y: auto;
+    background: rgba(15, 23, 42, 0.2);
+    
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    }
     
     .filter-disabled-hint {
       padding: 8px 16px;
-      color: #999;
+      color: rgba(255, 255, 255, 0.5);
       font-size: 12px;
-      background: #fffbe6;
-      border-bottom: 1px solid #fff1b8;
+      background: rgba(245, 158, 11, 0.1);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.2);
       display: flex;
       align-items: center;
       gap: 6px;
       
       .anticon {
-        color: #faad14;
+        color: #f59e0b;
       }
     }
     
@@ -385,10 +417,16 @@ watch(() => props.retrievalMode, (newMode) => {
       align-items: center;
       padding: 8px 16px;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: all 0.2s ease;
+      border-left: 2px solid transparent;
       
       &:hover:not(.disabled) {
-        background: #f0f7ff;
+        background: rgba(6, 182, 212, 0.1);
+        border-left-color: #06b6d4;
+        
+        .filter-label {
+          color: #fff;
+        }
       }
       
       &.disabled {
@@ -397,73 +435,98 @@ watch(() => props.retrievalMode, (newMode) => {
       }
       
       &.selected {
-        background: #e6f4ff;
+        background: rgba(6, 182, 212, 0.15);
+        border-left-color: #06b6d4;
+        
+        .filter-label {
+          color: #06b6d4;
+          font-weight: 500;
+          text-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+        }
       }
       
       .filter-label {
         flex: 1;
         margin-left: 8px;
-        color: #1890ff;
+        color: rgba(255, 255, 255, 0.8);
         font-size: 14px;
-        
-        &:hover {
-          text-decoration: underline;
-        }
+        transition: all 0.2s ease;
       }
       
       .filter-count {
-        color: #999;
-        font-size: 13px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 12px;
         margin-left: 4px;
+        font-family: monospace;
       }
       
       .truncated-warning {
-        color: #faad14;
+        color: #f59e0b;
         margin-left: 4px;
         font-size: 12px;
+      }
+
+      :deep(.ant-checkbox-inner) {
+        background-color: transparent;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      :deep(.ant-checkbox-checked .ant-checkbox-inner) {
+        background-color: #06b6d4;
+        border-color: #06b6d4;
+        box-shadow: 0 0 5px rgba(6, 182, 212, 0.5);
       }
     }
     
     .filter-empty {
       padding: 16px;
       text-align: center;
-      color: #999;
+      color: rgba(255, 255, 255, 0.3);
       font-size: 13px;
     }
   }
 }
 
 .selection-summary {
-  background: #f6f8fa;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
   padding: 12px 16px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.05);
+  }
   
   .summary-row {
     display: flex;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     
     &:last-child {
       margin-bottom: 0;
     }
     
     .summary-label {
-      color: #666;
+      color: rgba(255, 255, 255, 0.5);
       font-size: 12px;
       min-width: 70px;
     }
     
     .summary-value {
-      color: #333;
+      color: rgba(255, 255, 255, 0.9);
       font-size: 13px;
       
       &.mode-tag {
-        background: #e6f4ff;
-        color: #1890ff;
+        background: rgba(6, 182, 212, 0.15);
+        color: #06b6d4;
         padding: 2px 8px;
         border-radius: 4px;
         font-size: 12px;
+        border: 1px solid rgba(6, 182, 212, 0.2);
+        box-shadow: 0 0 5px rgba(6, 182, 212, 0.1);
       }
     }
   }

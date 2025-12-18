@@ -481,14 +481,14 @@ const openLink = (url) => {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border: 1px solid var(--gray-150);
+    border: var(--glass-border);
     border-radius: 8px;
-    background: white;
+    background: rgba(30, 41, 59, 0.35);
     transition: all 0.2s;
     min-height: 60px;
 
     &:hover {
-      box-shadow: 0 1px 8px var(--gray-200);
+      box-shadow: var(--shadow-md);
     }
 
     .service-info {

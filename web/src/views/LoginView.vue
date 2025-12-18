@@ -563,6 +563,7 @@ onUnmounted(() => {
   width: 100%;
   position: relative;
   padding-top: 0;
+  background: var(--bg-body); /* 使用全局深色渐变背景 */
 
   /* 当有顶部警告条时的样式调整 */
   &.has-alert {
@@ -579,7 +580,7 @@ onUnmounted(() => {
 }
 
 .back-home-btn {
-  color: var(--gray-600);
+  color: var(--text-secondary);
   font-size: 14px;
   padding: 0 8px;
 
@@ -595,7 +596,7 @@ onUnmounted(() => {
   display: flex;
   min-height: 100%;
   width: 100%;
-  background: var(--gray-10);
+  background: transparent; /* 透明，显示 body 背景 */
 }
 
 /* 左侧图片区域样式 */
@@ -604,6 +605,7 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   max-height: 100vh;
+  border-right: var(--glass-border); /* 添加右侧边框 */
 
   /* 背景图片样式 */
   .login-bg-image {
@@ -611,6 +613,7 @@ onUnmounted(() => {
     height: 100%;
     object-fit: cover;
     object-position: center;
+    filter: brightness(0.7) contrast(1.1); /* 降低亮度，增加对比度 */
   }
 
   .image-overlay {
@@ -619,24 +622,28 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: linear-gradient(to right, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.4)); /* 深色渐变遮罩 */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 72px 64px 36px;
+    backdrop-filter: blur(2px);
   }
 
   .brand-info {
     text-align: left;
-    color: white;
+    color: var(--text-primary);
     max-width: 520px;
 
     .brand-title {
       font-size: 52px;
       font-weight: 700;
       margin-bottom: 20px;
-      text-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .brand-subtitle {
@@ -644,8 +651,9 @@ onUnmounted(() => {
       font-weight: 500;
       margin-bottom: 24px;
       opacity: 0.92;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.28);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
       line-height: 1.4;
+      color: var(--text-primary);
     }
 
     .brand-description {
@@ -653,7 +661,8 @@ onUnmounted(() => {
       line-height: 1.6;
       margin: 0;
       opacity: 0.82;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      color: var(--text-secondary);
     }
   }
 
@@ -663,7 +672,7 @@ onUnmounted(() => {
     p {
       margin: 0;
       font-size: 14px;
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--text-disabled);
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       font-weight: 400;
     }
@@ -678,7 +687,7 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   padding: 64px 72px;
-  background: var(--main-20);
+  background: transparent;
 }
 
 /* 登录框容器样式 */
@@ -686,13 +695,20 @@ onUnmounted(() => {
   width: 100%;
   max-width: 560px;
   padding: 50px;
-  background: var(--gray-0);
+  background: var(--bg-container); /* 玻璃拟态背景 */
+  backdrop-filter: blur(20px);
   border-radius: 24px;
-  border: 1px solid var(--gray-150);
-  box-shadow: 0 18px 36px rgba(66, 66, 66, 0.05);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
   display: flex;
   flex-direction: column;
   gap: 32px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 20px 40px -10px rgba(6, 182, 212, 0.15);
+    border-color: rgba(6, 182, 212, 0.3);
+  }
 }
 
 .login-header {
@@ -707,7 +723,7 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: var(--gray-600);
+  color: var(--main-color);
   text-transform: uppercase;
 }
 
@@ -715,14 +731,14 @@ onUnmounted(() => {
   margin: 0;
   font-size: 30px;
   font-weight: 600;
-  color: var(--main-color);
+  color: var(--text-primary);
   line-height: 1.25;
 }
 
 .login-subtitle {
   margin: 0;
   font-size: 16px;
-  color: var(--gray-600);
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -750,23 +766,56 @@ onUnmounted(() => {
     margin-bottom: 18px;
   }
 
+  :deep(.ant-form-item-label > label) {
+    color: var(--text-secondary);
+  }
+
   :deep(.ant-input-affix-wrapper) {
     padding: 10px 11px;
     height: auto;
+    background-color: var(--bg-input);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+
+    &:hover, &:focus-within {
+      border-color: var(--main-color);
+      background-color: rgba(15, 23, 42, 0.8);
+    }
+
+    input {
+      background-color: transparent;
+      color: var(--text-primary);
+      &::placeholder {
+        color: var(--text-disabled);
+      }
+    }
+
+    .anticon {
+      color: var(--text-tertiary);
+    }
   }
 
   :deep(.ant-btn) {
     font-size: 16px;
     padding: 0.5rem;
     height: auto;
+    background: linear-gradient(135deg, var(--main-color) 0%, var(--main-active) 100%);
+    border: none;
+    box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.39);
+
+    &:hover {
+      background: linear-gradient(135deg, var(--main-hover) 0%, var(--main-color) 100%);
+      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.23);
+      transform: translateY(-1px);
+    }
   }
 }
 
 .login-form--init {
   padding: 24px;
   border-radius: 18px;
-  background: var(--main-30);
-  border: 1px solid var(--main-200);
+  background: rgba(6, 182, 212, 0.05);
+  border: 1px solid rgba(6, 182, 212, 0.2);
 
   h2 {
     margin-bottom: 16px;
@@ -785,19 +834,23 @@ onUnmounted(() => {
   gap: 12px;
   flex-wrap: wrap;
 
+  :deep(.ant-checkbox-wrapper) {
+    color: var(--text-secondary);
+  }
+
   .forgot-password {
     color: var(--main-color);
     font-size: 14px;
 
     &:hover {
-      color: var(--main-bright);
+      color: var(--main-hover);
     }
   }
 }
 
 .init-tips {
-  background: var(--main-20);
-  border: 1px solid var(--main-200);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 16px 18px;
   margin-bottom: 20px;

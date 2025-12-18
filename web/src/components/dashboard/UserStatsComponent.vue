@@ -58,11 +58,11 @@ const initActivityChart = () => {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: 'rgba(6, 182, 212, 0.3)',
       borderWidth: 1,
       textStyle: {
-        color: '#666'
+        color: '#fff'
       }
     },
     grid: {
@@ -77,26 +77,26 @@ const initActivityChart = () => {
       data: props.userStats.daily_active_users.map(item => item.date),
       axisLine: {
         lineStyle: {
-          color: '#e8e8e8'
+          color: 'rgba(255, 255, 255, 0.1)'
         }
       },
       axisLabel: {
-        color: '#666'
+        color: 'rgba(255, 255, 255, 0.6)'
       }
     },
     yAxis: {
       type: 'value',
       axisLine: {
         lineStyle: {
-          color: '#e8e8e8'
+          color: 'rgba(255, 255, 255, 0.1)'
         }
       },
       axisLabel: {
-        color: '#666'
+        color: 'rgba(255, 255, 255, 0.6)'
       },
       splitLine: {
         lineStyle: {
-          color: '#f0f0f0'
+          color: 'rgba(255, 255, 255, 0.05)'
         }
       }
     },
@@ -106,8 +106,10 @@ const initActivityChart = () => {
       data: props.userStats.daily_active_users.map(item => item.active_users),
       smooth: true,
       lineStyle: {
-        color: getChartColor('primary'),
-        width: 3
+        color: '#06b6d4',
+        width: 3,
+        shadowColor: 'rgba(6, 182, 212, 0.5)',
+        shadowBlur: 10
       },
       areaStyle: {
         color: {
@@ -117,24 +119,26 @@ const initActivityChart = () => {
           x2: 0,
           y2: 1,
           colorStops: [{
-            offset: 0, color: 'rgba(57, 150, 174, 0.3)'
+            offset: 0, color: 'rgba(6, 182, 212, 0.3)'
           }, {
-            offset: 1, color: 'rgba(57, 150, 174, 0.05)'
+            offset: 1, color: 'rgba(6, 182, 212, 0.05)'
           }]
         }
       },
       itemStyle: {
-        color: getChartColor('primary'),
+        color: '#06b6d4',
         borderWidth: 2,
-        borderColor: '#fff'
+        borderColor: '#fff',
+        shadowColor: 'rgba(6, 182, 212, 0.5)',
+        shadowBlur: 10
       },
       emphasis: {
         itemStyle: {
-          color: getChartColor('primary'),
+          color: '#06b6d4',
           borderWidth: 3,
           borderColor: '#fff',
-          shadowBlur: 10,
-          shadowColor: 'rgba(57, 150, 174, 0.5)'
+          shadowBlur: 15,
+          shadowColor: 'rgba(6, 182, 212, 0.8)'
         }
       }
     }]
@@ -184,11 +188,84 @@ defineExpose({
 <style scoped lang="less">
 
 // UserStatsComponent 特有的样式
-.compact-chart-container {
-  .chart-header {
-    .chart-title {
-      color: var(--chart-primary);
+.compact-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .mini-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(6, 182, 212, 0.1);
+      border-color: rgba(6, 182, 212, 0.3);
+      transform: translateY(-2px);
     }
+
+    .mini-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+    }
+
+    .mini-stat-label {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+.compact-chart-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .chart-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      &::before {
+        content: '';
+        display: block;
+        width: 4px;
+        height: 14px;
+        background: #06b6d4;
+        border-radius: 2px;
+        box-shadow: 0 0 8px #06b6d4;
+      }
+    }
+
+    .chart-subtitle {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+  }
+
+  .compact-chart {
+    height: 200px;
+    width: 100%;
   }
 }
 </style>

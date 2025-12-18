@@ -529,7 +529,7 @@ function canCancel(task) {
 :deep(.filter-count) {
   margin-left: 2px;
   font-size: 12px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .task-toolbar-actions :deep(.ant-btn) {
@@ -537,44 +537,110 @@ function canCancel(task) {
   align-items: center;
   gap: 4px;
   padding: 0 10px;
+  color: rgba(255, 255, 255, 0.8);
+  
+  &:hover {
+    color: #06b6d4;
+    background: rgba(6, 182, 212, 0.1);
+  }
+  
+  &.ant-btn-dangerous {
+    color: #ef4444;
+    &:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+  }
 }
 
 .task-alert {
   margin-bottom: 4px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  
+  :deep(.ant-alert-message) {
+    color: #fca5a5;
+  }
+  :deep(.anticon) {
+    color: #ef4444;
+  }
 }
 
 .task-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
+  
+  // Custom scrollbar
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
 }
 
 .task-card {
-  background: #ffffff;
-  border: 1px solid var(--gray-200);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   padding: 16px 18px;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  // box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    transition: all 0.3s ease;
+  }
 }
 
 .task-card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(6, 182, 212, 0.3);
+  background: rgba(30, 41, 59, 0.6);
+  transform: translateX(2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .task-card--active {
-  background: linear-gradient(to bottom, #ffffff, #fbfcff);
+  background: linear-gradient(to right, rgba(6, 182, 212, 0.05), rgba(30, 41, 59, 0.4));
+  &::before {
+    background: #06b6d4;
+    box-shadow: 0 0 8px #06b6d4;
+  }
 }
 
 .task-card--success {
-  background: linear-gradient(to bottom, #ffffff, #f7fff9);
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.05), rgba(30, 41, 59, 0.4));
+  &::before {
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+  }
 }
 
 .task-card--failed {
-  background: linear-gradient(to bottom, #ffffff, #fffcfc);
+  background: linear-gradient(to right, rgba(239, 68, 68, 0.05), rgba(30, 41, 59, 0.4));
+  &::before {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+  }
 }
 
 .task-card-header {
@@ -588,6 +654,16 @@ function canCancel(task) {
   display: flex;
   align-items: flex-start;
   padding-top: 2px;
+  
+  :deep(.ant-checkbox-inner) {
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  :deep(.ant-checkbox-checked .ant-checkbox-inner) {
+    background-color: #06b6d4;
+    border-color: #06b6d4;
+  }
 }
 
 .task-card-info {
@@ -595,14 +671,14 @@ function canCancel(task) {
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  flex: 1;
 }
 
 .task-card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #0f172a;
+  color: rgba(255, 255, 255, 0.9);
   line-height: 1.3;
-  // word-break: break-word;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -613,19 +689,22 @@ function canCancel(task) {
   gap: 10px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .task-card-id {
   letter-spacing: 0.04em;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .task-card-type {
   padding: 0 8px;
   border-radius: 999px;
-  background-color: rgba(15, 23, 42, 0.06);
-  color: #475569;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
   line-height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .task-card-status {
@@ -640,12 +719,18 @@ function canCancel(task) {
 
 .task-card-progress :deep(.ant-progress) {
   flex: 1;
+  .ant-progress-text {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .ant-progress-inner {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .task-card-progress-value {
   font-size: 12px;
   font-weight: 500;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.7);
   width: 48px;
   text-align: right;
 }
@@ -654,18 +739,20 @@ function canCancel(task) {
 .task-card-error {
   font-size: 13px;
   line-height: 1.45;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 12px;
 }
 
 .task-card-message {
-  background: rgba(15, 23, 42, 0.03);
-  color: #475569;
+  background: rgba(15, 23, 42, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .task-card-error {
-  background: rgba(248, 113, 113, 0.12);
-  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .task-card-footer {
@@ -681,12 +768,26 @@ function canCancel(task) {
   flex-direction: row;
   gap: 6px;
   font-size: 12px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .task-card-actions {
   display: flex;
   gap: 6px;
+  
+  :deep(.ant-btn-link) {
+    color: rgba(255, 255, 255, 0.6);
+    &:hover {
+      color: #06b6d4;
+    }
+    
+    &.ant-btn-dangerous {
+      color: rgba(239, 68, 68, 0.7);
+      &:hover {
+        color: #ef4444;
+      }
+    }
+  }
 }
 
 .task-card-completion {
@@ -695,8 +796,8 @@ function canCancel(task) {
   align-items: center;
   padding: 10px 14px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.02);
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(15, 23, 42, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .completion-badge {
@@ -708,7 +809,7 @@ function canCancel(task) {
 }
 
 .completion-badge--success {
-  color: #16a34a;
+  color: #10b981;
 }
 
 .completion-badge--success .completion-icon {
@@ -718,12 +819,13 @@ function canCancel(task) {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #dcfce7;
+  background: rgba(16, 185, 129, 0.2);
   font-size: 14px;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
 }
 
 .completion-badge--failed {
-  color: #dc2626;
+  color: #ef4444;
 }
 
 .completion-badge--failed .completion-icon {
@@ -733,12 +835,13 @@ function canCancel(task) {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #fee2e2;
+  background: rgba(239, 68, 68, 0.2);
   font-size: 14px;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 .completion-badge--cancelled {
-  color: #6b7280;
+  color: #94a3b8;
 }
 
 .completion-badge--cancelled .completion-icon {
@@ -748,7 +851,7 @@ function canCancel(task) {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #f3f4f6;
+  background: rgba(148, 163, 184, 0.2);
   font-size: 14px;
 }
 
@@ -757,7 +860,7 @@ function canCancel(task) {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .duration-label {
@@ -767,17 +870,17 @@ function canCancel(task) {
 .duration-value {
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
   font-weight: 600;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .task-empty {
   margin-top: 32px;
   padding: 40px 30px;
   border-radius: 16px;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px dashed rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
   text-align: center;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -786,17 +889,20 @@ function canCancel(task) {
 
 .task-empty-icon {
   font-size: 28px;
+  opacity: 0.7;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
 }
 
 .task-empty-title {
   font-size: 16px;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .task-empty-subtitle {
   font-size: 13px;
   max-width: 320px;
   line-height: 1.5;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.4);
 }
 </style>

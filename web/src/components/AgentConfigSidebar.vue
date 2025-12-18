@@ -597,8 +597,10 @@ watch(() => props.isOpen, (newVal) => {
   position: relative;
   width: 0;
   height: 100vh;
-  background: white;
-  border-left: 1px solid #e8e8e8;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   display: flex;
@@ -614,8 +616,8 @@ watch(() => props.isOpen, (newVal) => {
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
-    border-bottom: 1px solid var(--gray-200);
-    background: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
     flex-shrink: 0;
     min-width: 400px;
 
@@ -625,21 +627,22 @@ watch(() => props.isOpen, (newVal) => {
       gap: 8px;
       font-size: 15px;
       font-weight: 600;
-      color: var(--gray-900);
+      color: var(--text-primary);
 
       .title-icon {
-        color: var(--main-color);
+        color: #06b6d4;
+        filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.5));
       }
     }
 
     .close-btn {
-      color: var(--gray-600);
+      color: var(--text-secondary);
       border: none;
       padding: 4px;
 
       &:hover {
-        color: var(--gray-900);
-        background: var(--gray-100);
+        color: var(--text-primary);
+        background: var(--bg-elevated);
       }
     }
   }
@@ -657,7 +660,7 @@ watch(() => props.isOpen, (newVal) => {
         .agent-description {
           margin: 0 0 12px 0;
           font-size: 14px;
-          color: var(--gray-700);
+          color: var(--text-secondary);
           line-height: 1.5;
         }
       }
@@ -666,10 +669,10 @@ watch(() => props.isOpen, (newVal) => {
     .sidebar-footer {
       position: sticky;
       bottom: 0px;
-      padding: 12px 0;
-      border-top: 1px solid var(--gray-100);
-      background: #fff;
-      // min-width: 400px;
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(20px);
       z-index: 10;
 
       .form-actions {
@@ -679,11 +682,12 @@ watch(() => props.isOpen, (newVal) => {
 
         .save-btn {
           flex: 1;
-          background-color: var(--gray-100);
+          background-color: var(--bg-elevated);
           border: none;
           border-radius: 6px;
           font-weight: 500;
           font-size: 14px;
+          color: var(--text-primary);
 
           &.changed {
             background-color: var(--main-color);
@@ -697,9 +701,9 @@ watch(() => props.isOpen, (newVal) => {
 
         .reset-btn {
           flex: 1;
-          border: 1px solid var(--gray-300);
+          border: 1px solid var(--border-color-base);
           border-radius: 6px;
-          color: var(--gray-700);
+          color: var(--text-secondary);
           font-size: 14px;
 
           &:hover {
@@ -723,7 +727,7 @@ watch(() => props.isOpen, (newVal) => {
           .config-description {
             margin: 4px 0 8px 0;
             font-size: 12px;
-            color: var(--gray-600);
+            color: var(--text-tertiary);
             line-height: 1.4;
           }
 
@@ -733,12 +737,15 @@ watch(() => props.isOpen, (newVal) => {
 
           .system-prompt-input {
             resize: vertical;
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 8px 12px;
+            color: rgba(255, 255, 255, 0.9);
 
             &:focus {
               outline: none;
+              border-color: #06b6d4;
+              box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
             }
           }
 
@@ -748,17 +755,17 @@ watch(() => props.isOpen, (newVal) => {
 
           .system-prompt-display {
             min-height: 60px;
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
-            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
             padding: 8px 12px;
             cursor: pointer;
             position: relative;
             transition: all 0.2s ease;
 
             &:hover {
-              border-color: var(--main-color);
-              background: var(--gray-25);
+              border-color: rgba(6, 182, 212, 0.5);
+              background: rgba(6, 182, 212, 0.05);
 
               .edit-hint {
                 opacity: 1;
@@ -769,18 +776,18 @@ watch(() => props.isOpen, (newVal) => {
                white-space: pre-wrap;
                word-break: break-word;
                line-height: 1.5;
-               color: var(--gray-900);
+               color: var(--text-primary);
                font-size: 14px;
               //  min-height: 100px;
 
                &.is-placeholder {
-                 color: var(--gray-400);
+                 color: var(--text-tertiary);
                  font-style: italic;
                }
 
                &:empty::before {
                  content: attr(data-placeholder);
-                 color: var(--gray-400);
+                 color: var(--text-tertiary);
                }
              }
 
@@ -789,97 +796,14 @@ watch(() => props.isOpen, (newVal) => {
               top: 8px;
               right: 12px;
               font-size: 12px;
-              color: var(--gray-400);
+              color: var(--text-secondary);
               opacity: 0;
               transition: opacity 0.2s ease;
-              background: rgba(255, 255, 255, 0.9);
+              background: var(--bg-elevated);
               padding: 2px 6px;
               border-radius: 4px;
             }
           }
-
-          .config-select,
-          .config-input,
-          .config-input-number {
-            width: 100%;
-          }
-
-          .config-slider {
-            width: 100%;
-          }
-        }
-      }
-    }
-  }
-}
-
-
-// 工具选择器样式
-.tools-selector {
-  .tools-summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 12px;
-    background: var(--gray-20);
-    border-radius: 8px;
-    border: 1px solid var(--gray-200);
-    margin-bottom: 8px;
-
-    .tools-summary-info {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--gray-900);
-
-      .tools-count {
-        color: var(--gray-900);
-        font-weight: 500;
-      }
-
-      .clear-btn {
-        padding: 0;
-        height: auto;
-        font-size: 12px;
-      }
-    }
-
-    .select-tools-btn {
-      background: var(--main-color);
-      border: none;
-      border-radius: 4px;
-      height: 28px;
-      font-size: 12px;
-      font-weight: 500;
-
-      &:hover {
-        background: var(--main-color);
-        opacity: 0.9;
-      }
-    }
-  }
-
-  .selected-tools-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-
-    .tool-tag {
-      margin: 0;
-      padding: 4px 8px;
-      border-radius: 12px;
-      background: var(--gray-50);
-      border: 1px solid var(--gray-200);
-      color: var(--gray-900);
-      font-size: 12px;
-
-      :deep(.anticon-close) {
-        color: var(--gray-600);
-        margin-left: 4px;
-
-        &:hover {
-          color: var(--gray-900);
         }
       }
     }
@@ -894,48 +818,42 @@ watch(() => props.isOpen, (newVal) => {
     align-items: center;
     margin-bottom: 12px;
     font-size: 12px;
-    color: var(--gray-600);
+    color: var(--text-secondary);
   }
 
   .options-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 8px;
   }
 
   .option-card {
-    border: 1px solid var(--gray-300);
-    border-radius: 6px;
-    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: white;
+    background: rgba(30, 41, 59, 0.3);
+    user-select: none;
 
     &:hover {
-      border-color: var(--main-color);
+      border-color: #06b6d4;
+      background: rgba(6, 182, 212, 0.1);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.1);
     }
 
     &.selected {
-      border-color: var(--main-color);
-      background: var(--main-10);
+      border-color: #06b6d4;
+      background: rgba(6, 182, 212, 0.15);
 
       .option-indicator {
-        color: var(--main-color);
+        color: #06b6d4;
+        filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.5));
       }
 
       .option-text {
-        color: var(--main-color);
+        color: #06b6d4;
         font-weight: 500;
-      }
-    }
-
-    &.unselected {
-      .option-indicator {
-        color: var(--gray-400);
-      }
-
-      .option-text {
-        color: var(--gray-700);
       }
     }
 
@@ -944,17 +862,19 @@ watch(() => props.isOpen, (newVal) => {
       justify-content: space-between;
       align-items: center;
       gap: 8px;
+    }
 
-      .option-text {
-        flex: 1;
-        font-size: 13px;
-        line-height: 1.4;
-      }
+    .option-text {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
 
-      .option-indicator {
-        flex-shrink: 0;
-        font-size: 14px;
-      }
+    .option-indicator {
+      flex-shrink: 0;
+      font-size: 16px;
+      transition: color 0.2s ease;
     }
   }
 }
@@ -962,27 +882,28 @@ watch(() => props.isOpen, (newVal) => {
 // 工具选择弹窗样式
 .tools-modal {
   :deep(.ant-modal-content) {
-    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--gray-200);
   }
 
   :deep(.ant-modal-header) {
-    background: white;
-    border-bottom: 1px solid var(--gray-200);
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding: 16px 20px;
 
     .ant-modal-title {
       font-size: 16px;
       font-weight: 600;
-      color: var(--gray-900);
+      color: #fff;
     }
   }
 
   :deep(.ant-modal-body) {
     padding: 20px;
-    background: white;
+    background: transparent;
   }
 
   .tools-modal-content {
@@ -990,133 +911,80 @@ watch(() => props.isOpen, (newVal) => {
       margin-bottom: 16px;
 
       .search-input {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 8px;
-        border: 1px solid var(--gray-300);
-        height: 36px;
-        font-size: 14px;
-        transition: all 0.2s ease;
-        background: white;
+        color: #fff;
 
-        .search-icon {
-          color: var(--gray-500);
-          font-size: 16px;
-        }
-
-        &:focus-within {
-          border-color: var(--main-color);
-          box-shadow: 0 0 0 2px rgba(var(--main-color-rgb), 0.1);
-
-          .search-icon {
-            color: var(--main-color);
-          }
-        }
-
-        &:hover {
-          border-color: var(--gray-400);
+        &:focus {
+          border-color: #06b6d4;
+          box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
         }
       }
     }
 
     .tools-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 12px;
-      max-height: max(60vh, 800px);
+      max-height: 400px;
       overflow-y: auto;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      background: white;
-
-      // 在小屏幕下调整为单列布局
-      @media (max-width: 480px) {
-        grid-template-columns: 1fr;
-      }
-
-      &::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      &::-webkit-scrollbar-track {
-        background: var(--gray-100);
-        border-radius: 3px;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: var(--gray-400);
-        border-radius: 3px;
-      }
-
-      &::-webkit-scrollbar-thumb:hover {
-        background: var(--gray-500);
-      }
+      padding-right: 4px;
 
       .tool-item {
-        padding: 12px 16px;
-        border-bottom: none;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 12px;
         cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 8px;
-        margin-bottom: 4px;
-        background: white;
-        border: 1px solid var(--gray-200);
+        transition: all 0.3s ease;
+        background: rgba(30, 41, 59, 0.3);
 
         &:hover {
-          border-color: var(--gray-300);
-          background: var(--gray-20);
+          border-color: #06b6d4;
+          background: rgba(6, 182, 212, 0.1);
+          box-shadow: 0 0 10px rgba(6, 182, 212, 0.1);
         }
+
+        &.selected {
+          border-color: #06b6d4;
+          background: rgba(6, 182, 212, 0.15);
+
+          .tool-name {
+            color: #06b6d4;
+          }
+
+          .tool-indicator {
+            color: #06b6d4;
+            filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.5));
+          }
+        }
+
         .tool-content {
           .tool-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
-            gap: 8px;
+            margin-bottom: 8px;
 
             .tool-name {
+              font-weight: 600;
+              color: #fff;
               font-size: 14px;
-              font-weight: 500;
-              color: var(--gray-900);
-              line-height: 1.3;
-              flex: 1;
-            }
-
-            .tool-indicator {
-              color: var(--gray-400);
-              font-size: 16px;
-              transition: all 0.2s ease;
-              flex-shrink: 0;
             }
           }
 
           .tool-description {
             font-size: 12px;
-            color: var(--gray-600);
+            color: rgba(255, 255, 255, 0.5);
             line-height: 1.4;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
           }
         }
-
-        &.selected {
-          background: var(--main-30);
-          // border-color: var(--main-color);
-
-          .tool-content {
-            .tool-name {
-              color: var(--main-color);
-            }
-            .tool-indicator {
-              color: var(--main-color);
-            }
-          }
-          .tool-description {
-            color: var(--gray-700);
-          }
-
-        }
-
       }
     }
 
@@ -1124,53 +992,18 @@ watch(() => props.isOpen, (newVal) => {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-top: 20px;
       padding-top: 16px;
-      border-top: 1px solid var(--gray-200);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
 
       .selected-count {
-        font-size: 14px;
-        color: var(--gray-700);
-        font-weight: 500;
-        padding: 6px 12px;
-        background: var(--gray-50);
-        border-radius: 8px;
-        border: 1px solid var(--gray-200);
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.6);
       }
 
       .modal-actions {
         display: flex;
         gap: 12px;
-
-        :deep(.ant-btn) {
-          border-radius: 8px;
-          height: 36px;
-          font-size: 14px;
-          font-weight: 500;
-          padding: 0 16px;
-          transition: all 0.2s ease;
-
-          &.ant-btn-default {
-            border: 1px solid var(--gray-300);
-            color: var(--gray-700);
-            background: white;
-
-            &:hover {
-              border-color: var(--main-color);
-              color: var(--main-color);
-            }
-          }
-
-          &.ant-btn-primary {
-            background: var(--main-color);
-            border: none;
-            color: white;
-
-            &:hover {
-              background: var(--main-color);
-              opacity: 0.9;
-            }
-          }
-        }
       }
     }
   }

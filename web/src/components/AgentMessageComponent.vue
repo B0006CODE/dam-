@@ -19,7 +19,9 @@
       <!-- 消息内容 -->
       <MdPreview v-if="parsedData.content" ref="editorRef"
         editorId="preview-only"
+        theme="dark"
         previewTheme="github"
+        codeTheme="atom"
         :showCodeRowNumber="false"
         :modelValue="parsedData.content"
         :key="message.id"
@@ -247,18 +249,20 @@ const kgTitle = computed(() => {
   font-size: 15px;
   line-height: 24px;
   box-sizing: border-box;
-  color: black;
+  color: var(--text-primary);
   max-width: 100%;
   position: relative;
   letter-spacing: .25px;
 
   &.human, &.sent {
-    max-width: 95%;
+    max-width: 85%;
     color: white;
-    background-color: var(--main-color);
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
     align-self: flex-end;
-    border-radius: .5rem;
-    padding: 0.5rem 1rem;
+    border-radius: 16px 16px 4px 16px;
+    padding: 10px 16px;
+    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   &.assistant, &.received, &.ai {
@@ -267,7 +271,7 @@ const kgTitle = computed(() => {
     text-align: left;
     margin: 0;
     padding: 0px;
-    background-color: transparent;
+    background-color: transparent !important;
     border-radius: 0;
   }
 
@@ -278,29 +282,30 @@ const kgTitle = computed(() => {
   }
 
   .err-msg {
-    color: #d15252;
-    border: 1px solid #f19999;
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
     padding: 0.5rem 1rem;
     border-radius: 8px;
     text-align: left;
-    background: #fffbfb;
+    background: rgba(239, 68, 68, 0.1);
     margin-bottom: 10px;
     cursor: pointer;
   }
 
   .searching-msg {
-    color: var(--gray-700);
+    color: var(--text-secondary);
     animation: colorPulse 1s infinite ease-in-out;
   }
 
   .reasoning-box {
-    margin-top: 10px;
-    margin-bottom: 15px;
-    border-radius: 8px;
-    border: 1px solid var(--gray-200);
-    background-color: var(--gray-25);
+    margin-top: 12px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(8px);
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 
     :deep(.ant-collapse) {
       background-color: transparent;
@@ -311,14 +316,13 @@ const kgTitle = computed(() => {
 
         .ant-collapse-header {
           padding: 8px 12px;
-          // background-color: var(--gray-100);
           font-size: 14px;
           font-weight: 500;
-          color: var(--gray-700);
+          color: var(--text-secondary);
           transition: all 0.2s ease;
 
           .ant-collapse-expand-icon {
-            color: var(--gray-400);
+            color: var(--text-tertiary);
           }
         }
 
@@ -328,7 +332,7 @@ const kgTitle = computed(() => {
 
           .ant-collapse-content-box {
             padding: 16px;
-            background-color: var(--gray-25);
+            background-color: rgba(0, 0, 0, 0.1);
           }
         }
       }
@@ -336,7 +340,7 @@ const kgTitle = computed(() => {
 
     .reasoning-content {
       font-size: 13px;
-      color: var(--gray-800);
+      color: var(--text-secondary);
       white-space: pre-wrap;
       margin: 0;
       line-height: 1.6;
@@ -357,15 +361,13 @@ const kgTitle = computed(() => {
     gap: 8px;
 
     &.error-interrupted {
-      background-color: #fffbeb;
-      // border: 1px solid #fbbf24;
-      color: #92400e;
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
     }
 
     &.error-unexpect {
-      background-color: #fef2f2;
-      // border: 1px solid #f87171;
-      color: #991b1b;
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
     }
 
     span {
@@ -375,8 +377,8 @@ const kgTitle = computed(() => {
 
   .status-info {
     display: block;
-    background-color: var(--gray-50);
-    color: var(--gray-700);
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--text-tertiary);
     padding: 10px;
     border-radius: 8px;
     margin-bottom: 10px;
@@ -400,19 +402,19 @@ const kgTitle = computed(() => {
   }
 
   :deep(.tool-call-display) {
-    background-color: var(--gray-25);
-    outline: 1px solid var(--gray-200);
-    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
 
     .tool-header {
       padding: 8px 12px;
-      // background-color: var(--gray-100);
       font-size: 14px;
       font-weight: 500;
-      color: var(--gray-800);
-      border-bottom: 1px solid var(--gray-100);
+      color: var(--text-primary);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -429,7 +431,7 @@ const kgTitle = computed(() => {
 
       .tool-name {
         font-weight: 600;
-        color: var(--main-700);
+        color: var(--main-color);
       }
 
       span {
@@ -440,7 +442,7 @@ const kgTitle = computed(() => {
 
       .tool-loader {
         margin-top: 2px;
-        color: var(--main-700);
+        color: var(--main-color);
       }
 
       .tool-loader.rotate {
@@ -456,7 +458,7 @@ const kgTitle = computed(() => {
       }
 
       .tool-loader.tool-loading {
-        color: var(--color-info);
+        color: var(--main-color);
       }
     }
 
@@ -465,14 +467,14 @@ const kgTitle = computed(() => {
 
       .tool-params {
         padding: 8px 12px;
-        background-color: var(--gray-25);
-        border-bottom: 1px solid var(--gray-150);
+        background-color: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
         .tool-params-content {
           margin: 0;
           font-size: 13px;
           overflow-x: auto;
-          color: var(--gray-700);
+          color: var(--text-secondary);
           line-height: 1.5;
 
           pre {
@@ -488,11 +490,11 @@ const kgTitle = computed(() => {
 
         .tool-result-header {
           padding: 12px 16px;
-          background-color: var(--gray-100);
+          background-color: rgba(255, 255, 255, 0.05);
           font-size: 12px;
-          color: var(--gray-700);
+          color: var(--text-secondary);
           font-weight: 500;
-          border-bottom: 1px solid var(--gray-200);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .tool-result-content {
@@ -513,13 +515,13 @@ const kgTitle = computed(() => {
 .retry-hint {
   margin-top: 8px;
   padding: 8px 16px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
   text-align: left;
 }
 
 .retry-link {
-  color: #1890ff;
+  color: var(--main-color);
   cursor: pointer;
   margin-left: 4px;
 
@@ -530,18 +532,18 @@ const kgTitle = computed(() => {
 
 .ant-btn-icon-only {
   &:has(.anticon-stop) {
-    background-color: #ff4d4f !important;
+    background-color: #ef4444 !important;
 
     &:hover {
-      background-color: #ff7875 !important;
+      background-color: #f87171 !important;
     }
   }
 }
 
 @keyframes colorPulse {
-  0% { color: var(--gray-700); }
-  50% { color: var(--gray-300); }
-  100% { color: var(--gray-700); }
+  0% { color: var(--text-secondary); }
+  50% { color: var(--text-primary); }
+  100% { color: var(--text-secondary); }
 }
 
 @keyframes fadeInUp {
@@ -568,6 +570,19 @@ const kgTitle = computed(() => {
 <style lang="less" scoped>
 :deep(.message-md) {
   margin: 8px 0;
+  background-color: transparent !important;
+}
+
+:deep(.message-md .md-editor),
+:deep(.message-md .md-editor-preview),
+:deep(.message-md .md-editor-preview-wrapper),
+:deep(.message-md .md-editor-content) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+:deep(.md-editor-dark) {
+  --md-bk-color: transparent !important;
 }
 
 :deep(.message-md .md-editor-preview-wrapper) {
@@ -578,24 +593,29 @@ const kgTitle = computed(() => {
   #preview-only-preview {
     font-size: 1rem;
     line-height: 1.75;
-    color: var(--gray-1000);
+    color: var(--text-primary);
+    background-color: transparent !important;
   }
 
 
   h1, h2 {
     font-size: 1.2rem;
+    color: var(--text-primary);
   }
 
   h3, h4 {
     font-size: 1.1rem;
+    color: var(--text-primary);
   }
 
   h5, h6 {
     font-size: 1rem;
+    color: var(--text-secondary);
   }
 
   strong {
     font-weight: 500;
+    color: var(--main-color);
   }
 
   li > p, ol > p, ul > p {
@@ -604,7 +624,7 @@ const kgTitle = computed(() => {
 
   ul li::marker,
   ol li::marker {
-    color: var(--main-bright);
+    color: var(--main-color);
   }
 
   ul, ol {
@@ -613,27 +633,27 @@ const kgTitle = computed(() => {
 
   cite {
     font-size: 12px;
-    color: var(--gray-700);
+    color: var(--text-secondary);
     font-style: normal;
-    background-color: var(--gray-200);
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
-    outline: 2px solid var(--gray-200);
+    outline: 2px solid rgba(255, 255, 255, 0.05);
   }
 
   a {
-    color: var(--main-700);
+    color: var(--main-color);
   }
 
   .md-editor-code {
-    border: var(--gray-50);
+    border: var(--glass-border);
     border-radius: 8px;
 
     .md-editor-code-head {
-      background-color: var(--gray-50);
+      background-color: rgba(0, 0, 0, 0.3);
       z-index: 1;
 
       .md-editor-collapse-tips {
-        color: var(--gray-400);
+        color: var(--text-tertiary);
       }
     }
   }
@@ -645,7 +665,8 @@ const kgTitle = computed(() => {
     letter-spacing: 0.025em;
     tab-size: 4;
     -moz-tab-size: 4;
-    background-color: var(--gray-25);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
   }
 
   p:last-child {
@@ -658,7 +679,7 @@ const kgTitle = computed(() => {
     margin: 2em 0;
     font-size: 15px;
     display: table;
-    outline: 1px solid var(--gray-100);
+    outline: 1px solid rgba(255, 255, 255, 0.1);
     outline-offset: 14px;
     border-radius: 12px;
 
@@ -669,11 +690,11 @@ const kgTitle = computed(() => {
     thead th,
     tbody th {
       border: none;
-      border-bottom: 1px solid var(--gray-200);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     tbody tr:last-child td {
-      border-bottom: 1px solid var(--gray-200);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       border: none;
       padding-bottom: 0;
     }
@@ -687,22 +708,18 @@ const kgTitle = computed(() => {
   }
 
   td {
-    border-bottom: 1px solid var(--gray-100);
-    color: var(--gray-800);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
   }
 
   th {
     font-weight: 600;
-    color: var(--gray-800);
+    color: var(--text-primary);
   }
 
   tr {
-    background-color: var(--gray-0);
+    background-color: transparent;
   }
-
-  // tbody tr:last-child td {
-  //   border-bottom: none;
-  // }
 }
 
 :deep(.chat-box.font-smaller #preview-only-preview) {
@@ -740,16 +757,16 @@ const kgTitle = computed(() => {
 /* KG toggle header styles */
 .knowledge-graph-wrapper {
   margin-top: 8px;
-  border: 1px solid var(--gray-200);
+  border: var(--glass-border);
   border-radius: 8px;
-  background: var(--gray-0);
+  background: var(--bg-elevated);
 }
 .knowledge-graph-wrapper .kg-toggle-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--gray-25);
+  background: rgba(255, 255, 255, 0.05);
 }
 .knowledge-graph-wrapper .kg-title {
   color: var(--main-color);
@@ -763,5 +780,13 @@ const kgTitle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  
+  &:hover {
+    color: var(--main-color);
+    border-color: var(--main-color);
+  }
 }
 </style>

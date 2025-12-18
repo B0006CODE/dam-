@@ -560,12 +560,12 @@ onMounted(() => {
     }
 
     .kb-type-card {
-      border: 2px solid #f0f0f0;
+      border: var(--glass-border);
       border-radius: 12px;
       padding: 20px;
       cursor: pointer;
       transition: all 0.3s ease;
-      background: white;
+      background: rgba(30, 41, 59, 0.35);
       position: relative;
       overflow: hidden;
 
@@ -589,7 +589,7 @@ onMounted(() => {
 
       &.active {
         border-color: var(--main-color);
-        background: #f8faff;
+        background: rgba(6, 182, 212, 0.12);
 
         .type-icon {
           color: var(--main-color);
@@ -605,7 +605,7 @@ onMounted(() => {
       &:nth-child(1) {
         &.active {
           border-color: #d3adf7;
-          background: #f9f0ff;
+          background: rgba(114, 46, 209, 0.15);
 
           .type-icon {
             color: #722ed1;
@@ -621,7 +621,7 @@ onMounted(() => {
       &:nth-child(2) {
         &.active {
           border-color: #ffd591;
-          background: #fff7e6;
+          background: rgba(250, 140, 22, 0.15);
 
           .type-icon {
             color: #fa8c16;
@@ -637,7 +637,7 @@ onMounted(() => {
       &:nth-child(3) {
         &.active {
           border-color: #ffadd2;
-          background: #fff1f0;
+          background: rgba(245, 34, 45, 0.12);
 
           .type-icon {
             color: #f5222d;
@@ -695,9 +695,9 @@ onMounted(() => {
   .chunk-config {
     margin-top: 16px;
     padding: 12px 16px;
-    background-color: #fafafa;
+    background-color: rgba(15, 23, 42, 0.45);
     border-radius: 6px;
-    border: 1px solid #f0f0f0;
+    border: var(--glass-border);
 
     h3 {
       margin-top: 0;
@@ -761,18 +761,19 @@ onMounted(() => {
   gap: 16px;
 
   .new-database {
-    background-color: #F0F3F4;
+    background-color: rgba(255, 255, 255, 0.04);
   }
 }
 
 .database, .graphbase {
-  background-color: white;
-  box-shadow: 0px 1px 2px 0px rgba(16,24,40,.06),0px 1px 3px 0px rgba(16,24,40,.1);
-  border: 2px solid white;
-  transition: box-shadow 0.2s ease-in-out;
+  background-color: var(--glass-bg);
+  box-shadow: var(--shadow-md);
+  border: var(--glass-border);
+  transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
 
   &:hover {
-    box-shadow: 0px 4px 6px -2px rgba(16,24,40,.03),0px 12px 16px -4px rgba(16,24,40,.08);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(6, 182, 212, 0.35);
   }
 }
 
@@ -801,16 +802,16 @@ onMounted(() => {
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #F5F8FF;
+      background-color: rgba(6, 182, 212, 0.12);
       border-radius: 8px;
-      border: 1px solid #E0EAFF;
+      border: 1px solid rgba(6, 182, 212, 0.25);
       color: var(--main-color);
     }
 
     .info {
       h3, p {
         margin: 0;
-        color: black;
+        color: var(--text-primary);
       }
 
       h3 {
@@ -852,7 +853,7 @@ onMounted(() => {
     display: flex;
     gap: 12px;
 
-    .ant-btn {
+      .ant-btn {
       display: flex;
       align-items: center;
       gap: 4px;
@@ -862,10 +863,10 @@ onMounted(() => {
       font-size: 12px;
       color: var(--gray-600);
 
-      &:hover {
-        background-color: #f0f0f0;
-        color: var(--main-color);
-      }
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.05);
+          color: var(--main-color);
+        }
 
       &.ant-btn-dangerous:hover {
         color: #ff4d4f;
