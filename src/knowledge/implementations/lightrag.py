@@ -250,14 +250,38 @@ class LightRagKB(KnowledgeBase):
                     markdown_content = await process_url_to_markdown(item, params=params)
 
                 # 使用 LightRAG 插入内容
-                await rag.ainsert(input=markdown_content, ids=file_id, file_paths=item_path)
+                track_id = await rag.ainsert(input=markdown_content, ids=file_id, file_paths=item_path)
+                if track_id:
+                    self.files_meta[file_id]["track_id"] = track_id
+                    file_record["track_id"] = track_id
 
                 logger.info(f"Inserted {content_type} {item} into LightRAG. Done.")
 
-                # 更新状态为完成
-                self.files_meta[file_id]["status"] = "done"
+                # LightRAG 可能在内部处理失败但不抛异常，而是记录到 doc_status；这里以 doc_status 为准同步状态
+                doc_status = None
+                try:
+                    if hasattr(rag, "doc_status") and getattr(rag, "doc_status", None) is not None:
+                        doc_status = await rag.doc_status.get_by_id(file_id)  # type: ignore[attr-defined]
+                except Exception as status_error:  # noqa: BLE001
+                    logger.warning(f"Failed to read LightRAG doc_status for {file_id}: {status_error}")
+
+                lightrag_status = doc_status.get("status") if isinstance(doc_status, dict) else None
+                if lightrag_status:
+                    self.files_meta[file_id]["lightrag_status"] = lightrag_status
+                    file_record["lightrag_status"] = lightrag_status
+
+                if lightrag_status == "failed":
+                    error_msg = (doc_status or {}).get("error_msg") or "LightRAG processing failed"
+                    self.files_meta[file_id]["status"] = "failed"
+                    self.files_meta[file_id]["error"] = error_msg
+                    file_record["status"] = "failed"
+                    file_record["error"] = error_msg
+                else:
+                    # 更新状态为完成
+                    self.files_meta[file_id]["status"] = "done"
+                    file_record["status"] = "done"
+
                 self._save_metadata()
-                file_record["status"] = "done"
 
             except Exception as e:
                 error_msg = str(e)

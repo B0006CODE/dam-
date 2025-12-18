@@ -366,6 +366,16 @@ const getEdgeDisplayName = (edge) => {
   return `${edge.source} -> ${edge.target}`
 }
 
+// 监听 initialDatabaseId 变化
+watch(() => props.initialDatabaseId, async (newId) => {
+  if (newId && newId !== selectedDatabase.value) {
+    selectedDatabase.value = newId
+    await loadGraphLabels(newId)
+    // 可选：自动加载新数据库的图谱
+    // await loadGraphData() 
+  }
+})
+
 // 加载可用数据库
 const loadAvailableDatabases = async () => {
   // 如果隐藏数据库选择器且有初始数据库ID，直接使用
@@ -436,7 +446,7 @@ const onDatabaseChange = async (dbId) => {
 const sigmaSettings = {
   allowInvalidContainer: true,
   defaultNodeType: 'default',
-  defaultEdgeType: 'curvedArrow',
+  defaultEdgeType: 'line',  // 改为直线边
   renderEdgeLabels: true,
   renderLabels: true,
   enableEdgeEvents: true,
@@ -454,6 +464,7 @@ const sigmaSettings = {
   },
   labelSize: 12,
   edgeLabelSize: 10,
+  labelRenderedSizeThreshold: 0,  // 始终显示所有节点标签
   labelColor: {
     color: '#ffffff'
   },
@@ -723,16 +734,18 @@ const loadGraphData = async () => {
         is_truncated: graphResponse.data.is_truncated
       }
 
-      console.log('Raw graph created:', {
-        nodes: rawGraph.nodes.length,
-        edges: rawGraph.edges.length,
-        sampleNode: rawGraph.nodes[0],
-        sampleEdge: rawGraph.edges[0]
-      })
+      if (rawGraph.nodes.length === 0) {
+        message.warning('该数据库中没有找到图谱数据')
+      }
 
       // 创建Sigma图
       const sigmaGraph = graphStore.createSigmaGraph(rawGraph)
       graphStore.setSigmaGraph(sigmaGraph)
+
+      console.log('Container dimensions before layout:', {
+        width: sigmaContainer.value?.clientWidth,
+        height: sigmaContainer.value?.clientHeight
+      })
 
       // 应用布局
       await applyLayout(sigmaGraph)
@@ -743,10 +756,19 @@ const loadGraphData = async () => {
         sigmaInstance.refresh()
       } else {
         await nextTick()
+        console.log('Initializing Sigma instance...')
         await initSigma()
       }
+      
+      // 重置视图以适应新数据
+      await nextTick()
+      // 增加一个小延迟，确保DOM和布局完全更新
+      setTimeout(() => {
+        console.log('Resetting camera after delay...')
+        resetCamera(true) // 传入 true 表示立即重置，不使用动画
+      }, 100)
 
-      // message.success(`加载成功：${rawGraph.nodes.length} 个节点，${rawGraph.edges.length} 条边${graphResponse.data.is_truncated ? ' (已截断)' : ''}`)
+      message.success(`加载成功：${rawGraph.nodes.length} 个节点，${rawGraph.edges.length} 条边${graphResponse.data.is_truncated ? ' (已截断)' : ''}`)
     }
   } catch (error) {
     console.error('加载图数据失败:', error)
@@ -879,6 +901,17 @@ const applyLayout = async (graph) => {
     else if (mode === 'concentric') layoutConcentric()
     else if (mode === 'force') layoutForceLite()
     else { if (N <= 150) layoutForceLite(); else layoutConcentric() }
+
+    // Validate coordinates
+    nodes.forEach(node => {
+      const x = graph.getNodeAttribute(node, 'x')
+      const y = graph.getNodeAttribute(node, 'y')
+      if (!isFinite(x) || !isFinite(y)) {
+        console.warn('Invalid coordinates after layout for node:', node, { x, y })
+        graph.setNodeAttribute(node, 'x', Math.random() * 1000)
+        graph.setNodeAttribute(node, 'y', Math.random() * 1000)
+      }
+    })
 
     resolve()
     return
@@ -1014,81 +1047,44 @@ const expandNode = async (nodeId) => {
 }
 
 // 控制方法
-const zoomIn = () => {
+function zoomIn() {
   if (sigmaInstance) {
     const camera = sigmaInstance.getCamera()
     camera.animatedZoom({ duration: 200 })
   }
 }
 
-const zoomOut = () => {
+function zoomOut() {
   if (sigmaInstance) {
     const camera = sigmaInstance.getCamera()
     camera.animatedUnzoom({ duration: 200 })
   }
 }
 
-const resetCamera = () => {
-  if (sigmaInstance) {
-    try {
-      const camera = sigmaInstance.getCamera()
-      const graph = sigmaInstance.getGraph()
+function resetCamera(immediate = false) {
+  if (!sigmaInstance) return
 
-      // 如果图为空，直接重置
-      if (graph.order === 0) {
-        camera.animatedReset({ duration: 500 })
-        return
-      }
+  try {
+    const camera = sigmaInstance.getCamera()
 
-      // 计算图的边界以确保所有节点都可见
-      const nodes = graph.nodes()
-      if (nodes.length > 0) {
-        const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
-
-        nodes.forEach(node => {
-          const attrs = graph.getNodeAttributes(node)
-          if (typeof attrs.x === 'number' && typeof attrs.y === 'number') {
-            bounds.minX = Math.min(bounds.minX, attrs.x)
-            bounds.maxX = Math.max(bounds.maxX, attrs.x)
-            bounds.minY = Math.min(bounds.minY, attrs.y)
-            bounds.maxY = Math.max(bounds.maxY, attrs.y)
-          }
-        })
-
-        // 只有在边界有效时才使用fitBounds
-        if (isFinite(bounds.minX) && isFinite(bounds.maxX) && isFinite(bounds.minY) && isFinite(bounds.maxY)) {
-          const centerX = (bounds.minX + bounds.maxX) / 2
-          const centerY = (bounds.minY + bounds.maxY) / 2
-          const padding = 50
-
-          camera.animate({
-            x: centerX,
-            y: centerY,
-            ratio: Math.max(
-              (bounds.maxX - bounds.minX + padding) / window.innerWidth,
-              (bounds.maxY - bounds.minY + padding) / window.innerHeight
-            ) || 1.0
-          }, { duration: 500 })
-        } else {
-          // 回退到默认重置
-          camera.animatedReset({ duration: 500 })
-        }
-      } else {
-        camera.animatedReset({ duration: 500 })
-      }
-
-      console.log('Camera reset completed')
-      message.success('视图已重置')
-    } catch (error) {
-      console.error('Error resetting camera:', error)
-      // 强制重置
-      if (sigmaInstance) {
-        const camera = sigmaInstance.getCamera()
-        camera.setState({ x: 0, y: 0, ratio: 1.0 })
-        sigmaInstance.refresh()
-      }
-      message.info('视图已强制重置')
+    // Sigma v3 的 Camera 坐标系基于内部归一化后的 framedGraph；
+    // 使用内置 reset 能保证视图回到可见区域（避免用原始 graph 坐标导致“空白画布”）。
+    if (immediate) {
+      camera.setState({ x: 0.5, y: 0.5, ratio: 1, angle: 0 })
+    } else {
+      camera.animatedReset({ duration: 500 })
     }
+
+    sigmaInstance.refresh()
+  } catch (error) {
+    console.error('Error resetting camera:', error)
+    // 强制重置到默认状态（与 sigma Camera 默认一致）
+    try {
+      const camera = sigmaInstance?.getCamera?.()
+      camera?.setState?.({ x: 0.5, y: 0.5, ratio: 1, angle: 0 })
+      sigmaInstance?.refresh?.()
+    } catch (_) {}
+    message.info('视图已强制重置')
   }
 }
 
@@ -1169,9 +1165,23 @@ const stopDragPanel = () => {
   document.removeEventListener('mouseup', stopDragPanel)
 }
 
+// ResizeObserver instance
+let resizeObserver = null
+
 // 生命周期
 onMounted(async () => {
   await nextTick()
+  
+  // Initialize ResizeObserver
+  if (sigmaContainer.value) {
+    resizeObserver = new ResizeObserver(() => {
+      if (sigmaInstance) {
+        sigmaInstance.refresh()
+      }
+    })
+    resizeObserver.observe(sigmaContainer.value)
+  }
+
   await loadAvailableDatabases()
 })
 
@@ -1179,6 +1189,11 @@ onUnmounted(() => {
   // 清理拖拽事件监听器
   document.removeEventListener('mousemove', onDragPanel)
   document.removeEventListener('mouseup', stopDragPanel)
+
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
 
   if (sigmaInstance) {
     sigmaInstance.kill()
@@ -1216,11 +1231,10 @@ watch(() => graphStore.selectedNode, (nodeId) => {
         return
       }
 
-      const nodeAttributes = graph.getNodeAttributes(nodeId)
-
-      // 检查节点属性是否有效
-      if (!nodeAttributes || typeof nodeAttributes.x !== 'number' || typeof nodeAttributes.y !== 'number') {
-        console.warn('Invalid node attributes for node:', nodeId, nodeAttributes)
+      // Sigma v3 的相机移动需要使用 displayData（framedGraph 坐标）
+      const nodeDisplay = sigmaInstance.getNodeDisplayData(nodeId)
+      if (!nodeDisplay || !isFinite(nodeDisplay.x) || !isFinite(nodeDisplay.y)) {
+        console.warn('Invalid node display data for node:', nodeId, nodeDisplay)
         graphStore.moveToSelectedNode = false
         return
       }
@@ -1228,36 +1242,16 @@ watch(() => graphStore.selectedNode, (nodeId) => {
       const camera = sigmaInstance.getCamera()
       const currentState = camera.getState()
 
-      console.log('Moving camera to node:', nodeId, {
-        x: nodeAttributes.x,
-        y: nodeAttributes.y,
-        currentRatio: currentState.ratio
-      })
 
       // 计算合适的缩放比例，避免过度缩放
       const currentRatio = currentState.ratio || 1.0
       const targetRatio = Math.max(0.1, Math.min(currentRatio * 0.7, 0.6))
 
-      // 验证节点位置是否有效
-      const isValidPosition = (
-        typeof nodeAttributes.x === 'number' &&
-        typeof nodeAttributes.y === 'number' &&
-        !isNaN(nodeAttributes.x) &&
-        !isNaN(nodeAttributes.y) &&
-        isFinite(nodeAttributes.x) &&
-        isFinite(nodeAttributes.y)
-      )
-
-      if (!isValidPosition) {
-        console.warn('Invalid node position, skipping camera movement:', nodeAttributes)
-        return
-      }
-
       // 移动相机到节点位置，使用安全的缩放比例
       camera.animate(
         {
-          x: nodeAttributes.x,
-          y: nodeAttributes.y,
+          x: nodeDisplay.x,
+          y: nodeDisplay.y,
           ratio: targetRatio  // 使用计算出的安全缩放比例
         },
         {

@@ -38,7 +38,6 @@ const htmlRefHook = useTemplateRef('htmlRefHook')
 onLongPress(
   htmlRefHook,
   () => {
-    console.log('long press')
     showDebugModal.value = true
   },
   {
@@ -70,9 +69,8 @@ onMounted(async () => {
   getRemoteDatabase()
 })
 
-// 打印当前页面的路由信息，使用 vue3 的 setup composition API
+// 下面是导航菜单部分
 const route = useRoute()
-console.log(route)
 
 const activeTaskCount = computed(() => activeCountRef.value || 0)
 
@@ -402,13 +400,13 @@ div.header, #app-router-view {
     .nav-item {
       text-decoration: none;
       width: 40px;
-      color: var(--gray-900);
+      color: rgba(255, 255, 255, 0.8);
       font-size: 1rem;
       font-weight: bold;
       transition: color 0.1s ease-in-out, font-size 0.1s ease-in-out;
 
       &.active {
-        color: black;
+        color: #06b6d4;
         font-size: 1.1rem;
       }
     }

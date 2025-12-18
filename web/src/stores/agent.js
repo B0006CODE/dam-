@@ -82,7 +82,6 @@ export const useAgentStore = defineStore('agent', {
             this.selectAgent(firstAgentId);
           }
         } else {
-          console.log('Condition FALSE: Persisted selected agent is valid. Keeping it.');
         }
 
         if (this.selectedAgentId) {

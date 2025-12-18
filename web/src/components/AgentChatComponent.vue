@@ -179,7 +179,7 @@
             @keydown="handleKeyDown"
           />
           <div class="bottom-actions">
-            <p class="note">请注意辨别内容的可靠性</p>
+            <!-- <p class="note">请注意辨别内容的可靠性</p> -->
           </div>
         </div>
       </div>

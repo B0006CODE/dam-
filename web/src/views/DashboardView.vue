@@ -237,10 +237,8 @@ const loadAllStats = async () => {
       knowledge: response.knowledge
     }
 
-    console.log('Dashboard 数据加载完成:', response)
     message.success('数据加载成功')
   } catch (error) {
-    console.error('加载统计数据失败:', error)
     message.error('加载统计数据失败')
 
     // 如果并行请求失败，尝试单独加载基础数据
@@ -249,7 +247,6 @@ const loadAllStats = async () => {
       basicStats.value = basicResponse
       message.warning('详细数据加载失败，仅显示基础统计')
     } catch (basicError) {
-      console.error('加载基础统计数据也失败:', basicError)
       message.error('无法加载任何统计数据')
     }
   } finally {
@@ -407,14 +404,14 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     min-height: 300px;
-    background: rgba(15, 23, 42, 0.3);
+    background: var(--glass-bg-light);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: var(--border-default);
     transition: all 0.3s ease;
 
     &:hover {
       border-color: rgba(6, 182, 212, 0.4);
-      box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
+      box-shadow: var(--glow-subtle);
     }
 
     // 布局：第一行调用统计(2列) + 用户活跃度(1列)，第二行知识库(1列) + 对话记录(1列)

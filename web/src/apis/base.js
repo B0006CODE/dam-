@@ -16,13 +16,31 @@ import { message } from 'ant-design-vue'
  */
 export async function apiRequest(url, options = {}, requiresAuth = true, responseType = 'json') {
   try {
+    const hasBody = Object.prototype.hasOwnProperty.call(options, 'body') && options.body !== undefined && options.body !== null
+    const isFormDataBody = hasBody && typeof FormData !== 'undefined' && options.body instanceof FormData
+
     // 默认请求配置
+    const headers = {
+      ...(options.headers || {}),
+    }
+
+    // 仅在非 FormData 请求体、且未显式指定 Content-Type 时设置 JSON 默认值
+    if (!isFormDataBody) {
+      const hasContentType =
+        Object.prototype.hasOwnProperty.call(headers, 'Content-Type') ||
+        Object.prototype.hasOwnProperty.call(headers, 'content-type')
+      if (!hasContentType) {
+        headers['Content-Type'] = 'application/json'
+      }
+    } else {
+      // FormData 需要让浏览器自动补 boundary，避免手动设置导致服务端解析失败
+      delete headers['Content-Type']
+      delete headers['content-type']
+    }
+
     const requestOptions = {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     }
 
     // 如果需要认证，添加认证头
@@ -44,20 +62,12 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
       let errorMessage = `请求失败: ${response.status}, ${response.statusText}`
       let errorData = null
 
-      console.log('API请求失败:', {
-        url,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
 
       try {
         errorData = await response.json()
         errorMessage = errorData.detail || errorData.message || errorMessage
-        console.log('API错误详情:', errorData);
       } catch (e) {
         // 如果无法解析JSON，使用默认错误信息
-        console.log('无法解析错误响应JSON:', e);
       }
 
       // 特殊处理401和403错误
@@ -147,11 +157,12 @@ export function apiSuperAdminGet(url, options = {}, responseType = 'json') {
  * @returns {Promise} - 请求结果
  */
 export function apiPost(url, data = {}, options = {}, requiresAuth = true, responseType = 'json') {
+  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
   return apiRequest(
     url,
     {
       method: 'POST',
-      body: JSON.stringify(data),
+      ...(isFormData ? { body: data } : { body: JSON.stringify(data) }),
       ...options
     },
     requiresAuth,
@@ -179,11 +190,12 @@ export function apiSuperAdminPost(url, data = {}, options = {}, responseType = '
  * @returns {Promise} - 请求结果
  */
 export function apiPut(url, data = {}, options = {}, requiresAuth = true, responseType = 'json') {
+  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
   return apiRequest(
     url,
     {
       method: 'PUT',
-      body: JSON.stringify(data),
+      ...(isFormData ? { body: data } : { body: JSON.stringify(data) }),
       ...options
     },
     requiresAuth,
@@ -211,11 +223,12 @@ export function apiSuperAdminPut(url, data = {}, options = {}, responseType = 'j
  * @returns {Promise} - 请求结果
  */
 export function apiDelete(url, data = {}, options = {}, requiresAuth = true, responseType = 'json') {
+  const hasBody = data !== undefined && data !== null
   return apiRequest(
     url,
     {
       method: 'DELETE',
-      body: JSON.stringify(data),
+      ...(hasBody ? { body: JSON.stringify(data) } : {}),
       ...options
     },
     requiresAuth,

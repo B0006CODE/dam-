@@ -44,7 +44,7 @@ const props = defineProps({
   background-color: var(--bg-sider);
   backdrop-filter: blur(10px);
   padding: 10px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -61,7 +61,7 @@ const props = defineProps({
   flex: 1;
   width: 100%;
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--text-secondary);
 
   .header-title-block {
     display: flex;
@@ -73,7 +73,7 @@ const props = defineProps({
     margin: 0;
     font-size: 18px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.85);
+    color: var(--text-primary);
   }
 
   p {

@@ -132,10 +132,6 @@ const props = defineProps({
   },
 });
 
-// 添加调试日志
-console.log('QuerySection props:', props);
-console.log('QuerySection style prop:', props.style);
-
 const emit = defineEmits(['toggleVisible']);
 
 const loading = computed(() => store.state.queryParamsLoading);
@@ -184,10 +180,6 @@ const onQuery = async () => {
   const supportedParamKeys = new Set(queryParams.value.map(param => param.key));
   const queryMeta = {};
 
-  console.log('Supported param keys:', Array.from(supportedParamKeys));
-  console.log('All meta params:', meta.value);
-  console.log('Database info:', store.database);
-
   // 遍历 meta 中的参数，只保留当前知识库类型支持的参数
   for (const [key, value] of Object.entries(meta.value)) {
     // 跳过 db_id 参数
@@ -196,12 +188,8 @@ const onQuery = async () => {
     // 只保留当前知识库类型支持的参数
     if (supportedParamKeys.has(key)) {
       queryMeta[key] = value;
-    } else {
-      console.log(`Skipping unsupported parameter: ${key}`);
     }
   }
-
-  console.log('Filtered query meta:', queryMeta);
 
   try {
     const data = await queryApi.queryTest(store.database.db_id, queryText.value.trim(), queryMeta);
@@ -353,7 +341,7 @@ onUnmounted(() => {
 
   .param-item label {
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
   }
 }
 </style>

@@ -271,7 +271,6 @@ const toggleAutoRefresh = () => {
 };
 
 const toggleRightPanel = () => {
-  console.log(props.rightPanelVisible);
   emit('toggleRightPanel');
 };
 
@@ -301,7 +300,6 @@ const selectAllFailedFiles = () => {
 };
 
 const openFileDetail = (record) => {
-  console.log('openFileDetail', record);
   store.openFileDetail(record);
 };
 
@@ -313,7 +311,6 @@ const handleDownloadFile = async (record) => {
     return;
   }
 
-  console.log('开始下载文件:', { dbId, fileId: record.file_id, record });
 
   try {
     const response = await documentApi.downloadDocument(dbId, record.file_id);

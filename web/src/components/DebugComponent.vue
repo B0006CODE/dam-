@@ -340,14 +340,11 @@ onUnmounted(() => {
 // 打印系统配置
 const printSystemConfig = () => {
   if (!checkAdminPermission()) return;
-  console.log('=== 系统配置 ===');
-  console.log(config);
 };
 
 // 打印用户信息
 const printUserInfo = () => {
   if (!checkAdminPermission()) return;
-  console.log('=== 用户信息 ===');
   const userInfo = {
     token: userStore.token ? '*** (已隐藏)' : null,
     userId: userStore.userId,
@@ -357,7 +354,6 @@ const printUserInfo = () => {
     isAdmin: userStore.isAdmin,
     isSuperAdmin: userStore.isSuperAdmin
   };
-  console.log(JSON.stringify(userInfo, null, 2));
 };
 
 // 打印知识库信息
@@ -365,7 +361,6 @@ const printDatabaseInfo = async () => {
   if (!checkAdminPermission()) return;
 
   try {
-    console.log('知识库信息', databaseStore.database);
 
   } catch (error) {
     console.error('获取知识库信息失败:', error);
@@ -384,49 +379,20 @@ const printAgentConfig = async () => {
   if (!checkAdminPermission()) return;
 
   try {
-    console.log('=== 智能体配置信息 ===');
 
     // 从store 获取状态信息
-    console.log('Store 状态:', {
-      isInitialized: agentStore.isInitialized,
-      selectedAgentId: agentStore.selectedAgentId,
-      defaultAgentId: agentStore.defaultAgentId,
-      loadingStates: {
-        isLoadingAgents: agentStore.isLoadingAgents,
-        isLoadingConfig: agentStore.isLoadingConfig,
-        isLoadingTools: agentStore.isLoadingTools
-      },
-      error: agentStore.error,
-      note: '线程相关状态已迁移到组件级别'
-    });
 
     // 智能体列表信息
-    console.log('智能体列表 (从store):', {
-      count: agentStore.agentsList.length,
-      agents: toRaw(agentStore.agentsList)
-    });
 
     // 当前选中智能体信息
     if (agentStore.selectedAgent) {
-      console.log('当前选中智能体:', {
-        agent: toRaw(agentStore.selectedAgent),
-        isDefault: agentStore.isDefaultAgent,
-        configurableItems: Object.keys(agentStore.configurableItems).length
-      });
 
       // 当前智能体配置
-      console.log('当前智能体配置:', {
-        current: toRaw(agentStore.agentConfig),
-        original: toRaw(agentStore.originalAgentConfig),
-        hasChanges: agentStore.hasConfigChanges
-      });
     }
 
     // 工具信息
-    console.log('可用工具:', toRaw(agentStore.availableTools));
 
     // 注意：线程和对话相关信息已迁移到AgentChatComponent组件级别
-    console.log('注意: 线程和对话状态已迁移到组件级别，请在AgentChatComponent中查看相关信息');
 
   } catch (error) {
     console.error('获取智能体配置失败:', error);
@@ -585,7 +551,7 @@ const printAgentConfig = async () => {
 .empty-logs {
   padding: 16px;
   text-align: center;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 @media (prefers-color-scheme: dark) {

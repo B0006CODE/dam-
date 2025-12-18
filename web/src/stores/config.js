@@ -45,7 +45,6 @@ export const useConfigStore = defineStore('config', () => {
   function refreshConfig() {
     configApi.getConfig()
       .then(data => {
-        console.log("config", data)
         setConfig(data)
       })
   }

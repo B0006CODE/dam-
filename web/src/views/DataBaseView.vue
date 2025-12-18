@@ -262,9 +262,7 @@ const loadSupportedKbTypes = async () => {
   try {
     const data = await typeApi.getKnowledgeBaseTypes()
     supportedKbTypes.value = data.kb_types
-    console.log('支持的知识库类型:', supportedKbTypes.value)
   } catch (error) {
-    console.error('加载知识库类型失败:', error)
     // 如果加载失败，设置默认类型
     supportedKbTypes.value = {
       lightrag: {
@@ -277,10 +275,8 @@ const loadSupportedKbTypes = async () => {
 
 const loadDatabases = () => {
   state.loading = true
-  // loadGraph()
   databaseApi.getDatabases()
     .then(data => {
-      console.log(data)
       // 按照创建时间排序，最新的在前面
       databases.value = data.databases.sort((a, b) => {
         const timeA = parseToShanghai(a.created_at)
@@ -288,12 +284,11 @@ const loadDatabases = () => {
         if (!timeA && !timeB) return 0
         if (!timeA) return 1
         if (!timeB) return -1
-        return timeB.valueOf() - timeA.valueOf() // 降序排列，最新的在前面
+        return timeB.valueOf() - timeA.valueOf()
       })
       state.loading = false
     })
     .catch(error => {
-      console.error('加载数据库列表失败:', error);
       if (error.message.includes('权限')) {
         message.error('需要管理员权限访问知识库')
       }
@@ -397,14 +392,12 @@ const formatCreatedTime = (createdAt) => {
 
 // 处理知识库类型改变
 const handleKbTypeChange = (type) => {
-  console.log('知识库类型改变:', type)
   resetNewDatabase()
   newDatabase.kb_type = type
 }
 
 // 处理LLM选择
 const handleLLMSelect = (spec) => {
-  console.log('LLM选择:', spec)
   if (typeof spec !== 'string' || !spec) return
 
   const index = spec.indexOf('/')
@@ -454,13 +447,11 @@ const createDatabase = () => {
 
   databaseApi.createDatabase(requestData)
     .then(data => {
-      console.log('创建成功:', data)
       loadDatabases()
       resetNewDatabase()
       message.success('创建成功')
     })
     .catch(error => {
-      console.error('创建数据库失败:', error)
       message.error(error.message || '创建失败')
     })
     .finally(() => {
@@ -901,6 +892,115 @@ onMounted(() => {
 .new-database-modal {
   h3 {
     margin-top: 10px;
+    color: var(--text-primary);
+  }
+
+  // Modal content 深色主题
+  :deep(.ant-modal-content) {
+    background: var(--bg-elevated);
+    border: var(--glass-border);
+    border-radius: var(--radius-lg);
+  }
+
+  :deep(.ant-modal-header) {
+    background: transparent;
+    border-bottom: var(--border-subtle);
+  }
+
+  :deep(.ant-modal-title) {
+    color: var(--text-primary);
+  }
+
+  :deep(.ant-modal-close-x) {
+    color: var(--text-secondary);
+  }
+
+  :deep(.ant-modal-body) {
+    background: transparent;
+    color: var(--text-primary);
+  }
+
+  :deep(.ant-modal-footer) {
+    border-top: var(--border-subtle);
+    background: transparent;
+  }
+
+  // Input 深色主题
+  :deep(.ant-input),
+  :deep(.ant-input-affix-wrapper) {
+    background: var(--bg-input);
+    border: var(--border-default);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+
+    &::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    &:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    &:focus,
+    &.ant-input-focused {
+      border-color: var(--main-color);
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.1);
+    }
+  }
+
+  // TextArea 深色主题
+  :deep(.ant-input-textarea textarea) {
+    background: var(--bg-input);
+    border: var(--border-default);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+
+    &::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    &:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    &:focus {
+      border-color: var(--main-color);
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.1);
+    }
+  }
+
+  // Select 深色主题
+  :deep(.ant-select-selector) {
+    background: var(--bg-input) !important;
+    border: var(--border-default) !important;
+    color: var(--text-primary);
+    border-radius: var(--radius-md) !important;
+  }
+
+  :deep(.ant-select:hover .ant-select-selector) {
+    border-color: rgba(6, 182, 212, 0.4) !important;
+  }
+
+  :deep(.ant-select-focused .ant-select-selector) {
+    border-color: var(--main-color) !important;
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.1) !important;
+  }
+
+  :deep(.ant-select-selection-placeholder) {
+    color: var(--text-tertiary);
+  }
+
+  :deep(.ant-select-selection-item) {
+    color: var(--text-primary);
+  }
+
+  :deep(.ant-select-arrow) {
+    color: var(--text-secondary);
+  }
+
+  // p 标签样式
+  p {
+    color: var(--text-secondary);
   }
 }
 </style>

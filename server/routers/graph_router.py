@@ -145,6 +145,23 @@ async def get_subgraph(
         total_nodes_all = len(kg.nodes)
         total_edges_all = len(kg.edges)
 
+        # ====== 诊断日志：检查 LightRAG 返回的原始数据 ======
+        logger.info(f"[诊断] LightRAG 原始数据 - 节点数: {total_nodes_all}, 边数: {total_edges_all}")
+        if total_nodes_all > 0:
+            sample_node = kg.nodes[0]
+            logger.info(f"[诊断] 节点样本 - id: {sample_node.id}, type(id): {type(sample_node.id)}, "
+                        f"labels: {getattr(sample_node, 'labels', 'N/A')}, "
+                        f"properties: {getattr(sample_node, 'properties', {})}")
+        if total_edges_all > 0:
+            sample_edge = kg.edges[0]
+            logger.info(f"[诊断] 边样本 - source: {getattr(sample_edge, 'source', 'N/A')}, "
+                        f"target: {getattr(sample_edge, 'target', 'N/A')}, "
+                        f"type: {getattr(sample_edge, 'type', 'N/A')}, "
+                        f"所有属性: {dir(sample_edge)}")
+        else:
+            logger.warning(f"[诊断] LightRAG 返回了 0 条边！这是问题的根源。")
+        # ====== 诊断日志结束 ======
+
         # 计算分页窗口
         start = (page - 1) * limit
         end = min(start + limit, total_nodes_all)
@@ -159,6 +176,16 @@ async def get_subgraph(
         paged_edges_raw = [
             e for e in kg.edges if str(e.source) in included_ids and str(e.target) in included_ids
         ]
+
+        # ====== 诊断日志：检查边过滤结果 ======
+        logger.info(f"[诊断] 节点ID集合样本(前5个): {list(included_ids)[:5]}")
+        logger.info(f"[诊断] 过滤后边数: {len(paged_edges_raw)} (原始: {total_edges_all})")
+        if total_edges_all > 0 and len(paged_edges_raw) == 0:
+            # 边过滤导致全部边丢失，输出边的source/target看看为什么不匹配
+            sample_sources = [str(e.source) for e in kg.edges[:5]]
+            sample_targets = [str(e.target) for e in kg.edges[:5]]
+            logger.warning(f"[诊断] 边被过滤掉了！边的source样本: {sample_sources}, target样本: {sample_targets}")
+        # ====== 诊断日志结束 ======
 
         # 计算度（当前页内的度）
         degree_map: dict[str, int] = {}
@@ -496,12 +523,49 @@ async def add_neo4j_entities(
     file_path: str = Body(...), kgdb_name: str | None = Body(None), current_user: User = Depends(get_admin_user)
 ):
     """通过JSONL文件添加图谱实体到Neo4j"""
-    try:
-        if not file_path.endswith(".jsonl"):
-            return {"success": False, "message": "文件格式错误，请上传jsonl文件", "status": "failed"}
+    from pathlib import Path
+    import os
 
-        await graph_base.jsonl_file_add_entity(file_path, kgdb_name)
+    # 定义允许的上传目录（相对于项目根目录）
+    ALLOWED_DIRS = [
+        Path("saves").resolve(),
+        Path("uploads").resolve(),
+    ]
+
+    try:
+        # 验证文件扩展名
+        if not file_path.endswith(".jsonl"):
+            raise HTTPException(status_code=400, detail="文件格式错误，请上传jsonl文件")
+
+        # 路径安全验证：解析绝对路径并检查是否在允许的目录内
+        requested_path = Path(file_path).resolve()
+        
+        # 检查文件是否在允许的目录中
+        is_safe = False
+        for allowed_dir in ALLOWED_DIRS:
+            try:
+                requested_path.relative_to(allowed_dir)
+                is_safe = True
+                break
+            except ValueError:
+                continue
+
+        if not is_safe:
+            logger.warning(f"路径遍历尝试被阻止: {file_path} -> {requested_path}")
+            raise HTTPException(status_code=400, detail="无效的文件路径：文件必须位于允许的目录中")
+
+        # 检查文件是否存在
+        if not requested_path.exists():
+            raise HTTPException(status_code=404, detail="文件不存在")
+
+        if not requested_path.is_file():
+            raise HTTPException(status_code=400, detail="路径不是有效的文件")
+
+        await graph_base.jsonl_file_add_entity(str(requested_path), kgdb_name)
         return {"success": True, "message": "实体添加成功", "status": "success"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"添加实体失败: {e}, {traceback.format_exc()}")
-        return {"success": False, "message": f"添加实体失败: {e}", "status": "failed"}
+        raise HTTPException(status_code=500, detail=f"添加实体失败: {e}")
+

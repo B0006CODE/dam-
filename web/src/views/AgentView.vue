@@ -206,7 +206,6 @@ const handleShareChat = async () => {
     // 从聊天组件获取导出数据
     const exportData = chatComponentRef.value?.getExportPayload?.();
 
-    console.log('[AgentView] Export data:', exportData);
 
     if (!exportData) {
       message.warning('当前没有可导出的对话内容');

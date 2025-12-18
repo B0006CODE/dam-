@@ -284,10 +284,10 @@ const openAgentModal = () => emit('open-agent-modal');
 .chat-sidebar {
   width: 0;
   height: 100%;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--glass-bg-medium);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: var(--border-subtle);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -318,7 +318,7 @@ const openAgentModal = () => emit('open-agent-modal');
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: var(--border-subtle);
 
   .header-title {
     font-size: 16px;
@@ -383,7 +383,7 @@ const openAgentModal = () => emit('open-agent-modal');
       background-color: rgba(6, 182, 212, 0.2);
       border-color: #06b6d4;
       color: #06b6d4;
-      box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+      box-shadow: var(--glow-default);
     }
   }
 }

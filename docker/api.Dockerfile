@@ -32,8 +32,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone &
         rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/* /var/tmp/*
 
 # 复制项目配置文件
-COPY ../pyproject.toml /app/pyproject.toml
-COPY ../.python-version /app/.python-version
+COPY pyproject.toml /app/pyproject.toml
+COPY uv.lock /app/uv.lock
+COPY .python-version /app/.python-version
 
 # 接收构建参数
 ARG HTTP_PROXY=""
@@ -53,5 +54,5 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV PATH="/app/.venv/bin:$PATH"
 
 # 复制代码到容器中
-COPY ../src /app/src
-COPY ../server /app/server
+COPY src /app/src
+COPY server /app/server

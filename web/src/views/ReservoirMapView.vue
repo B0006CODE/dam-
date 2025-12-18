@@ -78,26 +78,15 @@ const normalizeProvinceName = (name: string) => {
 };
 
 const handleProvinceClick = (province: string) => {
-  console.log('handleProvinceClick called:', province);
-  
   const normalizedProvince = normalizeProvinceName(province);
-  console.log('Normalized province:', normalizedProvince);
-  
-  console.log('provinceStats.value:', provinceStats.value);
-  console.log('Has data for province?', !!provinceStats.value[normalizedProvince]);
   
   // Only show info card if province has reservoir data
   if (provinceStats.value[normalizedProvince]) {
-    console.log('Setting selectedProvince to:', normalizedProvince);
     selectedProvince.value = normalizedProvince;
-  } else {
-    // Show a brief notification that no data is available
-    console.log(`No reservoir data available for ${normalizedProvince}`);
   }
 };
 
 const handleReservoirClick = (reservoir: Reservoir) => {
-  console.log('handleReservoirClick called:', reservoir);
   selectedReservoir.value = reservoir;
 };
 </script>

@@ -171,12 +171,12 @@ onMounted(async () => {
 }
 
 .glass-header:hover .nav-link {
-  color: #333;
+  color: var(--main-700);
 }
 
 
 .glass-header:hover .logo {
-  color: #333;
+  color: var(--main-700);
 }
 
 .nav-links {
@@ -191,7 +191,7 @@ onMounted(async () => {
   gap: 0.5rem;
   padding: 0.6rem 1rem;
   text-decoration: none;
-  color: #555;
+  color: var(--main-600);
   font-weight: 500;
   font-size: 0.95rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -199,7 +199,7 @@ onMounted(async () => {
   overflow: hidden;
 
   &:hover {
-    color: #333;
+    color: var(--main-700);
 
     svg {
       transform: scale(1.1);

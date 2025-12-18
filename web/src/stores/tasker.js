@@ -115,11 +115,8 @@ export const useTaskerStore = defineStore('tasker', () => {
   async function deleteTasksBatch(taskIds) {
     if (!taskIds || taskIds.length === 0) return
     try {
-      console.log('Starting batch delete for tasks:', taskIds)
       const response = await taskerApi.deleteTasksBatch(taskIds)
-      const { successful, failed, total, results } = response
-
-      console.log('Batch delete response:', response)
+      const { successful, failed, results } = response
 
       if (successful > 0) {
         message.success(`成功删除 ${successful} 个任务`)
@@ -130,7 +127,6 @@ export const useTaskerStore = defineStore('tasker', () => {
               const index = tasks.value.findIndex(item => item.id === taskId)
               if (index >= 0) {
                 tasks.value.splice(index, 1)
-                console.log('Removed task from local state:', taskId)
               }
             }
           })
@@ -138,12 +134,11 @@ export const useTaskerStore = defineStore('tasker', () => {
       }
 
       if (failed > 0) {
-        // Get details of failed tasks for better error message
         const failedTaskIds = results ?
           Object.entries(results)
             .filter(([_, success]) => !success)
-            .map(([taskId, _]) => taskId)
-            .slice(0, 3) // Show first 3 failed task IDs
+            .map(([taskId]) => taskId)
+            .slice(0, 3)
           : []
 
         const errorMessage = failedTaskIds.length > 0
@@ -151,12 +146,10 @@ export const useTaskerStore = defineStore('tasker', () => {
           : `${failed} 个任务删除失败`
 
         message.warning(errorMessage)
-        console.warn('Failed to delete tasks:', failedTaskIds)
       }
 
       return response
     } catch (error) {
-      console.error('批量删除任务失败:', error)
       const errorMessage = error?.response?.data?.detail || error?.message || '批量删除任务失败'
       message.error(errorMessage)
       throw error
@@ -165,32 +158,24 @@ export const useTaskerStore = defineStore('tasker', () => {
 
   async function cleanupTasks(criteria) {
     try {
-      console.log('Starting cleanup with criteria:', criteria)
       const response = await taskerApi.cleanupTasks(criteria)
-      const { deleted_count, criteria: response_criteria } = response
-
-      console.log('Cleanup response:', response)
+      const { deleted_count } = response
 
       if (deleted_count > 0) {
         message.success(`成功清理 ${deleted_count} 个任务`)
-        // Reload tasks to get updated state from server
-        console.log('Reloading tasks after cleanup...')
         await loadTasks()
       } else {
-        // Provide more specific message about what was cleaned
         const statusText = criteria.status ?
           (criteria.status === 'success' ? '已完成' :
-           criteria.status === 'failed' ? '失败' : criteria.status) :
+            criteria.status === 'failed' ? '失败' : criteria.status) :
           ''
         const ageText = criteria.older_than ? '超过指定时间的' : ''
         const description = [statusText, ageText].filter(Boolean).join(' ') || '符合条件的'
-
         message.info(`没有找到${description}任务需要清理`)
       }
 
       return response
     } catch (error) {
-      console.error('清理任务失败:', error)
       const errorMessage = error?.response?.data?.detail || error?.message || '清理任务失败'
       message.error(errorMessage)
       throw error

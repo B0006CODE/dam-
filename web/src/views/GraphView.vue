@@ -336,7 +336,6 @@ const loadGraphInfo = () => {
   state.loadingGraphInfo = true
   neo4jApi.getInfo()
     .then(data => {
-      console.log(data)
       graphInfo.value = data.data
       state.loadingGraphInfo = false
     })
@@ -522,13 +521,11 @@ onMounted(() => {
 });
 
 const handleFileUpload = (event) => {
-  console.log(event)
-  console.log(fileList.value)
+  // File upload handler
 }
 
 const handleDrop = (event) => {
-  console.log(event)
-  console.log(fileList.value)
+  // Drop handler
 }
 
 const graphStatusClass = computed(() => {
@@ -666,7 +663,16 @@ const loadGraphOptions = async () => {
 
   try {
     const res = await lightragApi.getDatabases();
-    const list = res?.databases || res?.data || res || [];
+    // 安全地提取数据库列表，确保是数组
+    let list = res?.databases || res?.data || res;
+    if (!Array.isArray(list)) {
+      // 如果响应是对象且有 databases 属性，尝试提取
+      if (list && typeof list === 'object' && list.databases) {
+        list = list.databases;
+      } else {
+        list = [];
+      }
+    }
     list.forEach((item) => {
       const value = item.db_id || item.id || item.name;
       const label = labelWithAlias(value, item.name || value);
@@ -745,7 +751,7 @@ const confirmRename = () => {
   align-items: center;
   margin-right: 16px;
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--text-secondary);
 }
 
 .status-text {

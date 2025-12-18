@@ -22,6 +22,7 @@ from src.agents import agent_manager
 from src.agents.common.tools import gen_tool_info, get_buildin_tools
 from src.models import select_model
 from src.plugins.guard import content_guard
+from src.utils.datetime_utils import utc_now
 from src.utils.logging_config import logger
 
 chat = APIRouter(prefix="/chat", tags=["chat"])
@@ -685,7 +686,7 @@ async def delete_threads_by_condition(
     current_user: User = Depends(get_required_user)
 ):
     """按条件删除对话线程"""
-    from datetime import timedelta
+    import datetime as dt
 
     conv_manager = ConversationManager(db)
 
@@ -698,11 +699,19 @@ async def delete_threads_by_condition(
 
     # 按时间过滤
     if request.days:
-        cutoff_date = utc_now() - timedelta(days=request.days)
-        conversations = [
-            conv for conv in conversations
-            if conv.created_at < cutoff_date
-        ]
+        cutoff_date = utc_now() - dt.timedelta(days=request.days)
+        filtered_conversations = []
+        for conv in conversations:
+            created_at = conv.created_at
+            if created_at is None:
+                continue
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=dt.UTC)
+            else:
+                created_at = created_at.astimezone(dt.UTC)
+            if created_at < cutoff_date:
+                filtered_conversations.append(conv)
+        conversations = filtered_conversations
 
     deleted_count = 0
     failed_threads = []

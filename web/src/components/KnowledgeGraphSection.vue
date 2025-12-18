@@ -174,8 +174,6 @@ const props = defineProps({
 });
 
 // 添加调试日志
-console.log('KnowledgeGraphSection props:', props);
-console.log('KnowledgeGraphSection style prop:', props.style);
 
 const emit = defineEmits(['toggleVisible']);
 
@@ -208,9 +206,9 @@ const toggleVisible = () => {
 };
 
 const loadGraph = () => {
-  if (!(Object.keys(store.database?.files).length > 0)) {
-    return;
-  }
+  // if (!(Object.keys(store.database?.files).length > 0)) {
+  //   return;
+  // }
   if (graphViewerRef.value && typeof graphViewerRef.value.loadFullGraph === 'function') {
     graphViewerRef.value.loadFullGraph();
   }

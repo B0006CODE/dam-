@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 import { DirectedGraph } from 'graphology'
 
 export const useGraphStore = defineStore('graph', {
@@ -44,9 +45,9 @@ export const useGraphStore = defineStore('graph', {
     // 获取选中边的详细信息
     selectedEdgeData: (state) => {
       if (!state.selectedEdge || !state.rawGraph) return null
-      
+
       console.log('查找边数据，选中边ID:', state.selectedEdge)
-      
+
       // 首先尝试通过dynamicId匹配（Sigma使用的ID格式）
       let foundEdge = state.rawGraph.edges.find(edge => edge.dynamicId === state.selectedEdge)
       if (foundEdge) {
@@ -66,7 +67,7 @@ export const useGraphStore = defineStore('graph', {
       const match = state.selectedEdge.match(dynamicIdPattern)
       if (match) {
         const [, source, target, index] = match
-        foundEdge = state.rawGraph.edges.find(edge => 
+        foundEdge = state.rawGraph.edges.find(edge =>
           edge.source === source && edge.target === target
         )
         if (foundEdge) {
@@ -102,7 +103,7 @@ export const useGraphStore = defineStore('graph', {
   actions: {
     // 设置Sigma实例
     setSigmaInstance(instance) {
-      this.sigmaInstance = instance
+      this.sigmaInstance = markRaw(instance)
     },
 
     // 节点选择和聚焦
@@ -197,7 +198,7 @@ export const useGraphStore = defineStore('graph', {
 
     // 设置Sigma图数据
     setSigmaGraph(sigmaGraph) {
-      this.sigmaGraph = sigmaGraph
+      this.sigmaGraph = markRaw(sigmaGraph)
     },
 
     // 更新统计信息
@@ -351,13 +352,6 @@ export const useGraphStore = defineStore('graph', {
       rawGraph.edges.forEach((edge, index) => {
         // 添加调试信息
         if (index < 3) {
-          console.log('处理边 #' + index + ':', {
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            dynamicId: edge.dynamicId,
-            edgeObject: edge
-          })
         }
 
         if (sigmaGraph.hasNode(String(edge.source)) && sigmaGraph.hasNode(String(edge.target))) {

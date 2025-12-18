@@ -98,9 +98,6 @@ const panels = reactive({
   graph: { visible: true },
 });
 
-// 添加调试日志
-console.log('Initial panels state:', panels);
-
 const togglePanel = (panel) => {
   panels[panel].visible = !panels[panel].visible;
 };
@@ -171,9 +168,6 @@ onMounted(() => {
   if (resizeHandle.value) {
     resizeHandle.value.addEventListener('mousedown', handleMouseDown);
   }
-
-  // 添加调试日志
-  console.log('Resize handles initialized', resizeHandle.value);
 });
 
 // 组件卸载时停止示例轮播

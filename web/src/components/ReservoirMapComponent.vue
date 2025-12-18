@@ -179,18 +179,12 @@ const initMap = async () => {
 
     // Handle clicks
     chartInstance.on('click', (params: any) => {
-      console.log('Map clicked:', params); // Debug log
-      
       if (params.componentType === 'geo') {
         // Province clicked (geo component)
-        console.log('Emitting provinceClick:', params.name);
         emit('provinceClick', params.name);
       } else if (params.componentType === 'series' && params.seriesType === 'scatter') {
         // Reservoir clicked (scatter series)
-        console.log('Emitting reservoirClick:', params.data.reservoir);
         emit('reservoirClick', params.data.reservoir);
-      } else {
-        console.log('Unhandled click type:', params.componentType, params.seriesType);
       }
     });
 

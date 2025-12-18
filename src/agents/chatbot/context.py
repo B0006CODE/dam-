@@ -19,7 +19,7 @@ class Context(BaseContext):
         default_factory=list,
         metadata={
             "name": "工具",
-            "options": gen_tool_info(get_tools()),  # 这里的选择是所有的工具
+            "options": lambda: gen_tool_info(get_tools()),  # 动态生成，避免导入时初始化外部依赖
             "description": "工具列表",
         },
     )

@@ -112,7 +112,7 @@ class BaseContext:
                     configurable_items[f.name] = {
                         "type": type_name,
                         "name": f.metadata.get("name", f.name),
-                        "options": f.metadata.get("options", []),
+                        "options": cls._resolve_options(f),
                         "default": f.default
                         if f.default is not MISSING
                         else f.default_factory()
@@ -123,6 +123,17 @@ class BaseContext:
                     }
 
         return configurable_items
+
+    @classmethod
+    def _resolve_options(cls, field_info) -> list:
+        options = field_info.metadata.get("options", [])
+        if callable(options):
+            try:
+                return list(options())
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Failed to resolve options for field {field_info.name}: {exc}")
+                return []
+        return options or []
 
     @classmethod
     def _get_type_name(cls, field_type) -> str:

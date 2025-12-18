@@ -422,12 +422,12 @@ const handleAvatarChange = async (info) => {
 
 .user-menu-info {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--text-secondary);
 }
 
 .user-menu-role {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--text-tertiary);
 }
 
 .login-icon {
@@ -441,7 +441,7 @@ const handleAvatarChange = async (info) => {
   transition: background-color 0.3s;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -453,7 +453,7 @@ const handleAvatarChange = async (info) => {
     .ant-modal-title {
       font-size: 18px;
       font-weight: 600;
-      color: #262626;
+      color: var(--text-primary);
     }
   }
 
@@ -536,7 +536,7 @@ const handleAvatarChange = async (info) => {
 
       .info-value {
         flex: 1;
-        color: #262626;
+        color: var(--text-primary);
         font-size: 14px;
 
         &.user-id {

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 from collections import defaultdict, deque
 
@@ -12,9 +13,14 @@ from server.routers import router
 from server.services.tasker import tasker
 from server.utils.auth_middleware import is_public_path
 from server.utils.common_utils import setup_logging
+from src.utils.logging_config import logger
 
 # 设置日志配置
 setup_logging()
+
+# 环境配置
+ENV = os.getenv("ENV", "development")
+IS_PRODUCTION = ENV == "production"
 
 RATE_LIMIT_MAX_ATTEMPTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
@@ -24,7 +30,11 @@ RATE_LIMIT_ENDPOINTS = {("/api/auth/token", "POST")}
 _login_attempts: defaultdict[str, deque[float]] = defaultdict(deque)
 _attempt_lock = asyncio.Lock()
 
-app = FastAPI()
+app = FastAPI(
+    title="HydroBrain API",
+    docs_url=None if IS_PRODUCTION else "/docs",  # 生产环境禁用文档
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+)
 app.include_router(router, prefix="/api")
 
 # CORS 设置
@@ -44,6 +54,49 @@ def _extract_client_ip(request: Request) -> str:
     if request.client:
         return request.client.host
     return "unknown"
+
+
+# 请求日志中间件
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """记录所有API请求的时间和状态"""
+
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        client_ip = _extract_client_ip(request)
+        
+        # 记录请求开始
+        request_id = f"{int(start_time * 1000)}"
+        
+        try:
+            response = await call_next(request)
+            
+            # 计算请求时间
+            process_time = (time.time() - start_time) * 1000  # ms
+            
+            # 记录请求日志（仅API请求且非健康检查）
+            if request.url.path.startswith("/api") and request.url.path not in ["/api/system/health", "/api"]:
+                log_level = "warning" if response.status_code >= 400 else "info"
+                log_msg = (
+                    f"[{request_id}] {request.method} {request.url.path} "
+                    f"- {response.status_code} - {process_time:.2f}ms - {client_ip}"
+                )
+                if log_level == "warning":
+                    logger.warning(log_msg)
+                else:
+                    logger.info(log_msg)
+            
+            # 添加响应头
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+            
+            return response
+        except Exception as e:
+            process_time = (time.time() - start_time) * 1000
+            logger.error(
+                f"[{request_id}] {request.method} {request.url.path} "
+                f"- ERROR - {process_time:.2f}ms - {client_ip}: {str(e)}"
+            )
+            raise
 
 
 class LoginRateLimitMiddleware(BaseHTTPMiddleware):
@@ -96,39 +149,52 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # 非API路径，可能是前端路由或静态资源
             return await call_next(request)
 
-        # # 提取Authorization头
-        # auth_header = request.headers.get("Authorization")
-        # if not auth_header or not auth_header.startswith("Bearer "):
-        #     return JSONResponse(
-        #         status_code=status.HTTP_401_UNAUTHORIZED,
-        #         content={"detail": f"请先登录。Path: {path}"},
-        #         headers={"WWW-Authenticate": "Bearer"}
-        #     )
-
-        # # 获取token
-        # token = auth_header.split("Bearer ")[1]
-
-        # # 添加token到请求状态，后续路由可以直接使用
-        # request.state.token = token
-
         # 继续处理请求
         return await call_next(request)
 
 
-# 添加鉴权中间件
+# 添加中间件（顺序很重要：最后添加的最先执行）
+app.add_middleware(RequestLoggingMiddleware)  # 最外层：记录所有请求
 app.add_middleware(LoginRateLimitMiddleware)
 app.add_middleware(AuthMiddleware)
 
 
 @app.on_event("startup")
 async def start_tasker() -> None:
+    logger.info(f"Starting server in {ENV} mode...")
     await tasker.start()
 
 
 @app.on_event("shutdown")
 async def stop_tasker() -> None:
+    logger.info("Shutting down server...")
     await tasker.shutdown()
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5050, threads=10, workers=10, reload=True)
+    # 根据环境配置uvicorn参数
+    import multiprocessing
+    
+    # 生产配置
+    if IS_PRODUCTION:
+        # 生产环境：使用多个workers，禁用reload
+        workers = int(os.getenv("WORKERS", multiprocessing.cpu_count() * 2 + 1))
+        uvicorn.run(
+            "server.main:app",
+            host="0.0.0.0",
+            port=int(os.getenv("PORT", 5050)),
+            workers=workers,
+            reload=False,
+            access_log=True,
+            log_level="info",
+        )
+    else:
+        # 开发环境：单worker，启用reload方便开发
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=int(os.getenv("PORT", 5050)),
+            reload=True,
+            log_level="debug",
+        )
+

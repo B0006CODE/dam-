@@ -47,7 +47,7 @@ def get_user_dict(user: User, include_password: bool = False) -> dict:
 
 def convert_serializable(obj):
     """将对象转换为可序列化的格式"""
-    if isinstance(obj, list | tuple):
+    if isinstance(obj, (list, tuple)):
         return [convert_serializable(item) for item in obj]
     if isinstance(obj, dict):
         return {k: convert_serializable(v) for k, v in obj.items()}

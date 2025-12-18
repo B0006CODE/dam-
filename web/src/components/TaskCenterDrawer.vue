@@ -67,7 +67,7 @@
 
       <div v-if="hasTasks" class="task-list">
         <div
-          v-for="task in filteredTasks"
+          v-for="task in paginatedTasks"
           :key="task.id"
           class="task-card"
           :class="taskCardClasses(task)"
@@ -144,6 +144,18 @@
             </div>
           </div>
         </div>
+        <!-- 分页器 -->
+        <div class="task-pagination" v-if="filteredTasks.length > pageSize">
+          <a-pagination
+            v-model:current="currentPage"
+            :total="filteredTasks.length"
+            :pageSize="pageSize"
+            size="small"
+            :showSizeChanger="false"
+            :showQuickJumper="false"
+            :showTotal="(total) => `共 ${total} 个任务`"
+          />
+        </div>
       </div>
 
       <div v-else class="task-empty">
@@ -173,6 +185,8 @@ const lastErrorState = computed(() => lastError.value)
 const statusFilter = ref('all')
 const selectedTasks = ref([])
 const batchDeleting = ref(false)
+const currentPage = ref(1)
+const pageSize = 5
 const inProgressCount = computed(
   () => tasks.value.filter((task) => ACTIVE_CLASS_STATUSES.has(task.status)).length
 )
@@ -230,7 +244,19 @@ const filteredTasks = computed(() => {
   }
 })
 
+// 分页后的任务列表
+const paginatedTasks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return filteredTasks.value.slice(start, end)
+})
+
 const hasTasks = computed(() => filteredTasks.value.length > 0)
+
+// 当筛选条件变化时，重置到第一页
+watch(statusFilter, () => {
+  currentPage.value = 1
+})
 
 const ACTIVE_CLASS_STATUSES = new Set(['pending', 'queued', 'running'])
 const FAILED_STATUSES = new Set(['failed', 'cancelled'])
@@ -356,12 +382,9 @@ function handleCleanup(status) {
     cancelText: '取消',
     onOk: async () => {
       try {
-        console.log(`Starting cleanup for ${status} tasks`)
-        const response = await taskerStore.cleanupTasks({ status })
-        console.log(`Cleanup completed for ${status} tasks:`, response)
+        await taskerStore.cleanupTasks({ status })
       } catch (error) {
-        console.error('清理失败:', error)
-        // Error is already handled by the store, but we can add additional UI feedback if needed
+        // Error is already handled by the store
       }
     }
   })
@@ -379,15 +402,8 @@ function handleCleanupOld() {
         const sevenDaysAgo = new Date()
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
         const cleanupTime = sevenDaysAgo.toISOString()
-        console.log('Starting cleanup for tasks older than:', cleanupTime)
-
-        const response = await taskerStore.cleanupTasks({
-          older_than: cleanupTime
-        })
-
-        console.log('Cleanup completed for old tasks:', response)
+        await taskerStore.cleanupTasks({ older_than: cleanupTime })
       } catch (error) {
-        console.error('清理失败:', error)
         // Error is already handled by the store
       }
     }
@@ -403,11 +419,8 @@ function handleCleanupAll() {
     cancelText: '取消',
     onOk: async () => {
       try {
-        console.log('Starting cleanup for ALL tasks')
-        const response = await taskerStore.cleanupTasks()
-        console.log('Cleanup completed for all tasks:', response)
+        await taskerStore.cleanupTasks()
       } catch (error) {
-        console.error('清空失败:', error)
         // Error is already handled by the store
       }
     }
@@ -568,9 +581,10 @@ function canCancel(task) {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   overflow-y: auto;
   padding-right: 4px;
+  padding-bottom: 20px;
   
   // Custom scrollbar
   &::-webkit-scrollbar {
@@ -592,11 +606,11 @@ function canCancel(task) {
   background: rgba(30, 41, 59, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  padding: 16px 18px;
+  padding: 16px;
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   position: relative;
   overflow: hidden;
 
@@ -615,7 +629,7 @@ function canCancel(task) {
 .task-card:hover {
   border-color: rgba(6, 182, 212, 0.3);
   background: rgba(30, 41, 59, 0.6);
-  transform: translateX(2px);
+  transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
@@ -669,58 +683,65 @@ function canCancel(task) {
 .task-card-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   flex: 1;
 }
 
 .task-card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
-  line-height: 1.3;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+  max-width: 100%;
+  display: block;
 }
 
 .task-card-subtitle {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
+  align-items: center;
 }
 
 .task-card-id {
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   font-family: monospace;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .task-card-type {
-  padding: 0 8px;
-  border-radius: 999px;
+  padding: 0 6px;
+  border-radius: 4px;
   background-color: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.7);
-  line-height: 20px;
+  line-height: 18px;
+  font-size: 11px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .task-card-status {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .task-card-progress {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-top: -4px;
 }
 
 .task-card-progress :deep(.ant-progress) {
   flex: 1;
+  margin-bottom: 0;
   .ant-progress-text {
     color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
   }
   .ant-progress-inner {
     background-color: rgba(255, 255, 255, 0.1);
@@ -737,10 +758,10 @@ function canCancel(task) {
 
 .task-card-message,
 .task-card-error {
-  font-size: 13px;
-  line-height: 1.45;
-  border-radius: 8px;
-  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  border-radius: 6px;
+  padding: 8px 10px;
 }
 
 .task-card-message {
@@ -756,24 +777,24 @@ function canCancel(task) {
 }
 
 .task-card-footer {
-  margin-top: 2px;
+  margin-top: 4px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 16px;
 }
 
 .task-card-timestamps {
   display: flex;
   flex-direction: row;
-  gap: 6px;
+  gap: 12px;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .task-card-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   
   :deep(.ant-btn-link) {
     color: rgba(255, 255, 255, 0.6);
@@ -904,5 +925,55 @@ function canCancel(task) {
   max-width: 320px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.4);
+}
+
+.task-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 4px;
+  margin-top: 4px;
+  
+  :deep(.ant-pagination) {
+    color: rgba(255, 255, 255, 0.6);
+    
+    .ant-pagination-prev,
+    .ant-pagination-next,
+    .ant-pagination-item {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      
+      a {
+        color: rgba(255, 255, 255, 0.6);
+      }
+      
+      &:hover {
+        border-color: #06b6d4;
+        a {
+          color: #06b6d4;
+        }
+      }
+    }
+    
+    .ant-pagination-item-active {
+      background: rgba(6, 182, 212, 0.1);
+      border-color: #06b6d4;
+      
+      a {
+        color: #06b6d4;
+      }
+    }
+    
+    .ant-pagination-disabled {
+      .ant-pagination-item-link {
+        color: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.05);
+      }
+    }
+    
+    .ant-pagination-total-text {
+      color: rgba(255, 255, 255, 0.5);
+      margin-right: 12px;
+    }
+  }
 }
 </style>

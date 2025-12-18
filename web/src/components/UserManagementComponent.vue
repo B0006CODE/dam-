@@ -675,7 +675,7 @@ onMounted(() => {
     .ant-modal-title {
       font-size: 16px;
       font-weight: 600;
-      color: #262626;
+      color: var(--text-primary);
     }
   }
 
@@ -692,7 +692,7 @@ onMounted(() => {
 
         label {
           font-weight: 500;
-          color: #262626;
+          color: var(--text-primary);
         }
       }
     }
@@ -716,7 +716,7 @@ onMounted(() => {
 
       :deep(.ant-checkbox-wrapper) {
         font-weight: 500;
-        color: #495057;
+        color: var(--text-secondary);
       }
     }
   }

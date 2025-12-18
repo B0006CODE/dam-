@@ -690,13 +690,13 @@ defineExpose({
   
   .detail-label {
     font-weight: 600;
-    color: #262626;
+    color: var(--text-primary);
     min-width: 80px;
     margin-right: 12px;
   }
   
   .detail-value {
-    color: #595959;
+    color: var(--text-secondary);
     flex: 1;
     word-break: break-all;
   }

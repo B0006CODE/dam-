@@ -87,17 +87,6 @@ export class ChatExporter {
   static flattenMessages(messages = []) {
     const result = [];
 
-    console.log('[ChatExporter] flattenMessages input:', {
-      messagesLength: messages?.length || 0,
-      messagesType: Array.isArray(messages) ? 'array' : typeof messages,
-      firstMessage: messages?.[0] ? {
-        hasMessages: Array.isArray(messages[0].messages),
-        hasType: !!messages[0].type,
-        hasRole: !!messages[0].role,
-        hasContent: !!messages[0].content,
-        keys: Object.keys(messages[0])
-      } : null
-    });
 
     (messages || []).forEach(item => {
       if (!item) return;

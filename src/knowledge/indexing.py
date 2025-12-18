@@ -2,7 +2,10 @@ import asyncio
 import os
 from pathlib import Path
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:  # pragma: no cover
+    from langchain.text_splitter import RecursiveCharacterTextSplitter  # type: ignore[import-not-found]
 from langchain_community.document_loaders import (
     CSVLoader,
     JSONLoader,
