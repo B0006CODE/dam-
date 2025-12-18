@@ -38,6 +38,21 @@
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
   --glass-blur: blur(12px);
 
+  /* 统一边框变量 */
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.05);
+  --border-default: 1px solid rgba(255, 255, 255, 0.1);
+  --border-accent: 1px solid rgba(6, 182, 212, 0.3);
+
+  /* 统一玻璃拟态背景 */
+  --glass-bg-light: rgba(15, 23, 42, 0.3);
+  --glass-bg-medium: rgba(15, 23, 42, 0.4);
+  --glass-bg-dense: rgba(15, 23, 42, 0.6);
+
+  /* 统一发光效果 */
+  --glow-subtle: 0 0 10px rgba(6, 182, 212, 0.1);
+  --glow-default: 0 0 15px rgba(6, 182, 212, 0.2);
+  --glow-strong: 0 0 20px rgba(6, 182, 212, 0.3);
+
   /* 文本色系 - 反转为深色模式 */
   --text-primary: #f8fafc;
   /* Slate-50 */

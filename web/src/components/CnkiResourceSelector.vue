@@ -63,7 +63,7 @@
           }"
           @click="selectGraphOption(option.value)"
         >
-          <a-checkbox 
+          <a-radio 
             :checked="selectedGraph === option.value"
             :disabled="!allowGraphSelect"
             @click.stop
@@ -475,6 +475,21 @@ watch(() => props.retrievalMode, (newMode) => {
         background-color: #06b6d4;
         border-color: #06b6d4;
         box-shadow: 0 0 5px rgba(6, 182, 212, 0.5);
+      }
+
+      :deep(.ant-radio-inner) {
+        background-color: transparent;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      :deep(.ant-radio-checked .ant-radio-inner) {
+        background-color: #06b6d4;
+        border-color: #06b6d4;
+        box-shadow: 0 0 5px rgba(6, 182, 212, 0.5);
+        
+        &::after {
+          background-color: white;
+        }
       }
     }
     

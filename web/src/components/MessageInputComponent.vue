@@ -642,6 +642,7 @@ onBeforeUnmount(() => {
     &.active {
       background: var(--main-color);
       color: white;
+      border-radius: 6px;
 
       .retrieval-mode-icon {
         color: white;

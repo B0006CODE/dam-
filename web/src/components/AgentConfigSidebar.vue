@@ -668,11 +668,12 @@ watch(() => props.isOpen, (newVal) => {
 
     .sidebar-footer {
       position: sticky;
-      bottom: 0px;
-      padding: 12px 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(15, 23, 42, 0.8);
+      bottom: 0;
+      padding: 16px;
+      border-top: var(--border-default);
+      background: var(--glass-bg-dense);
       backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       z-index: 10;
 
       .form-actions {
@@ -715,7 +716,7 @@ watch(() => props.isOpen, (newVal) => {
     }
 
     .config-form-content {
-      margin-bottom: 100px;
+      padding-bottom: 80px;
       .config-form {
         .config-alert {
           margin-bottom: 16px;
