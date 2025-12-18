@@ -1,10 +1,9 @@
 <template>
   <div class="knowledge-graph-viewer">
-    <!-- 控制面板 -->
     <div class="control-panel" v-if="!props.hideControls">
       <div class="database-section">
         <a-select
-          v-if="!hideDbSelector"
+          v-if="!props.hideDbSelector"
           v-model:value="selectedDatabase"
           placeholder="选择数据库"
           size="small"
@@ -12,18 +11,14 @@
           :loading="loadingDatabases"
           @change="onDatabaseChange"
         >
-          <a-select-option
-            v-for="db in availableDatabases"
-            :key="db.db_id"
-            :value="db.db_id"
-          >
+          <a-select-option v-for="db in availableDatabases" :key="db.db_id" :value="db.db_id">
             {{ db.name }} ({{ db.row_count || 0 }} 文件)
           </a-select-option>
         </a-select>
 
         <a-select
           v-model:value="selectedLabel"
-          placeholder="选择标签/实体类型"
+          placeholder="选择中心实体"
           size="small"
           style="width: 140px"
           :loading="loadingLabels"
@@ -31,12 +26,8 @@
           allow-clear
           show-search
         >
-          <a-select-option value="*">所有节点</a-select-option>
-          <a-select-option
-            v-for="label in availableLabels"
-            :key="label"
-            :value="label"
-          >
+          <a-select-option value="*">全图</a-select-option>
+          <a-select-option v-for="label in availableLabels" :key="label" :value="label">
             {{ label }}
           </a-select-option>
         </a-select>
@@ -74,12 +65,9 @@
       </div>
 
       <div class="layout-section">
-        <a-select v-model:value="layoutMode" size="small" style="width: 140px">
-          <a-select-option value="auto">自动布局</a-select-option>
-          <a-select-option value="circular">环形</a-select-option>
-          <a-select-option value="radial">放射/扇形</a-select-option>
-          <a-select-option value="concentric">同心</a-select-option>
+        <a-select v-model:value="layoutType" size="small" style="width: 140px">
           <a-select-option value="force">力导向</a-select-option>
+          <a-select-option value="circular">环形</a-select-option>
         </a-select>
         <a-button size="small" style="margin-left: 6px" @click="reapplyLayout">应用布局</a-button>
       </div>
@@ -87,1211 +75,486 @@
       <div v-if="!props.hideStats" class="stats-section">
         <a-tag color="blue" size="small">节点: {{ stats.displayed_nodes || 0 }}</a-tag>
         <a-tag color="green" size="small">边: {{ stats.displayed_edges || 0 }}</a-tag>
-        <!-- <a-tag v-if="stats.is_truncated" color="red" size="small">已截断</a-tag> -->
       </div>
     </div>
 
-    <!-- Sigma.js图可视化容器 -->
-    <div
-      class="sigma-container"
-      ref="sigmaContainer"
-      :class="{ 'loading': loading }"
-    ></div>
+    <div class="graph-shell" :class="{ loading }">
+      <G6GraphCanvas
+        ref="graphRef"
+        :graph-data="graphData"
+        :layout-options="layoutOptions"
+        @node-click="handleNodeClick"
+        @edge-click="handleEdgeClick"
+        @canvas-click="clearSelection"
+      />
 
-    <!-- 节点详情面板 -->
-    <div
-      v-if="selectedNodeData"
-      class="detail-panel node-panel"
-      :style="{ transform: `translate(${nodePanelPosition.x}px, ${nodePanelPosition.y}px)` }"
-      @mousedown="startDragPanel('node', $event)"
-    >
-      <div class="detail-header">
-        <div class="panel-type-indicator node-indicator"></div>
-        <h4>节点: {{ getNodeDisplayName(selectedNodeData) }}</h4>
-        <a-button type="text" size="small" @click="clearSelection">
-          <CloseOutlined />
-        </a-button>
+      <div v-if="!loading && graphData.nodes.length === 0" class="empty-overlay">
+        <a-empty>
+          <template #description>
+            <span>点击“加载图谱”获取数据</span>
+          </template>
+        </a-empty>
       </div>
-      <div class="detail-content">
-        <div class="detail-item">
-          <span class="detail-label">ID:</span>
-          <span class="detail-value">{{ selectedNodeData.id }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">标签:</span>
-          <span class="detail-value">{{ selectedNodeData.labels?.join(', ') || 'N/A' }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">类型:</span>
-          <span class="detail-value">{{ selectedNodeData.entity_type }}</span>
-        </div>
-        <div v-if="selectedNodeData.properties?.description" class="detail-item">
-          <span class="detail-label">描述:</span>
-          <span class="detail-value">{{ selectedNodeData.properties.description }}</span>
-        </div>
-        <div class="detail-actions">
-          <a-button
-            type="primary"
-            size="small"
-            @click="expandNode(selectedNodeData.id)"
-            :loading="expanding"
-            :disabled="!selectedDatabase"
-          >
-            展开相邻节点
+
+      <div v-if="loading" class="loading-overlay">
+        <a-spin tip="加载中..." />
+      </div>
+
+      <div v-if="selectedNodeData" class="detail-panel node-panel">
+        <div class="detail-header">
+          <div class="panel-type-indicator node-indicator"></div>
+          <h4>节点: {{ getNodeDisplayName(selectedNodeData) }}</h4>
+          <a-button type="text" size="small" @click="clearSelection">
+            <CloseOutlined />
           </a-button>
         </div>
+        <div class="detail-content">
+          <div class="detail-item">
+            <span class="detail-label">ID:</span>
+            <span class="detail-value">{{ selectedNodeData.id }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">标签:</span>
+            <span class="detail-value">
+              {{ Array.isArray(selectedNodeData.labels) ? selectedNodeData.labels.join(', ') : 'N/A' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">类型:</span>
+            <span class="detail-value">
+              {{ selectedNodeData.entity_type || selectedNodeData.type || selectedNodeData?.properties?.entity_type || 'unknown' }}
+            </span>
+          </div>
+          <div v-if="selectedNodeData.properties?.description" class="detail-item">
+            <span class="detail-label">描述:</span>
+            <span class="detail-value">{{ selectedNodeData.properties.description }}</span>
+          </div>
+          <div class="detail-actions">
+            <a-button
+              type="primary"
+              size="small"
+              @click="expandNode(selectedNodeData.id)"
+              :loading="expanding"
+              :disabled="!selectedDatabase"
+            >
+              展开相邻节点
+            </a-button>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- 边详情面板 -->
-    <div
-      v-if="selectedEdgeData"
-      class="detail-panel edge-panel"
-      :style="{ transform: `translate(${intelligentEdgePanelPosition.x}px, ${intelligentEdgePanelPosition.y}px)` }"
-      @mousedown="startDragPanel('edge', $event)"
-    >
-      <div class="detail-header">
-        <div class="panel-type-indicator edge-indicator"></div>
-        <h4>边: {{ getEdgeDisplayName(selectedEdgeData) }}</h4>
-        <a-button type="text" size="small" @click="clearSelection">
-          <CloseOutlined />
-        </a-button>
-      </div>
-      <div class="detail-content">
-        <div class="detail-item">
-          <span class="detail-label">ID:</span>
-          <span class="detail-value">{{ selectedEdgeData.id }}</span>
+      <div v-if="selectedEdgeData" class="detail-panel edge-panel">
+        <div class="detail-header">
+          <div class="panel-type-indicator edge-indicator"></div>
+          <h4>边: {{ getEdgeDisplayName(selectedEdgeData) }}</h4>
+          <a-button type="text" size="small" @click="clearSelection">
+            <CloseOutlined />
+          </a-button>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">源节点:</span>
-          <span class="detail-value">{{ selectedEdgeData.source }}</span>
+        <div class="detail-content">
+          <div class="detail-item">
+            <span class="detail-label">ID:</span>
+            <span class="detail-value">{{ selectedEdgeData.id }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">源:</span>
+            <span class="detail-value">{{ selectedEdgeData.source }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">目标:</span>
+            <span class="detail-value">{{ selectedEdgeData.target }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">类型:</span>
+            <span class="detail-value">{{ selectedEdgeData.type || 'DIRECTED' }}</span>
+          </div>
+          <div v-if="selectedEdgeData.properties?.weight" class="detail-item">
+            <span class="detail-label">权重:</span>
+            <span class="detail-value">{{ selectedEdgeData.properties.weight }}</span>
+          </div>
+          <div v-if="selectedEdgeData.properties?.keywords" class="detail-item">
+            <span class="detail-label">关键词:</span>
+            <span class="detail-value">{{ selectedEdgeData.properties.keywords }}</span>
+          </div>
+          <div v-if="selectedEdgeData.properties?.description" class="detail-item">
+            <span class="detail-label">描述:</span>
+            <span class="detail-value">{{ selectedEdgeData.properties.description }}</span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">目标节点:</span>
-          <span class="detail-value">{{ selectedEdgeData.target }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">类型:</span>
-          <span class="detail-value">{{ selectedEdgeData.type || 'DIRECTED' }}</span>
-        </div>
-        <div v-if="selectedEdgeData.properties?.weight" class="detail-item">
-          <span class="detail-label">权重:</span>
-          <span class="detail-value">{{ selectedEdgeData.properties.weight }}</span>
-        </div>
-        <div v-if="selectedEdgeData.properties?.keywords" class="detail-item">
-          <span class="detail-label">关键词:</span>
-          <span class="detail-value">{{ selectedEdgeData.properties.keywords }}</span>
-        </div>
-        <div v-if="selectedEdgeData.properties?.description" class="detail-item">
-          <span class="detail-label">描述:</span>
-          <span class="detail-value">{{ selectedEdgeData.properties.description }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- <div class="legend" v-if="entityTypes.length > 0">
-      <div class="legend-header">
-        <h4>实体类型</h4>
-      </div>
-      <div class="legend-content">
-        <div class="legend-item" v-for="type in entityTypes" :key="type.type">
-          <div
-            class="legend-color"
-            :style="{ backgroundColor: getEntityColor(type.type) }"
-          ></div>
-          <span>{{ type.type }} ({{ type.count }})</span>
-        </div>
-      </div>
-    </div> -->
-
-    <!-- 控制按钮 (简化版) -->
-    <div class="graph-controls">
-      <div class="control-group">
-        <a-button @click="zoomIn" size="small" type="text" class="control-btn">
-          <PlusOutlined />
-        </a-button>
-        <a-button @click="zoomOut" size="small" type="text" class="control-btn">
-          <MinusOutlined />
-        </a-button>
-        <a-button @click="resetCamera" size="small" type="text" class="control-btn" title="重置视图">
-          <HomeOutlined />
-        </a-button>
-      </div>
-    </div>
-
-    <!-- 加载遮罩 -->
-    <div v-if="loading" class="loading-overlay">
-      <div class="loading-content">
-        <a-spin size="large" />
-        <p>{{ loadingMessage }}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { message } from 'ant-design-vue'
-import {
-  SearchOutlined,
-  ReloadOutlined,
-  ClearOutlined,
-  CloseOutlined,
-  PlusOutlined,
-  MinusOutlined,
-  HomeOutlined
-} from '@ant-design/icons-vue'
-import Sigma from 'sigma'
-import { NodeBorderProgram } from '@sigma/node-border'
-import EdgeCurveProgram, { EdgeCurvedArrowProgram } from '@sigma/edge-curve'
-import { EdgeArrowProgram } from 'sigma/rendering'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { message } from 'ant-design-vue';
+import { CloseOutlined, SearchOutlined } from '@ant-design/icons-vue';
+import G6GraphCanvas from '@/components/G6GraphCanvas.vue';
+import { graphApi, lightragApi } from '@/apis/graph_api';
 
-import { lightragApi, graphApi } from '@/apis/graph_api'
-import { useGraphStore } from '@/stores/graphStore'
-import '@/assets/css/sigma.css'
-
-// 定义 props
 const props = defineProps({
-  initialDatabaseId: {
-    type: String,
-    default: ''
-  },
-  hideDbSelector: {
-    type: Boolean,
-    default: false
-  },
-  hideStats: {
-    type: Boolean,
-    default: false
-  },
-  hideControls: {
-    type: Boolean,
-    default: false
-  },
-  initialLimit: {
-    type: Number,
-    default: 200
-  },
-  initialDepth: {
-    type: Number,
-    default: 2
-  }
-})
+  initialDatabaseId: { type: String, default: '' },
+  hideDbSelector: { type: Boolean, default: false },
+  hideStats: { type: Boolean, default: false },
+  hideControls: { type: Boolean, default: false },
+  initialLimit: { type: Number, default: 200 },
+  initialDepth: { type: Number, default: 2 }
+});
 
-// 定义 emits
-const emit = defineEmits(['update:stats', 'refresh-graph', 'clear-graph'])
+const emit = defineEmits(['update:stats', 'refresh-graph', 'clear-graph']);
 
-// 状态管理
-const graphStore = useGraphStore()
+const graphRef = ref(null);
 
-// 响应式引用
-const loading = ref(false)
-const loadingDatabases = ref(false)
-const loadingLabels = ref(false)
-const expanding = ref(false)
-const sigmaContainer = ref(null)
-const layoutRunning = ref(false)
-const loadingMessage = ref('加载图数据中...')
-const layoutMode = ref('auto') // auto | circular | radial | concentric | force
+const loading = ref(false);
+const loadingDatabases = ref(false);
+const loadingLabels = ref(false);
+const expanding = ref(false);
 
-// 面板拖拽相关
-const nodePanelPosition = ref({ x: 12, y: 60 })
-const edgePanelPosition = ref({ x: 12, y: 150 }) // 降低初始Y位置以适应紧凑模式
-const dragging = ref({ active: false, type: '', startX: 0, startY: 0, initialX: 0, initialY: 0 })
+const selectedDatabase = ref('');
+const availableDatabases = ref([]);
+const selectedLabel = ref('*');
+const availableLabels = ref([]);
 
-// 数据库相关状态
-const selectedDatabase = ref('')
-const availableDatabases = ref([])
-const selectedLabel = ref('*')
-const availableLabels = ref([])
+const layoutType = ref('force');
+const layoutOptions = computed(() => ({ type: layoutType.value }));
 
-// Sigma实例
-let sigmaInstance = null
-let layoutWorker = null
-
-// 搜索和筛选参数
 const searchParams = reactive({
   max_nodes: props.initialLimit,
   max_depth: props.initialDepth
-})
+});
 
-// 计算属性
-const entityTypes = computed(() => graphStore.entityTypes)
-const stats = computed(() => graphStore.stats)
-const selectedNodeData = computed(() => graphStore.selectedNodeData)
-const selectedEdgeData = computed(() => graphStore.selectedEdgeData)
+const graphData = reactive({
+  nodes: [],
+  edges: []
+});
 
-// 智能边面板位置 - 确保在紧凑模式下也能正确显示
-const intelligentEdgePanelPosition = computed(() => {
-  if (!sigmaContainer.value) return edgePanelPosition.value
+const stats = reactive({
+  displayed_nodes: 0,
+  displayed_edges: 0,
+  is_truncated: false
+});
 
-  const containerHeight = sigmaContainer.value.clientHeight
-  const panelHeight = 200 // 估计的面板高度
-  const nodePanelBottom = selectedNodeData.value ? nodePanelPosition.value.y + 200 : 0
+const selectedNodeData = ref(null);
+const selectedEdgeData = ref(null);
 
-  // 如果有节点面板显示，将边面板放在节点面板下方
-  if (selectedNodeData.value) {
-    return {
-      x: edgePanelPosition.value.x + 260, // 在节点面板右侧
-      y: Math.min(nodePanelPosition.value.y, containerHeight - panelHeight - 20)
-    }
-  }
+const clearSelection = () => {
+  selectedNodeData.value = null;
+  selectedEdgeData.value = null;
+};
 
-  // 确保边面板在容器范围内
+const RELATION_TYPE_MAP = {
+  OCCUR_AT: '发生于',
+  TYPICAL_CAUSE: '典型病因',
+  MAIN_CAUSE: '主要病因',
+  TREATMENT_MEASURE: '处置措施',
+  COMMON_DEFECT: '常见缺陷',
+  TYPICAL_DEFECT: '典型缺陷',
+  HAS_DEFECT: '存在缺陷',
+  HAS_CAUSE: '存在病因',
+  LOCATED_AT: '位于',
+  BELONGS_TO: '属于',
+  RELATED_TO: '相关',
+};
+
+const normalizeRelationType = (type) => {
+  const raw = (type ?? '').toString().trim();
+  if (!raw) return '';
+  if (/[\u4e00-\u9fa5]/.test(raw)) return raw;
+  const upper = raw.toUpperCase();
+  return RELATION_TYPE_MAP[upper] || raw;
+};
+
+const nodeLabelOf = (node) => {
+  const props = node?.properties || {};
+  if (props.entity_id) return String(props.entity_id);
+  if (node?.label) return String(node.label);
+  if (node?.entity_id) return String(node.entity_id);
+  if (Array.isArray(node?.labels) && node.labels.length > 0) return String(node.labels[0]);
+  if (node?.id != null) return String(node.id);
+  return 'Unknown';
+};
+
+const normalizeNode = (node) => {
+  const id = node?.id != null ? String(node.id) : '';
+  const labels = Array.isArray(node?.labels)
+    ? node.labels.map(String)
+    : node?.labels
+      ? [String(node.labels)]
+      : [];
+  const properties = node?.properties || {};
+  const entityType =
+    node?.entity_type ?? node?.entityType ?? node?.type ?? properties?.entity_type ?? 'unknown';
+
   return {
-    x: edgePanelPosition.value.x,
-    y: Math.min(edgePanelPosition.value.y, Math.max(60, containerHeight - panelHeight - 20))
-  }
-})
+    ...node,
+    id,
+    labels,
+    properties,
+    entity_type: entityType,
+    label: nodeLabelOf(node)
+  };
+};
 
-// 获取节点显示名称
-const getNodeDisplayName = (node) => {
-  if (node.properties?.entity_id) {
-    return node.properties.entity_id
-  }
-  if (node.labels && node.labels.length > 0) {
-    return node.labels[0]
-  }
-  return node.id || 'Unknown'
-}
+const normalizeEdge = (edge, fallbackIdx = 0) => {
+  const rawSource =
+    edge?.source_id ?? edge?.sourceId ?? edge?.source ?? edge?.from ?? edge?.start ?? '';
+  const rawTarget =
+    edge?.target_id ?? edge?.targetId ?? edge?.target ?? edge?.to ?? edge?.end ?? '';
+  const source = rawSource != null ? String(rawSource) : '';
+  const target = rawTarget != null ? String(rawTarget) : '';
+  const id = edge?.id != null ? String(edge.id) : `e-${fallbackIdx}-${source}-${target}`;
 
-// 获取边显示名称
-const getEdgeDisplayName = (edge) => {
-  if (edge.properties?.keywords) {
-    return edge.properties.keywords
-  }
-  if (edge.properties?.description) {
-    return edge.properties.description.substring(0, 20) + '...'
-  }
-  return `${edge.source} -> ${edge.target}`
-}
+  return {
+    ...edge,
+    id,
+    source,
+    target,
+    relation: normalizeRelationType(edge?.type ?? edge?.relation ?? edge?.label ?? edge?.name ?? edge?.r)
+  };
+};
 
-// 监听 initialDatabaseId 变化
-watch(() => props.initialDatabaseId, async (newId) => {
-  if (newId && newId !== selectedDatabase.value) {
-    selectedDatabase.value = newId
-    await loadGraphLabels(newId)
-    // 可选：自动加载新数据库的图谱
-    // await loadGraphData() 
-  }
-})
+const applyGraphResult = (result) => {
+  const nodes = (result?.nodes || []).map(normalizeNode);
+  const edges = (result?.edges || []).map(normalizeEdge).filter((e) => e.source && e.target);
 
-// 加载可用数据库
-const loadAvailableDatabases = async () => {
-  // 如果隐藏数据库选择器且有初始数据库ID，直接使用
-  if (props.hideDbSelector && props.initialDatabaseId) {
-    selectedDatabase.value = props.initialDatabaseId
-    await loadGraphLabels(selectedDatabase.value)
-    return
-  }
+  graphData.nodes = nodes;
+  graphData.edges = edges;
 
-  loadingDatabases.value = true
-  try {
-    const response = await lightragApi.getDatabases()
-    if (response.success) {
-      availableDatabases.value = response.data.databases || []
+  stats.displayed_nodes = nodes.length;
+  stats.displayed_edges = edges.length;
+  stats.is_truncated = !!result?.is_truncated;
 
-      // 如果有初始数据库 ID，优先选择它
-      if (props.initialDatabaseId && availableDatabases.value.some(db => db.db_id === props.initialDatabaseId)) {
-        selectedDatabase.value = props.initialDatabaseId
-        await onDatabaseChange(selectedDatabase.value)
-      } else if (availableDatabases.value.length > 0 && !selectedDatabase.value) {
-        selectedDatabase.value = availableDatabases.value[0].db_id
-        await onDatabaseChange(selectedDatabase.value)
-      }
-    }
-  } catch (error) {
-    console.error('加载数据库列表失败:', error)
-    message.error('加载数据库列表失败: ' + error.message)
-  } finally {
-    loadingDatabases.value = false
-  }
-}
+  clearSelection();
+  void nextTick(() => graphRef.value?.refreshGraph?.());
+};
 
-// 加载图标签
 const loadGraphLabels = async (dbId) => {
-  if (!dbId) return
-
-  loadingLabels.value = true
+  if (!dbId) return;
+  loadingLabels.value = true;
   try {
-    const response = await lightragApi.getLabels(dbId)
-    if (response.success) {
-      availableLabels.value = response.data.labels || []
+    const response = await lightragApi.getLabels(dbId);
+    if (response?.success) {
+      availableLabels.value = response.data?.labels || [];
+    } else {
+      availableLabels.value = [];
     }
   } catch (error) {
-    console.error('加载图标签失败:', error)
-    availableLabels.value = []
+    console.error('加载图标签失败:', error);
+    availableLabels.value = [];
   } finally {
-    loadingLabels.value = false
+    loadingLabels.value = false;
   }
-}
+};
 
-// 数据库切换处理
-const onDatabaseChange = async (dbId) => {
-  if (!dbId) return
+const loadAvailableDatabases = async () => {
+  if (props.hideDbSelector && props.initialDatabaseId) {
+    selectedDatabase.value = props.initialDatabaseId;
+    await loadGraphLabels(selectedDatabase.value);
+    return;
+  }
 
-  selectedDatabase.value = dbId
-  selectedLabel.value = '*'
-
-  // 清空当前图谱
-  clearGraph()
-
-  // 加载新数据库的标签
-  await loadGraphLabels(dbId)
-
-  message.info(`已切换到数据库: ${availableDatabases.value.find(db => db.db_id === dbId)?.name || dbId}`)
-}
-
-// Sigma.js配置
-const sigmaSettings = {
-  allowInvalidContainer: true,
-  defaultNodeType: 'default',
-  defaultEdgeType: 'line',  // 改为直线边
-  renderEdgeLabels: true,
-  renderLabels: true,
-  enableEdgeEvents: true,
-  // 添加 passive event listener 配置以解决警告
-  enableCameraAPI: true,
-  touchActions: 'pan-y pinch-zoom',
-  eventBubbling: false,
-  edgeProgramClasses: {
-    arrow: EdgeArrowProgram,
-    curvedArrow: EdgeCurvedArrowProgram,
-    curved: EdgeCurveProgram
-  },
-  nodeProgramClasses: {
-    default: NodeBorderProgram
-  },
-  labelSize: 12,
-  edgeLabelSize: 10,
-  labelRenderedSizeThreshold: 0,  // 始终显示所有节点标签
-  labelColor: {
-    color: '#ffffff'
-  },
-  edgeLabelColor: {
-    color: '#94a3b8'
-  },
-  minEdgeThickness: 4, // 增加最小边厚度，提高点击性
-  maxEdgeThickness: 10, // 增加最大边厚度
-  // 添加边点击相关配置
-  edgeClickTolerance: 15, // 增加边点击容差，增加点击检测区域
-  edgeHoverTolerance: 12,  // 增加边悬停容差
-  zoomToSizeRatioFunction: (x) => x, // 确保缩放时边的厚度保持合理
-  eventListenerOptions: {
-    wheel: { passive: true },
-    touchstart: { passive: true },
-  },
-}
-
-// 初始化Sigma.js
-const initSigma = async () => {
-  if (!sigmaContainer.value || sigmaInstance) return
-
+  loadingDatabases.value = true;
   try {
-    sigmaInstance = new Sigma(
-      graphStore.sigmaGraph || graphStore.createSigmaGraph({ nodes: [], edges: [] }),
-      sigmaContainer.value,
-      sigmaSettings
-    )
+    const response = await lightragApi.getDatabases();
+    if (response?.success) {
+      const databases = response?.data?.databases || response?.databases || [];
+      availableDatabases.value = Array.isArray(databases) ? databases : [];
 
-    // 保存实例到状态管理
-    graphStore.setSigmaInstance(sigmaInstance)
+      if (
+        props.initialDatabaseId &&
+        availableDatabases.value.some((db) => db.db_id === props.initialDatabaseId)
+      ) {
+        selectedDatabase.value = props.initialDatabaseId;
+      } else if (availableDatabases.value.length > 0 && !selectedDatabase.value) {
+        selectedDatabase.value = availableDatabases.value[0].db_id;
+      }
 
-    // 注册事件监听器
-    registerEvents()
-
-    console.log('Sigma.js 实例创建成功')
+      if (selectedDatabase.value) {
+        await loadGraphLabels(selectedDatabase.value);
+      }
+    }
   } catch (error) {
-    console.error('初始化Sigma.js失败:', error)
-    message.error('图可视化初始化失败')
+    console.error('加载数据库列表失败:', error);
+    message.error('加载数据库列表失败: ' + (error?.message || String(error)));
+  } finally {
+    loadingDatabases.value = false;
   }
-}
+};
 
-// 拖拽状态
-const isDragging = ref(false)
-let draggedNode = null
+const onDatabaseChange = async (dbId) => {
+  selectedDatabase.value = dbId;
+  selectedLabel.value = '*';
+  await loadGraphLabels(dbId);
+};
 
-// 注册事件监听器
-const registerEvents = () => {
-  if (!sigmaInstance) return
-
-  // 节点点击事件
-  sigmaInstance.on('clickNode', ({ node }) => {
-    try {
-      const graph = sigmaInstance.getGraph()
-      if (graph.hasNode(node)) {
-        console.log('Clicked node:', node)
-
-        // 立即设置选中节点，显示详情面板
-        graphStore.setSelectedNode(node, false) // 先不移动相机
-
-        // 获取节点数据并确保设置成功
-        const nodeData = graph.getNodeAttributes(node)
-        console.log('Node data:', nodeData)
-
-        // 延迟一点后再移动相机，确保详情面板已显示
-        setTimeout(() => {
-          if (graphStore.selectedNode === node) {
-            graphStore.moveToSelectedNode = true
-            graphStore.setSelectedNode(node, true) // 现在移动相机
-          }
-        }, 100)
-
-      } else {
-        console.warn('Clicked node does not exist in graph:', node)
-      }
-    } catch (error) {
-      console.error('Error handling node click:', error)
-    }
-  })
-
-  // 节点悬停事件
-  sigmaInstance.on('enterNode', ({ node }) => {
-    if (!isDragging.value) {
-      try {
-        const graph = sigmaInstance.getGraph()
-        if (graph.hasNode(node)) {
-          graphStore.setFocusedNode(node)
-        }
-      } catch (error) {
-        console.error('Error handling node enter:', error)
-      }
-    }
-  })
-
-  sigmaInstance.on('leaveNode', () => {
-    if (!isDragging.value) {
-      graphStore.setFocusedNode(null)
-    }
-  })
-
-  // 边点击事件
-  sigmaInstance.on('clickEdge', ({ edge }) => {
-    try {
-      console.log('边被点击 - Sigma边ID:', edge)
-      const graph = sigmaInstance.getGraph()
-      if (graph.hasEdge(edge)) {
-        // 获取Sigma边的属性，其中包含原始数据
-        const sigmaEdgeData = graph.getEdgeAttributes(edge)
-        console.log('Sigma边属性:', sigmaEdgeData)
-
-        // 立即设置选中的边 - 使用Sigma边ID
-        graphStore.setSelectedEdge(edge)
-
-        // 确保边面板显示
-        nextTick(() => {
-          if (selectedEdgeData.value) {
-            console.log('边面板应该显示:', selectedEdgeData.value)
-            message.success(`已选中边: ${getEdgeDisplayName(selectedEdgeData.value)}`)
-          } else {
-            console.warn('selectedEdgeData为空，尝试使用Sigma边数据')
-            // 如果无法从rawGraph中找到，直接使用Sigma边的原始数据
-            const fallbackData = sigmaEdgeData.originalData || {
-              id: edge,
-              source: graph.source(edge),
-              target: graph.target(edge),
-              properties: {
-                keywords: sigmaEdgeData.label || '',
-                description: sigmaEdgeData.label || '',
-                weight: sigmaEdgeData.originalWeight || 1
-              }
-            }
-            console.log('使用回退边数据:', fallbackData)
-            message.success(`已选中边: ${getEdgeDisplayName(fallbackData)}`)
-          }
-        })
-      } else {
-        console.warn('点击的边不存在于图中:', edge)
-        message.warning('点击的边不存在于图中')
-      }
-    } catch (error) {
-      console.error('处理边点击事件时出错:', error)
-      message.error('处理边点击事件时出错')
-    }
-  })
-
-  // 添加边悬停事件以提高交互体验
-  sigmaInstance.on('enterEdge', ({ edge }) => {
-    if (!isDragging.value) {
-      try {
-        const graph = sigmaInstance.getGraph()
-        if (graph.hasEdge(edge)) {
-          // 高亮悬停的边
-          graph.setEdgeAttribute(edge, 'color', '#ff0000')
-          graph.setEdgeAttribute(edge, 'size', (graph.getEdgeAttribute(edge, 'size') || 1) * 1.5)
-          sigmaInstance.refresh()
-          console.log('悬停在边上:', edge)
-        }
-      } catch (error) {
-        console.error('处理边悬停事件时出错:', error)
-      }
-    }
-  })
-
-  sigmaInstance.on('leaveEdge', ({ edge }) => {
-    if (!isDragging.value) {
-      try {
-        const graph = sigmaInstance.getGraph()
-        if (graph.hasEdge(edge)) {
-          // 恢复边的原始样式
-          const originalData = graph.getEdgeAttribute(edge, 'originalData')
-          graph.setEdgeAttribute(edge, 'color', originalData?.color || '#666')
-          graph.setEdgeAttribute(edge, 'size', originalData?.size || 1)
-          sigmaInstance.refresh()
-        }
-      } catch (error) {
-        console.error('处理边离开事件时出错:', error)
-      }
-    }
-  })
-
-  // 画布点击事件
-  sigmaInstance.on('clickStage', () => {
-    graphStore.clearSelection()
-  })
-
-  // 拖拽支持
-  sigmaInstance.on('downNode', (e) => {
-    isDragging.value = true
-    draggedNode = e.node
-
-    // 高亮拖拽节点
-    const graph = sigmaInstance.getGraph()
-    graph.setNodeAttribute(draggedNode, 'highlighted', true)
-
-    // 停止布局
-    if (layoutWorker) {
-      layoutWorker.stop()
-    }
-  })
-
-  sigmaInstance.getMouseCaptor().on('mousemovebody', (e) => {
-    if (!isDragging.value || !draggedNode) return
-
-    // 获取新位置
-    const pos = sigmaInstance.viewportToGraph(e)
-
-    // 更新节点位置
-    const graph = sigmaInstance.getGraph()
-    graph.setNodeAttribute(draggedNode, 'x', pos.x)
-    graph.setNodeAttribute(draggedNode, 'y', pos.y)
-
-    // 阻止默认行为
-    e.preventSigmaDefault()
-    e.original.preventDefault()
-    e.original.stopPropagation()
-  })
-
-  sigmaInstance.getMouseCaptor().on('mouseup', () => {
-    if (draggedNode) {
-      const graph = sigmaInstance.getGraph()
-      graph.removeNodeAttribute(draggedNode, 'highlighted')
-    }
-    isDragging.value = false
-    draggedNode = null
-  })
-}
-
-// 加载图数据
 const loadGraphData = async () => {
   if (!selectedDatabase.value) {
-    message.warning('请先选择数据库')
-    return
+    message.warning('请先选择数据库');
+    return;
   }
 
-  loading.value = true
-  loadingMessage.value = '加载图数据中...'
-  graphStore.setIsFetching(true)
-
-  try {
-    const [graphResponse, statsResponse] = await Promise.all([
-      graphApi.getSubgraph({
-        db_id: selectedDatabase.value,
-        center: selectedLabel.value || '*',
-        depth: searchParams.max_depth,
-        limit: searchParams.max_nodes,
-        page: 1,
-        fields: 'full'
-      }),
-      lightragApi.getStats(selectedDatabase.value)
-    ])
-
-    if (graphResponse.success && statsResponse.success) {
-      // 设置实体类型
-      graphStore.setEntityTypes(statsResponse.data.entity_types || [])
-
-      // 创建图数据
-      const rawGraph = graphStore.createGraphFromApiData(
-        graphResponse.data.nodes,
-        graphResponse.data.edges
-      )
-
-      // 设置图数据
-      graphStore.setRawGraph(rawGraph)
-      graphStore.stats = {
-        displayed_nodes: graphResponse.data.nodes.length,
-        displayed_edges: graphResponse.data.edges.length,
-        is_truncated: graphResponse.data.is_truncated
-      }
-
-      if (rawGraph.nodes.length === 0) {
-        message.warning('该数据库中没有找到图谱数据')
-      }
-
-      // 创建Sigma图
-      const sigmaGraph = graphStore.createSigmaGraph(rawGraph)
-      graphStore.setSigmaGraph(sigmaGraph)
-
-      console.log('Container dimensions before layout:', {
-        width: sigmaContainer.value?.clientWidth,
-        height: sigmaContainer.value?.clientHeight
-      })
-
-      // 应用布局
-      await applyLayout(sigmaGraph)
-
-      // 更新Sigma实例
-      if (sigmaInstance) {
-        sigmaInstance.setGraph(sigmaGraph)
-        sigmaInstance.refresh()
-      } else {
-        await nextTick()
-        console.log('Initializing Sigma instance...')
-        await initSigma()
-      }
-      
-      // 重置视图以适应新数据
-      await nextTick()
-      // 增加一个小延迟，确保DOM和布局完全更新
-      setTimeout(() => {
-        console.log('Resetting camera after delay...')
-        resetCamera(true) // 传入 true 表示立即重置，不使用动画
-      }, 100)
-
-      message.success(`加载成功：${rawGraph.nodes.length} 个节点，${rawGraph.edges.length} 条边${graphResponse.data.is_truncated ? ' (已截断)' : ''}`)
-    }
-  } catch (error) {
-    console.error('加载图数据失败:', error)
-    message.error('加载图数据失败: ' + error.message)
-  } finally {
-    loading.value = false
-    loadingMessage.value = '加载图数据中...'
-    graphStore.setIsFetching(false)
-  }
-}
-
-// 加载完整图数据
-const loadFullGraph = async () => {
-  selectedLabel.value = '*'
-  await loadGraphData()
-  emit('refresh-graph')
-}
-
-// 清空图谱
-const clearGraph = () => {
-  if (sigmaInstance) {
-    const emptyGraph = graphStore.createSigmaGraph({ nodes: [], edges: [] })
-    sigmaInstance.setGraph(emptyGraph)
-    sigmaInstance.refresh()
-  }
-  graphStore.reset()
-  emit('clear-graph')
-}
-
-// 应用布局算法
-const applyLayout = async (graph) => {
-  return new Promise((resolve) => {
-    if (!graph || graph.order === 0) {
-      resolve()
-      return
-    }
-
-    loadingMessage.value = '计算布局中...'
-
-    // 简单的力导向布局 / 多布局支持
-    const nodes = graph.nodes()
-    const edges = graph.edges()
-
-    // Multi-layout implementations
-    const assignRandomIfMissing = () => {
-      nodes.forEach((node) => {
-        if (!graph.hasNodeAttribute(node, 'x')) graph.setNodeAttribute(node, 'x', Math.random() * 1000)
-        if (!graph.hasNodeAttribute(node, 'y')) graph.setNodeAttribute(node, 'y', Math.random() * 1000)
-      })
-    }
-
-    const layoutCircular = () => {
-      const n = nodes.length
-      const R = 400
-      nodes.forEach((node, i) => {
-        const angle = (2 * Math.PI * i) / Math.max(1, n)
-        graph.setNodeAttribute(node, 'x', Math.cos(angle) * R)
-        graph.setNodeAttribute(node, 'y', Math.sin(angle) * R)
-      })
-    }
-
-    const layoutRadial = () => {
-      // Basic radial layout: reuse circular for now
-      layoutCircular()
-    }
-
-    const layoutConcentric = () => {
-      const degree = new Map()
-      edges.forEach((e) => {
-        const s = graph.source(e); const t = graph.target(e)
-        degree.set(s, (degree.get(s) || 0) + 1)
-        degree.set(t, (degree.get(t) || 0) + 1)
-      })
-      const arr = nodes.map((n) => ({ id: n, deg: degree.get(n) || 0 }))
-      arr.sort((a, b) => b.deg - a.deg)
-      const rings = []
-      let current = []
-      arr.forEach((item, idx) => {
-        current.push(item.id)
-        if (current.length >= 20) { rings.push(current); current = [] }
-      })
-      if (current.length) rings.push(current)
-      const baseR = 200
-      rings.forEach((ring, ri) => {
-        const R = baseR + ri * 160
-        ring.forEach((node, i) => {
-          const angle = (2 * Math.PI * i) / Math.max(1, ring.length)
-          graph.setNodeAttribute(node, 'x', Math.cos(angle) * R)
-          graph.setNodeAttribute(node, 'y', Math.sin(angle) * R)
-        })
-      })
-    }
-
-    const layoutForceLite = () => {
-      assignRandomIfMissing()
-      const iterations = 80
-      for (let i = 0; i < iterations; i++) {
-        for (let j = 0; j < nodes.length; j++) {
-          for (let k = j + 1; k < nodes.length; k++) {
-            const n1 = nodes[j]; const n2 = nodes[k]
-            const x1 = graph.getNodeAttribute(n1, 'x'); const y1 = graph.getNodeAttribute(n1, 'y')
-            const x2 = graph.getNodeAttribute(n2, 'x'); const y2 = graph.getNodeAttribute(n2, 'y')
-            const dx = x2 - x1; const dy = y2 - y1
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1
-            const force = 800 / (dist * dist)
-            const fx = (dx / dist) * force; const fy = (dy / dist) * force
-            graph.setNodeAttribute(n1, 'x', x1 - fx); graph.setNodeAttribute(n1, 'y', y1 - fy)
-            graph.setNodeAttribute(n2, 'x', x2 + fx); graph.setNodeAttribute(n2, 'y', y2 + fy)
-          }
-        }
-        edges.forEach((e) => {
-          const s = graph.source(e); const t = graph.target(e)
-          const x1 = graph.getNodeAttribute(s, 'x'); const y1 = graph.getNodeAttribute(s, 'y')
-          const x2 = graph.getNodeAttribute(t, 'x'); const y2 = graph.getNodeAttribute(t, 'y')
-          const dx = x2 - x1; const dy = y2 - y1
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          const force = dist * 0.01
-          const fx = (dx / dist) * force; const fy = (dy / dist) * force
-          graph.setNodeAttribute(s, 'x', x1 + fx); graph.setNodeAttribute(s, 'y', y1 + fy)
-          graph.setNodeAttribute(t, 'x', x2 - fx); graph.setNodeAttribute(t, 'y', y2 - fy)
-        })
-      }
-    }
-
-    // Choose and apply layout
-    const mode = (layoutMode.value || 'auto').toLowerCase()
-    const N = nodes.length
-    if (mode === 'circular') layoutCircular()
-    else if (mode === 'radial') layoutRadial()
-    else if (mode === 'concentric') layoutConcentric()
-    else if (mode === 'force') layoutForceLite()
-    else { if (N <= 150) layoutForceLite(); else layoutConcentric() }
-
-    // Validate coordinates
-    nodes.forEach(node => {
-      const x = graph.getNodeAttribute(node, 'x')
-      const y = graph.getNodeAttribute(node, 'y')
-      if (!isFinite(x) || !isFinite(y)) {
-        console.warn('Invalid coordinates after layout for node:', node, { x, y })
-        graph.setNodeAttribute(node, 'x', Math.random() * 1000)
-        graph.setNodeAttribute(node, 'y', Math.random() * 1000)
-      }
-    })
-
-    resolve()
-    return
-
-    // 随机初始位置
-    nodes.forEach((node) => {
-      if (!graph.hasNodeAttribute(node, 'x')) {
-        graph.setNodeAttribute(node, 'x', Math.random() * 1000)
-      }
-      if (!graph.hasNodeAttribute(node, 'y')) {
-        graph.setNodeAttribute(node, 'y', Math.random() * 1000)
-      }
-    })
-
-    // 简单的力导向迭代
-    const iterations = 100
-    for (let i = 0; i < iterations; i++) {
-      // 斥力
-      for (let j = 0; j < nodes.length; j++) {
-        for (let k = j + 1; k < nodes.length; k++) {
-          const node1 = nodes[j]
-          const node2 = nodes[k]
-
-          const x1 = graph.getNodeAttribute(node1, 'x')
-          const y1 = graph.getNodeAttribute(node1, 'y')
-          const x2 = graph.getNodeAttribute(node2, 'x')
-          const y2 = graph.getNodeAttribute(node2, 'y')
-
-          const dx = x2 - x1
-          const dy = y2 - y1
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1
-
-          const force = 1000 / (distance * distance)
-          const fx = (dx / distance) * force
-          const fy = (dy / distance) * force
-
-          graph.setNodeAttribute(node1, 'x', x1 - fx)
-          graph.setNodeAttribute(node1, 'y', y1 - fy)
-          graph.setNodeAttribute(node2, 'x', x2 + fx)
-          graph.setNodeAttribute(node2, 'y', y2 + fy)
-        }
-      }
-
-      // 引力
-      edges.forEach((edge) => {
-        const source = graph.source(edge)
-        const target = graph.target(edge)
-
-        const x1 = graph.getNodeAttribute(source, 'x')
-        const y1 = graph.getNodeAttribute(source, 'y')
-        const x2 = graph.getNodeAttribute(target, 'x')
-        const y2 = graph.getNodeAttribute(target, 'y')
-
-        const dx = x2 - x1
-        const dy = y2 - y1
-        const distance = Math.sqrt(dx * dx + dy * dy) || 1
-
-        const force = distance * 0.01
-        const fx = (dx / distance) * force
-        const fy = (dy / distance) * force
-
-        graph.setNodeAttribute(source, 'x', x1 + fx)
-        graph.setNodeAttribute(source, 'y', y1 + fy)
-        graph.setNodeAttribute(target, 'x', x2 - fx)
-        graph.setNodeAttribute(target, 'y', y2 - fy)
-      })
-    }
-
-    resolve()
-  })
-}
-
-// 重新应用当前布局
-const reapplyLayout = async () => {
-  if (!sigmaInstance || !graphStore || !graphStore.sigmaGraph) return
-  await applyLayout(graphStore.sigmaGraph)
-  sigmaInstance.refresh()
-}
-
-// 展开节点
-const expandNode = async (nodeId) => {
-  if (!selectedDatabase.value) {
-    message.warning('请先选择数据库')
-    return
-  }
-
-  expanding.value = true
+  loading.value = true;
   try {
     const response = await graphApi.getSubgraph({
       db_id: selectedDatabase.value,
-      center: nodeId,
+      center: selectedLabel.value || '*',
+      depth: searchParams.max_depth,
+      limit: searchParams.max_nodes,
+      page: 1,
+      fields: 'full'
+    });
+
+    const result = response?.data || response?.result || response || {};
+    if (!response?.success || !Array.isArray(result.nodes) || !Array.isArray(result.edges)) {
+      throw new Error('返回数据格式不正确');
+    }
+
+    applyGraphResult(result);
+    message.success(
+      `加载成功：${stats.displayed_nodes} 个节点，${stats.displayed_edges} 条边${
+        stats.is_truncated ? ' (已截断)' : ''
+      }`
+    );
+  } catch (error) {
+    console.error('加载图数据失败:', error);
+    message.error('加载图数据失败: ' + (error?.message || String(error)));
+  } finally {
+    loading.value = false;
+  }
+};
+
+const expandNode = async (nodeId) => {
+  if (!selectedDatabase.value) {
+    message.warning('请先选择数据库');
+    return;
+  }
+  const center = nodeId != null ? String(nodeId) : '';
+  if (!center) return;
+
+  expanding.value = true;
+  try {
+    const response = await graphApi.getSubgraph({
+      db_id: selectedDatabase.value,
+      center,
       depth: 1,
       limit: 50,
       page: 1,
       fields: 'full'
-    })
+    });
 
-    if (response.success) {
-      // 合并新数据的逻辑
-      const existingNodeIds = new Set(graphStore.rawGraph.nodes.map(n => n.id))
-      const existingEdgeIds = new Set(graphStore.rawGraph.edges.map(e => e.id))
-
-      const newNodes = response.data.nodes.filter(node => !existingNodeIds.has(node.id))
-      const newEdges = response.data.edges.filter(edge => !existingEdgeIds.has(edge.id))
-
-      if (newNodes.length > 0 || newEdges.length > 0) {
-        // 重新创建图数据
-        const allNodes = [...graphStore.rawGraph.nodes, ...newNodes]
-        const allEdges = [...graphStore.rawGraph.edges, ...newEdges]
-
-        const rawGraph = graphStore.createGraphFromApiData(allNodes, allEdges)
-        graphStore.setRawGraph(rawGraph)
-
-        const sigmaGraph = graphStore.createSigmaGraph(rawGraph)
-        graphStore.setSigmaGraph(sigmaGraph)
-
-        if (sigmaInstance) {
-          sigmaInstance.setGraph(sigmaGraph)
-          sigmaInstance.refresh()
-        }
-
-        message.success(`展开成功：新增 ${newNodes.length} 个节点，${newEdges.length} 条边`)
-      } else {
-        message.info('没有新的相邻节点')
-      }
+    const result = response?.data || response?.result || response || {};
+    if (!response?.success || !Array.isArray(result.nodes) || !Array.isArray(result.edges)) {
+      throw new Error('返回数据格式不正确');
     }
+
+    const existingNodeIds = new Set((graphData.nodes || []).map((n) => String(n.id)));
+    const existingEdgeIds = new Set((graphData.edges || []).map((e) => String(e.id)));
+
+    const newNodes = (result.nodes || []).map(normalizeNode).filter((n) => !existingNodeIds.has(String(n.id)));
+    const newEdges = (result.edges || [])
+      .map(normalizeEdge)
+      .filter((e) => e.source && e.target && !existingEdgeIds.has(String(e.id)));
+
+    if (newNodes.length === 0 && newEdges.length === 0) {
+      message.info('没有新的相邻节点');
+      return;
+    }
+
+    graphData.nodes = [...graphData.nodes, ...newNodes];
+    graphData.edges = [...graphData.edges, ...newEdges];
+
+    stats.displayed_nodes = graphData.nodes.length;
+    stats.displayed_edges = graphData.edges.length;
+
+    await nextTick();
+    graphRef.value?.refreshGraph?.();
+    setTimeout(() => graphRef.value?.focusNode?.(center), 200);
+
+    message.success(`展开成功：新增 ${newNodes.length} 个节点，${newEdges.length} 条边`);
   } catch (error) {
-    console.error('展开节点失败:', error)
-    message.error('展开节点失败: ' + error.message)
+    console.error('展开节点失败:', error);
+    message.error('展开节点失败: ' + (error?.message || String(error)));
   } finally {
-    expanding.value = false
+    expanding.value = false;
   }
-}
+};
 
-// 控制方法
-function zoomIn() {
-  if (sigmaInstance) {
-    const camera = sigmaInstance.getCamera()
-    camera.animatedZoom({ duration: 200 })
-  }
-}
+const reapplyLayout = async () => {
+  await nextTick();
+  graphRef.value?.refreshGraph?.();
+};
 
-function zoomOut() {
-  if (sigmaInstance) {
-    const camera = sigmaInstance.getCamera()
-    camera.animatedUnzoom({ duration: 200 })
-  }
-}
+const handleNodeClick = ({ data }) => {
+  const raw = data?.data || data || null;
+  selectedNodeData.value = raw;
+  selectedEdgeData.value = null;
+};
 
-function resetCamera(immediate = false) {
-  if (!sigmaInstance) return
+const handleEdgeClick = ({ data }) => {
+  const raw = data?.data || data || null;
+  selectedEdgeData.value = raw;
+  selectedNodeData.value = null;
+};
 
-  try {
-    const camera = sigmaInstance.getCamera()
+const getNodeDisplayName = (node) => nodeLabelOf(node);
 
-    // Sigma v3 的 Camera 坐标系基于内部归一化后的 framedGraph；
-    // 使用内置 reset 能保证视图回到可见区域（避免用原始 graph 坐标导致“空白画布”）。
-    if (immediate) {
-      camera.setState({ x: 0.5, y: 0.5, ratio: 1, angle: 0 })
-    } else {
-      camera.animatedReset({ duration: 500 })
+const getEdgeDisplayName = (edge) => {
+  if (edge?.properties?.keywords) return String(edge.properties.keywords);
+  if (edge?.properties?.description) return String(edge.properties.description).slice(0, 20) + '...';
+  return `${edge?.source ?? ''} -> ${edge?.target ?? ''}`;
+};
+
+const loadFullGraph = async () => {
+  selectedLabel.value = '*';
+  await loadGraphData();
+  emit('refresh-graph');
+};
+
+const clearGraph = () => {
+  graphData.nodes = [];
+  graphData.edges = [];
+  stats.displayed_nodes = 0;
+  stats.displayed_edges = 0;
+  stats.is_truncated = false;
+  clearSelection();
+  void nextTick(() => graphRef.value?.refreshGraph?.());
+  emit('clear-graph');
+};
+
+watch(
+  () => props.initialDatabaseId,
+  async (newId) => {
+    if (newId && newId !== selectedDatabase.value) {
+      selectedDatabase.value = newId;
+      selectedLabel.value = '*';
+      await loadGraphLabels(newId);
     }
-
-    sigmaInstance.refresh()
-  } catch (error) {
-    console.error('Error resetting camera:', error)
-    // 强制重置到默认状态（与 sigma Camera 默认一致）
-    try {
-      const camera = sigmaInstance?.getCamera?.()
-      camera?.setState?.({ x: 0.5, y: 0.5, ratio: 1, angle: 0 })
-      sigmaInstance?.refresh?.()
-    } catch (_) {}
-    message.info('视图已强制重置')
   }
-}
+);
 
-const toggleLayout = () => {
-  // 简单的布局切换
-  layoutRunning.value = !layoutRunning.value
-  if (layoutRunning.value && sigmaInstance) {
-    applyLayout(sigmaInstance.getGraph())
-  }
-}
+watch(
+  stats,
+  (newStats) => {
+    emit('update:stats', { ...newStats });
+  },
+  { deep: true, immediate: true }
+);
 
-const clearSelection = () => {
-  graphStore.clearSelection()
-}
+onMounted(() => {
+  void loadAvailableDatabases();
+});
 
-const getEntityColor = (entityType) => {
-  return graphStore.getEntityColor(entityType)
-}
-
-// 面板拖拽功能
-const startDragPanel = (type, event) => {
-  event.preventDefault()
-
-  if (!sigmaContainer.value) return
-
-  const currentPosition = type === 'node' ? nodePanelPosition.value : edgePanelPosition.value
-
-  // 获取容器位置，计算相对于容器的鼠标位置
-  const containerRect = sigmaContainer.value.getBoundingClientRect()
-  const relativeX = event.clientX - containerRect.left
-  const relativeY = event.clientY - containerRect.top
-
-  dragging.value = {
-    active: true,
-    type: type,
-    startX: relativeX,
-    startY: relativeY,
-    initialX: currentPosition.x,
-    initialY: currentPosition.y
-  }
-
-  document.addEventListener('mousemove', onDragPanel)
-  document.addEventListener('mouseup', stopDragPanel)
-}
-
-const onDragPanel = (event) => {
-  if (!dragging.value.active || !sigmaContainer.value) return
-
-  // 获取容器位置和尺寸
-  const containerRect = sigmaContainer.value.getBoundingClientRect()
-
-  // 计算当前鼠标相对于容器的位置
-  const currentRelativeX = event.clientX - containerRect.left
-  const currentRelativeY = event.clientY - containerRect.top
-
-  // 计算拖拽偏移
-  const deltaX = currentRelativeX - dragging.value.startX
-  const deltaY = currentRelativeY - dragging.value.startY
-
-  const maxX = containerRect.width - 260  // 面板宽度为240px + 一些边距
-  const maxY = containerRect.height - 200 // 面板高度约为200px
-
-  const newPosition = {
-    x: Math.max(0, Math.min(maxX, dragging.value.initialX + deltaX)),
-    y: Math.max(0, Math.min(maxY, dragging.value.initialY + deltaY))
-  }
-
-  if (dragging.value.type === 'node') {
-    nodePanelPosition.value = newPosition
-  } else {
-    edgePanelPosition.value = newPosition
-  }
-}
-
-const stopDragPanel = () => {
-  dragging.value.active = false
-  document.removeEventListener('mousemove', onDragPanel)
-  document.removeEventListener('mouseup', stopDragPanel)
-}
-
-// ResizeObserver instance
-let resizeObserver = null
-
-// 生命周期
-onMounted(async () => {
-  await nextTick()
-  
-  // Initialize ResizeObserver
-  if (sigmaContainer.value) {
-    resizeObserver = new ResizeObserver(() => {
-      if (sigmaInstance) {
-        sigmaInstance.refresh()
-      }
-    })
-    resizeObserver.observe(sigmaContainer.value)
-  }
-
-  await loadAvailableDatabases()
-})
-
-onUnmounted(() => {
-  // 清理拖拽事件监听器
-  document.removeEventListener('mousemove', onDragPanel)
-  document.removeEventListener('mouseup', stopDragPanel)
-
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-    resizeObserver = null
-  }
-
-  if (sigmaInstance) {
-    sigmaInstance.kill()
-    sigmaInstance = null
-  }
-  if (layoutWorker) {
-    layoutWorker.stop()
-  }
-  graphStore.reset()
-})
-
-// 监听选中节点数据变化，用于调试
-watch(() => graphStore.selectedNodeData, (nodeData) => {
-  console.log('Selected node data changed:', nodeData)
-})
-
-// 监听选中边数据变化，用于调试和确保面板显示
-watch(() => graphStore.selectedEdgeData, (edgeData) => {
-  console.log('Selected edge data changed:', edgeData)
-  if (edgeData) {
-    console.log('边面板应该显示，当前位置:', intelligentEdgePanelPosition.value)
-  }
-})
-
-// 监听选中节点变化，移动相机
-watch(() => graphStore.selectedNode, (nodeId) => {
-  if (nodeId && graphStore.moveToSelectedNode && sigmaInstance) {
-    try {
-      const graph = sigmaInstance.getGraph()
-
-      // 检查节点是否存在
-      if (!graph.hasNode(nodeId)) {
-        console.warn('Selected node does not exist in graph:', nodeId)
-        graphStore.moveToSelectedNode = false
-        return
-      }
-
-      // Sigma v3 的相机移动需要使用 displayData（framedGraph 坐标）
-      const nodeDisplay = sigmaInstance.getNodeDisplayData(nodeId)
-      if (!nodeDisplay || !isFinite(nodeDisplay.x) || !isFinite(nodeDisplay.y)) {
-        console.warn('Invalid node display data for node:', nodeId, nodeDisplay)
-        graphStore.moveToSelectedNode = false
-        return
-      }
-
-      const camera = sigmaInstance.getCamera()
-      const currentState = camera.getState()
-
-
-      // 计算合适的缩放比例，避免过度缩放
-      const currentRatio = currentState.ratio || 1.0
-      const targetRatio = Math.max(0.1, Math.min(currentRatio * 0.7, 0.6))
-
-      // 移动相机到节点位置，使用安全的缩放比例
-      camera.animate(
-        {
-          x: nodeDisplay.x,
-          y: nodeDisplay.y,
-          ratio: targetRatio  // 使用计算出的安全缩放比例
-        },
-        {
-          duration: 600  // 适中的动画时间
-        }
-      )
-    } catch (error) {
-      console.error('Error moving camera to selected node:', error)
-      // 如果相机移动失败，至少确保显示节点详情
-      if (nodeId) {
-        const graph = sigmaInstance.getGraph()
-        if (graph.hasNode(nodeId)) {
-          const nodeData = graph.getNodeAttributes(nodeId)
-          console.log('Fallback: showing node details without camera movement', nodeData)
-        }
-      }
-    } finally {
-      // 确保重置标志
-      graphStore.moveToSelectedNode = false
-    }
-      }
-  })
-
-// 监听统计数据变化，通知父组件
-watch(stats, (newStats) => {
-  emit('update:stats', newStats)
-}, { deep: true, immediate: true })
-
-// 暴露给父组件的方法
 defineExpose({
   loadFullGraph,
   clearGraph
-})
+});
 </script>
 
 <style lang="less" scoped>
 .knowledge-graph-viewer {
   position: relative;
   width: 100%;
-  // height: 100vh;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1302,77 +565,81 @@ defineExpose({
   background: var(--bg-container);
   border-bottom: var(--glass-border);
   backdrop-filter: var(--glass-blur);
-  padding: 8px 0; /* Reduced from 16px */
+  padding: 8px 0;
   display: flex;
-  gap: 12px; /* Reduced from 16px */
-  align-items: center;
   flex-wrap: wrap;
-  z-index: 1000;
+  gap: 12px;
+  align-items: center;
 }
 
 .database-section,
 .search-section,
-.filter-section,
+.layout-section,
 .stats-section {
   display: flex;
   align-items: center;
-  gap: 6px; /* Reduced from 8px */
+  padding: 0 12px;
 }
 
-.stats-section {
-  margin-left: auto;
-}
-
-.sigma-container {
+.graph-shell {
   flex: 1;
-  background: transparent; /* Changed from rgba(15, 23, 42, 0.35) to transparent */
-  position: relative; /* 确保子元素可以相对于此容器定位 */
-  border: var(--glass-border);
-  border-radius: 8px;
+  position: relative;
   overflow: hidden;
+  border-radius: 8px;
+  border: var(--glass-border);
+  min-height: 240px;
 
   &.loading {
     pointer-events: none;
   }
 }
 
+.empty-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
 .detail-panel {
   position: absolute;
-  width: 240px; /* Reduced from 300px */
+  top: 12px;
+  left: 12px;
+  width: 240px;
   background: var(--glass-bg);
   border: var(--glass-border);
-  border-radius: 6px; /* Reduced from 8px */
+  border-radius: 6px;
   box-shadow: var(--shadow-md);
   backdrop-filter: var(--glass-blur);
-  transition: box-shadow 0.2s ease;
-  cursor: move;
-  z-index: 1000;
-
-  &:hover {
-    box-shadow: var(--shadow-lg);
-  }
-
-  &.node-panel {
-    border-left: 4px solid #52c41a; // 绿色边框标识节点面板
-  }
-
-  &.edge-panel {
-    border-left: 4px solid #1890ff; // 蓝色边框标识边面板
-  }
+  z-index: 40;
 }
 
 .detail-header {
   display: flex;
   align-items: center;
-  gap: 6px; /* Reduced from 8px */
-  padding: 8px 12px; /* Reduced from 12px 16px */
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: var(--glass-border);
   background: rgba(15, 23, 42, 0.45);
-  border-radius: 6px 6px 0 0; /* Reduced from 8px */
+  border-radius: 6px 6px 0 0;
 
   h4 {
     margin: 0;
-    font-size: 12px; /* Reduced from 14px */
+    font-size: 12px;
     font-weight: 600;
     flex: 1;
     color: var(--text-primary);
@@ -1380,7 +647,7 @@ defineExpose({
 }
 
 .panel-type-indicator {
-  width: 6px; /* Reduced from 8px */
+  width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
@@ -1395,14 +662,14 @@ defineExpose({
 }
 
 .detail-content {
-  padding: 10px; /* Reduced from 16px */
-  max-height: 300px; /* Reduced from 400px */
+  padding: 10px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
 .detail-item {
   display: flex;
-  margin-bottom: 8px; /* Reduced from 12px */
+  margin-bottom: 8px;
 
   &:last-child {
     margin-bottom: 0;
@@ -1410,166 +677,23 @@ defineExpose({
 }
 
 .detail-label {
-  min-width: 50px; /* Reduced from 60px */
+  min-width: 50px;
   font-weight: 600;
   color: var(--text-tertiary);
-  font-size: 11px; /* Reduced from 12px */
+  font-size: 11px;
   flex-shrink: 0;
 }
 
 .detail-value {
   color: var(--text-primary);
-  font-size: 11px; /* Reduced from 12px */
+  font-size: 11px;
   word-break: break-word;
-  line-height: 1.3; /* Reduced from 1.4 */
+  line-height: 1.3;
 }
 
 .detail-actions {
-  margin-top: 12px; /* Reduced from 16px */
-  padding-top: 8px; /* Reduced from 12px */
+  margin-top: 12px;
+  padding-top: 8px;
   border-top: var(--glass-border);
-}
-
-.graph-controls {
-  position: absolute;
-  bottom: 16px; /* Reduced from 20px */
-  right: 16px;
-  z-index: 1000;
-}
-
-.control-group {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
-  border-radius: 16px; /* Reduced from 20px */
-  padding: 2px; /* Reduced from 4px */
-  box-shadow: var(--shadow-md);
-  display: flex;
-  gap: 1px; /* Reduced from 2px */
-}
-
-.control-btn {
-  width: 28px; /* Reduced from 32px */
-  height: 28px;
-  border-radius: 14px; /* Reduced from 16px */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: color-mix(in srgb, var(--main-color) 10%, transparent);
-    color: var(--main-color);
-  }
-}
-
-.legend {
-  position: absolute;
-  right: 12px; /* Reduced from 16px */
-  top: 60px; /* Reduced from 80px */
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
-  border-radius: 6px; /* Reduced from 8px */
-  width: 150px; /* Reduced from 180px */
-  max-height: 250px; /* Reduced from 300px */
-  z-index: 1000;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
-
-.legend-header {
-  background: rgba(15, 23, 42, 0.45);
-  padding: 6px 10px; /* Reduced from 8px 12px */
-  border-bottom: var(--glass-border);
-
-  h4 {
-    margin: 0;
-    font-size: 12px; /* Reduced from 13px */
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-}
-
-.legend-content {
-  padding: 6px 10px; /* Reduced from 8px 12px */
-  max-height: 200px; /* Reduced from 240px */
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  /* 自定义滚动条样式 */
-  &::-webkit-scrollbar {
-    width: 3px; /* Reduced from 4px */
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 2px;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.25);
-    }
-  }
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px; /* Reduced from 8px */
-  padding: 2px 4px; /* Reduced from 4px 6px */
-  margin: 1px 0; /* Reduced from 2px */
-  border-radius: 3px; /* Reduced from 4px */
-  font-size: 11px; /* Reduced from 12px */
-  min-width: 0;
-  transition: background-color 0.2s ease;
-
-  span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-    min-width: 0;
-    color: var(--text-secondary);
-  }
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-}
-
-.legend-color {
-  width: 8px; /* Reduced from 10px */
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  flex-shrink: 0;
-}
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.loading-content {
-  text-align: center;
-
-  p {
-    margin-top: 12px; /* Reduced from 16px */
-    color: var(--text-secondary);
-    font-size: 12px; /* Added smaller font size */
-  }
 }
 </style>

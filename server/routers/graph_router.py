@@ -1,5 +1,8 @@
 import traceback
 import math
+import os
+
+from neo4j import GraphDatabase as Neo4jDriver
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
@@ -9,6 +12,21 @@ from src import graph_base, knowledge_base
 from src.utils.logging_config import logger
 
 graph = APIRouter(prefix="/graph", tags=["graph"])
+
+
+def _get_neo4j_labels() -> set[str]:
+    """获取 Neo4j 当前存在的所有标签，用于判断某个 LightRAG workspace 是否有图谱数据。"""
+    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "0123456789")
+
+    driver = Neo4jDriver.driver(uri, auth=(username, password))
+    try:
+        with driver.session() as session:
+            records = session.run("CALL db.labels() YIELD label RETURN label")
+            return {r["label"] for r in records if r and r.get("label")}
+    finally:
+        driver.close()
 
 
 # =============================================================================
@@ -270,29 +288,20 @@ async def get_subgraph(
 @graph.get("/lightrag/databases")
 async def get_lightrag_databases(current_user: User = Depends(get_admin_user)):
     """
-    获取所有可用的知识图谱数据库（Neo4j）
+    获取所有可用的 LightRAG 知识库列表
 
     Returns:
-        可用的图数据库列表
+        可用的 LightRAG 知识库列表
     """
     try:
-        databases = []
-        
-        # 获取 Neo4j 图数据库信息
+        databases = knowledge_base.get_lightrag_databases()
+        # 仅返回在 Neo4j 中已存在图谱数据的知识库，避免前端加载到空图谱库
         try:
-            if graph_base.is_running():
-                neo4j_info = graph_base.get_graph_info()
-                if neo4j_info:
-                    databases.append({
-                        "db_id": neo4j_info.get("graph_name", "neo4j"),
-                        "name": f"大坝安全知识图谱",
-                        "type": "neo4j",
-                        "entity_count": neo4j_info.get("entity_count", 0),
-                        "relationship_count": neo4j_info.get("relationship_count", 0),
-                    })
+            neo4j_labels = _get_neo4j_labels()
+            databases = [db for db in databases if (db.get("db_id") or "") in neo4j_labels]
         except Exception as e:
-            logger.warning(f"获取 Neo4j 数据库信息失败: {e}")
-        
+            logger.warning(f"按 Neo4j 标签过滤 LightRAG 知识库失败，将回退为按文件数过滤: {e}")
+            databases = [db for db in databases if (db.get("row_count") or 0) > 0]
         return {"success": True, "data": {"databases": databases}}
 
     except Exception as e:
@@ -568,4 +577,3 @@ async def add_neo4j_entities(
     except Exception as e:
         logger.error(f"添加实体失败: {e}, {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"添加实体失败: {e}")
-

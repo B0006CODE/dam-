@@ -487,12 +487,29 @@ const buildGraphData = () => {
         matchedNodes.has(sourceId) ||
         matchedNodes.has(targetId);
 
-      // 选择优先使用中文的关系文案，避免中英叠加
+      // 优先使用 edges.properties 中更可读的关系文本（与旧 Sigma 版本一致）
+      const propsLabel = (() => {
+        const props = edge?.properties;
+        if (!props || typeof props !== 'object') return '';
+        return (
+          props.keywords ||
+          props.relation ||
+          props.label ||
+          props.name ||
+          props.description ||
+          ''
+        );
+      })();
+
       const rawLabel =
-        edge.r || edge.relation || edge.label || edge.name || edge.type || '';
-      // 仅保留中文，彻底避免中英叠加
-      const chineseOnly = (rawLabel.match(/[\u4e00-\u9fa5]+/g) || []).join('');
-      const labelText = chineseOnly || '';
+        propsLabel || edge.r || edge.relation || edge.label || edge.name || edge.type || '';
+
+      // 优先显示中文；如果没有中文，则回退显示英文/符号（例如 OCCUR_AT -> OCCUR AT）
+      const rawLabelText = String(rawLabel || '').trim();
+      const chineseOnly = (rawLabelText.match(/[\u4e00-\u9fa5]+/g) || []).join('');
+      const fallback = rawLabelText.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const labelText = chineseOnly || fallback;
+      const clampedLabelText = labelText.length > 24 ? `${labelText.slice(0, 24)}…` : labelText;
 
       const curveOffset = parallelOffsetByEdgeIdx.get(idx) || 0;
       const labelOffsetY = Math.max(-16, Math.min(16, curveOffset * 0.35));
@@ -523,7 +540,7 @@ const buildGraphData = () => {
                 : 1.2,
           endArrow: false,
           ...(labelOffsetY ? { labelOffsetY } : {}),
-          labelText,
+          labelText: clampedLabelText,
           labelPlacement: 'center',
           labelFill: '#ffffff',
           labelFontSize: 10,
