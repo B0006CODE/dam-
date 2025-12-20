@@ -132,9 +132,9 @@
       ok-text="添加到图数据库" cancel-text="取消"
       :confirm-loading="state.processing">
       <div class="upload">
-        <div class="note">
+        <!-- <div class="note">
           <p>上传的文件内容参考 test/data/A_Dream_of_Red_Mansions_tiny.jsonl 中的格式：</p>
-        </div>
+        </div> -->
         <a-upload-dragger
           class="upload-dragger"
           v-model:fileList="fileList"
@@ -156,7 +156,7 @@
     </a-modal>
 
     <!-- 说明弹窗 -->
-    <a-modal
+    <!-- <a-modal
       :open="state.showInfoModal"
       title="图数据库说明"
       @cancel="() => state.showInfoModal = false"
@@ -183,7 +183,7 @@ RETURN
 LIMIT $num</code></pre>
         <p>如需查看完整的 Neo4j 数据库内容，请使用 "Neo4j 浏览器" 按钮访问原生界面。</p>
       </div>
-    </a-modal>
+    </a-modal> -->
 
     <a-modal
       :open="isAdmin && renameModalVisible"
