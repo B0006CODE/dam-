@@ -57,7 +57,9 @@ body {
 
 .layout-container {
   width: 100%;
-  padding: 0px 30px;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 30px 40px;
 
   h2 {
     margin: 20px 0 10px 0;
@@ -92,19 +94,21 @@ body {
 
 /* Global Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: rgba(6, 42, 92, 0.3);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 212, 255, 0.3);
-  border-radius: 10px;
+  background: rgba(0, 212, 255, 0.35);
+  border-radius: 4px;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 212, 255, 0.5);
+  background: rgba(0, 212, 255, 0.55);
 }

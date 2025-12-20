@@ -7,7 +7,6 @@ export const useUserStore = defineStore('user', () => {
   const userId = ref(parseInt(localStorage.getItem('user_id') || '0') || null)
   const username = ref(localStorage.getItem('username') || '')
   const userIdLogin = ref(localStorage.getItem('user_id_login') || '') // 用于登录的user_id
-  const phoneNumber = ref(localStorage.getItem('phone_number') || '')
   const avatar = ref(localStorage.getItem('avatar') || '')
   const userRole = ref(localStorage.getItem('user_role') || '')
 
@@ -20,8 +19,8 @@ export const useUserStore = defineStore('user', () => {
   async function login(credentials) {
     try {
       const formData = new FormData()
-      // 支持user_id或phone_number登录
-      formData.append('username', credentials.loginId) // 使用loginId作为通用登录标识
+      // 用户ID登录
+      formData.append('username', credentials.loginId) // 使用loginId作为登录标识符
       formData.append('password', credentials.password)
 
       const response = await fetch('/api/auth/token', {
@@ -50,7 +49,6 @@ export const useUserStore = defineStore('user', () => {
       userId.value = data.user_id
       username.value = data.username
       userIdLogin.value = data.user_id_login
-      phoneNumber.value = data.phone_number || ''
       avatar.value = data.avatar || ''
       userRole.value = data.role
 
@@ -59,7 +57,6 @@ export const useUserStore = defineStore('user', () => {
       localStorage.setItem('user_id', data.user_id)
       localStorage.setItem('username', data.username)
       localStorage.setItem('user_id_login', data.user_id_login)
-      localStorage.setItem('phone_number', data.phone_number || '')
       localStorage.setItem('avatar', data.avatar || '')
       localStorage.setItem('user_role', data.role)
 
@@ -76,7 +73,6 @@ export const useUserStore = defineStore('user', () => {
     userId.value = null
     username.value = ''
     userIdLogin.value = ''
-    phoneNumber.value = ''
     avatar.value = ''
     userRole.value = ''
 
@@ -85,7 +81,6 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('user_id')
     localStorage.removeItem('username')
     localStorage.removeItem('user_id_login')
-    localStorage.removeItem('phone_number')
     localStorage.removeItem('avatar')
     localStorage.removeItem('user_role')
   }
@@ -112,7 +107,6 @@ export const useUserStore = defineStore('user', () => {
       userId.value = data.user_id
       username.value = data.username
       userIdLogin.value = data.user_id_login
-      phoneNumber.value = data.phone_number || ''
       avatar.value = data.avatar || ''
       userRole.value = data.role
 
@@ -121,7 +115,6 @@ export const useUserStore = defineStore('user', () => {
       localStorage.setItem('user_id', data.user_id)
       localStorage.setItem('username', data.username)
       localStorage.setItem('user_id_login', data.user_id_login)
-      localStorage.setItem('phone_number', data.phone_number || '')
       localStorage.setItem('avatar', data.avatar || '')
       localStorage.setItem('user_role', data.role)
 
@@ -311,14 +304,12 @@ export const useUserStore = defineStore('user', () => {
       // 更新本地状态
       username.value = userData.username
       userIdLogin.value = userData.user_id
-      phoneNumber.value = userData.phone_number || ''
       avatar.value = userData.avatar || ''
       userRole.value = userData.role
 
       // 更新本地存储
       localStorage.setItem('username', userData.username)
       localStorage.setItem('user_id_login', userData.user_id)
-      localStorage.setItem('phone_number', userData.phone_number || '')
       localStorage.setItem('avatar', userData.avatar || '')
       localStorage.setItem('user_role', userData.role)
 
@@ -353,10 +344,6 @@ export const useUserStore = defineStore('user', () => {
         username.value = userData.username
         localStorage.setItem('username', userData.username)
       }
-      if (typeof userData.phone_number !== 'undefined') {
-        phoneNumber.value = userData.phone_number || ''
-        localStorage.setItem('phone_number', userData.phone_number || '')
-      }
 
       return userData
     } catch (error) {
@@ -371,7 +358,6 @@ export const useUserStore = defineStore('user', () => {
     userId,
     username,
     userIdLogin,
-    phoneNumber,
     avatar,
     userRole,
 

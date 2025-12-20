@@ -43,8 +43,7 @@
         </AgentChatComponent>
       </div>
 
-      <!-- 反馈模态框 -->
-      <FeedbackModalComponent ref="feedbackModal" :agent-id="selectedAgentId" />
+
 
       <!-- 自定义更多菜单 -->
       <Teleport to="body">
@@ -62,11 +61,7 @@
               <ShareAltOutlined class="menu-icon" />
               <span class="menu-text">分享对话</span>
             </div>
-            <div class="menu-divider"></div>
-            <div class="menu-item" @click="handleFeedback">
-              <MessageOutlined class="menu-icon" />
-              <span class="menu-text">查看反馈</span>
-            </div>
+
             <div class="menu-divider"></div>
             <div class="menu-item" @click="handlePreview">
               <EyeOutlined class="menu-icon" />
@@ -84,7 +79,7 @@ import { ref, reactive, watch } from 'vue';
 import { StarOutlined, StarFilled, MessageOutlined, ShareAltOutlined, EyeOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import AgentChatComponent from '@/components/AgentChatComponent.vue';
-import FeedbackModalComponent from '@/components/dashboard/FeedbackModalComponent.vue';
+
 import { useUserStore } from '@/stores/user';
 import { useAgentStore } from '@/stores/agent';
 import { ChatExporter } from '@/utils/chatExporter';
@@ -94,7 +89,7 @@ import { onClickOutside } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 
 // 组件引用
-const feedbackModal = ref(null)
+
 const chatComponentRef = ref(null)
 const userStore = useUserStore();
 const agentStore = useAgentStore();
@@ -237,10 +232,7 @@ const handleShareChat = async () => {
   }
 };
 
-const handleFeedback = () => {
-  closeMoreMenu();
-  feedbackModal.value?.show();
-};
+
 
 const handlePreview = () => {
   closeMoreMenu();

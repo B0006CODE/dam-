@@ -115,9 +115,9 @@ const router = createRouter({
   ]
 })
 
-// 全局前置守卫
+// 鍏ㄥ眬鍓嶇疆瀹堝崼
 router.beforeEach(async (to, from, next) => {
-  // 检查路由是否需要认证
+  // 妫€鏌ヨ矾鐢辨槸鍚﹂渶瑕佽璇?
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth === true);
   const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
 
@@ -125,51 +125,37 @@ router.beforeEach(async (to, from, next) => {
   const isLoggedIn = userStore.isLoggedIn;
   const isAdmin = userStore.isAdmin;
 
-  // 如果路由需要认证但用户未登录
+  // 濡傛灉璺敱闇€瑕佽璇佷絾鐢ㄦ埛鏈櫥褰?
   if (requiresAuth && !isLoggedIn) {
-    // 保存尝试访问的路径，登录后跳转
+    // 淇濆瓨灏濊瘯璁块棶鐨勮矾寰勶紝鐧诲綍鍚庤烦杞?
     sessionStorage.setItem('redirect', to.fullPath);
     next('/login');
     return;
   }
 
-  // 如果路由需要管理员权限但用户不是管理员
+  // 濡傛灉璺敱闇€瑕佺鐞嗗憳鏉冮檺浣嗙敤鎴蜂笉鏄鐞嗗憳
   if (requiresAdmin && !isAdmin) {
-    // 如果是普通用户，跳转到默认智能体页面
+    // 濡傛灉鏄櫘閫氱敤鎴凤紝璺宠浆鍒伴粯璁ゆ櫤鑳戒綋椤甸潰
     try {
       const agentStore = useAgentStore();
-      // 等待 store 初始化完成
       if (!agentStore.isInitialized) {
         await agentStore.initialize();
       }
-
-      const defaultAgent = agentStore.defaultAgent;
-      if (defaultAgent && defaultAgent.id) {
-        next(`/agent/${defaultAgent.id}`);
-      } else {
-        // 如果没有默认智能体，可以考虑跳转到第一个可用的智能体，或者一个特定的页面
-        const agentIds = Object.keys(agentStore.agents);
-        if (agentIds.length > 0) {
-          next(`/agent/${agentIds[0]}`);
-        } else {
-          // 没有可用的智能体，跳转到登录页
-          next('/login');
-        }
-      }
+      next('/agent');
     } catch (error) {
-      console.error('获取智能体信息失败:', error);
+      console.error('鑾峰彇鏅鸿兘浣撲俊鎭け璐?', error);
       next('/login');
     }
     return;
   }
 
-  // 如果用户已登录但访问登录页，跳转到智能体页面
+  // 濡傛灉鐢ㄦ埛宸茬櫥褰曚絾璁块棶鐧诲綍椤碉紝璺宠浆鍒版櫤鑳戒綋椤甸潰
   if (to.path === '/login' && isLoggedIn) {
     next('/agent');
     return;
   }
 
-  // 其他情况正常导航
+  // 鍏朵粬鎯呭喌姝ｅ父瀵艰埅
   next();
 });
 

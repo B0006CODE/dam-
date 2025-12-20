@@ -11,7 +11,6 @@
     <div class="setting-container layout-container">
       <div class="sider" v-if="state.windowWidth > 520">
         <a-button type="text" v-if="userStore.isSuperAdmin" :class="{ activesec: state.section === 'base'}" @click="state.section='base'" :icon="h(SettingOutlined)"> 基本设置 </a-button>
-        <a-button type="text" v-if="userStore.isSuperAdmin" :class="{ activesec: state.section === 'model'}" @click="state.section='model'" :icon="h(CodeOutlined)"> 模型配置 </a-button>
         <a-button type="text" :class="{ activesec: state.section === 'user'}" @click="state.section='user'" :icon="h(UserOutlined)" v-if="userStore.isAdmin"> 用户管理 </a-button>
       </div>
       <div class="setting" v-if="(state.windowWidth <= 520 || state.section === 'base') && userStore.isSuperAdmin">
@@ -87,6 +86,16 @@
               </a-select-option>
             </a-select>
           </div>
+          <div class="card card-select">
+            <span class="label">{{ items?.rerank_top_k?.des || '重排序返回结果数量' }}</span>
+            <a-input-number
+              style="width: 120px"
+              :value="configStore.config?.rerank_top_k"
+              :min="1"
+              :max="50"
+              @change="handleChange('rerank_top_k', $event)"
+            />
+          </div>
         </div>
 
         <!-- 服务链接部分 -->
@@ -136,11 +145,7 @@
           </div>
         </div>
       </div>
-      <div class="setting" v-if="(state.windowWidth <= 520 || state.section === 'model') && userStore.isSuperAdmin">
-        <h3>模型配置</h3>
-        <p>请在 <code>.env</code> 文件中配置对应的 APIKEY，并重新启动服务</p>
-        <ModelProvidersComponent />
-      </div>
+
 
       <div class="setting" v-if="(state.windowWidth <= 520 || state.section === 'user') && userStore.isAdmin">
          <UserManagementComponent />
@@ -157,13 +162,11 @@ import { useUserStore } from '@/stores/user'
 import {
   ReloadOutlined,
   SettingOutlined,
-  CodeOutlined,
   FolderOutlined,
   UserOutlined,
   GlobalOutlined
 } from '@ant-design/icons-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
-import ModelProvidersComponent from '@/components/ModelProvidersComponent.vue';
 import UserManagementComponent from '@/components/UserManagementComponent.vue';
 import { notification, Button } from 'ant-design-vue';
 import { configApi } from '@/apis/system_api'
@@ -191,6 +194,7 @@ const preHandleChange = (key, e) => {
   if (key == 'enable_reranker'
     || key == 'embed_model'
     || key == 'reranker'
+    || key == 'rerank_top_k'
     || key == 'model_local_paths') {
     isNeedRestart.value = true
     notification.info({

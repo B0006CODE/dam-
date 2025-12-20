@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from starlette.responses import FileResponse as StarletteFileResponse
 
 from src.storage.db.models import User
-from server.utils.auth_middleware import get_admin_user
+from server.utils.auth_middleware import get_admin_user, get_required_user
 from server.services.tasker import TaskContext, tasker
 from src import config, knowledge_base
 from src.knowledge.indexing import SUPPORTED_FILE_EXTENSIONS, is_supported_file_extension, process_file_to_markdown
@@ -24,7 +24,7 @@ knowledge = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
 
 @knowledge.get("/databases")
-async def get_databases(current_user: User = Depends(get_admin_user)):
+async def get_databases(current_user: User = Depends(get_required_user)):
     """获取所有知识库"""
     try:
         database = knowledge_base.get_databases()

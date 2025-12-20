@@ -99,20 +99,7 @@
               />
             </div>
           </div>
-          <div class="info-item">
-            <div class="info-label">手机号</div>
-            <div class="info-value" v-if="!profileEditing">
-              {{ userStore.phoneNumber || '未设置' }}
-            </div>
-            <div class="info-value" v-else>
-              <a-input
-                v-model:value="editedProfile.phone_number"
-                placeholder="请输入手机号"
-                :max-length="11"
-                style="width: 200px;"
-              />
-            </div>
-          </div>
+
           <div class="info-item">
             <div class="info-label">角色</div>
             <div class="info-value">
@@ -165,8 +152,7 @@ const profileModalVisible = ref(false);
 const avatarUploading = ref(false);
 const profileEditing = ref(false);
 const editedProfile = ref({
-  username: '',
-  phone_number: ''
+  username: ''
 });
 
 const props = defineProps({
@@ -231,8 +217,7 @@ const openProfile = async () => {
   try {
     await userStore.getCurrentUser();
     editedProfile.value = {
-      username: userStore.username || '',
-      phone_number: userStore.phoneNumber || ''
+      username: userStore.username || ''
     };
   } catch (error) {
     console.error('刷新用户信息失败:', error);
@@ -253,8 +238,7 @@ const getRoleColor = (role) => {
 const startEdit = () => {
   profileEditing.value = true;
   editedProfile.value = {
-    username: userStore.username || '',
-    phone_number: userStore.phoneNumber || ''
+    username: userStore.username || ''
   };
 };
 
@@ -262,8 +246,7 @@ const startEdit = () => {
 const cancelEdit = () => {
   profileEditing.value = false;
   editedProfile.value = {
-    username: userStore.username || '',
-    phone_number: userStore.phoneNumber || ''
+    username: userStore.username || ''
   };
 };
 
@@ -276,15 +259,8 @@ const saveProfile = async () => {
       return;
     }
 
-    // 验证手机号格式
-    if (editedProfile.value.phone_number && !validatePhoneNumber(editedProfile.value.phone_number)) {
-      message.error('请输入正确的手机号格式');
-      return;
-    }
-
     await userStore.updateProfile({
-      username: editedProfile.value.username?.trim() || undefined,
-      phone_number: editedProfile.value.phone_number || undefined,
+      username: editedProfile.value.username?.trim() || undefined
     });
     message.success('个人资料更新成功！');
     profileEditing.value = false;
@@ -294,12 +270,7 @@ const saveProfile = async () => {
   }
 };
 
-// 手机号验证
-const validatePhoneNumber = (phone) => {
-  if (!phone) return true; // 空手机号允许
-  const phoneRegex = /^1[3-9]\d{9}$/;
-  return phoneRegex.test(phone);
-};
+
 
 // 头像上传前验证
 const beforeUpload = (file) => {

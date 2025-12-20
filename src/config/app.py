@@ -48,6 +48,7 @@ class Config(SimpleConfig):
         ### >>> 默认配置
         # 功能选项
         self.add_item("enable_reranker", default=False, des="是否开启重排序")
+        self.add_item("rerank_top_k", default=10, des="重排序后返回的最大结果数量")
         # 默认智能体配置
         self.add_item("default_agent_id", default="", des="默认智能体ID")
         # 模型配置

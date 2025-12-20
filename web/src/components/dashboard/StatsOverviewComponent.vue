@@ -46,25 +46,7 @@
         </div>
       </div>
 
-      <div class="stat-card secondary">
-        <div class="stat-icon">
-          <BarChart3 class="icon" />
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ basicStats?.feedback_stats?.total_feedbacks || 0 }}</div>
-          <div class="stat-label">总反馈数</div>
-        </div>
-      </div>
 
-      <div class="stat-card" :class="getSatisfactionClass()">
-        <div class="stat-icon">
-          <Heart class="icon" />
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ basicStats?.feedback_stats?.satisfaction_rate || 0 }}%</div>
-          <div class="stat-label">满意度</div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -80,13 +62,7 @@ const props = defineProps({
   }
 })
 
-// Methods
-const getSatisfactionClass = () => {
-  const rate = props.basicStats?.feedback_stats?.satisfaction_rate || 0
-  if (rate >= 80) return 'satisfaction-high'
-  if (rate >= 60) return 'satisfaction-medium'
-  return 'satisfaction-low'
-}
+
 </script>
 
 <style lang="less" scoped>

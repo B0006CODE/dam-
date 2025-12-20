@@ -9,7 +9,7 @@ from src.storage.db.manager import db_manager
 from src.storage.db.models import User
 from server.utils.auth_middleware import get_admin_user, get_current_user, get_db, get_required_user
 from server.utils.auth_utils import AuthUtils
-from server.utils.user_utils import generate_unique_user_id, validate_username, is_valid_phone_number
+from server.utils.user_utils import generate_unique_user_id, validate_username
 from server.utils.common_utils import log_operation
 from src.storage.minio import upload_image_to_minio
 from src.utils.datetime_utils import utc_now
@@ -25,7 +25,6 @@ class Token(BaseModel):
     user_id: int
     username: str
     user_id_login: str  # 用于登录的user_id
-    phone_number: str | None = None
     avatar: str | None = None
     role: str
 
@@ -34,27 +33,23 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: str = "user"
-    phone_number: str | None = None
 
 
 class UserUpdate(BaseModel):
     username: str | None = None
     password: str | None = None
     role: str | None = None
-    phone_number: str | None = None
     avatar: str | None = None
 
 
 class UserProfileUpdate(BaseModel):
     username: str | None = None
-    phone_number: str | None = None
 
 
 class UserResponse(BaseModel):
     id: int
     username: str
     user_id: str
-    phone_number: str | None = None
     avatar: str | None = None
     role: str
     created_at: str
@@ -64,7 +59,6 @@ class UserResponse(BaseModel):
 class InitializeAdmin(BaseModel):
     user_id: str  # 直接输入用户ID
     password: str
-    phone_number: str | None = None
 
 
 class UsernameValidation(BaseModel):
@@ -90,15 +84,11 @@ class UserIdGeneration(BaseModel):
 
 @auth.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # 查找用户 - 支持user_id和phone_number登录
+    # 通过user_id查找用户
     login_identifier = form_data.username  # OAuth2表单中的username字段作为登录标识符
 
-    # 尝试通过user_id查找
+    # 通过user_id查找
     user = db.query(User).filter(User.user_id == login_identifier).first()
-
-    # 如果通过user_id没找到，尝试通过phone_number查找
-    if not user:
-        user = db.query(User).filter(User.phone_number == login_identifier).first()
 
     # 如果用户不存在，为防止用户名枚举攻击，返回通用错误信息
     if not user:
@@ -167,7 +157,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         "user_id": user.id,
         "username": user.username,
         "user_id_login": user.user_id,
-        "phone_number": user.phone_number,
         "avatar": user.avatar,
         "role": user.role,
     }
@@ -206,17 +195,12 @@ async def initialize_admin(admin_data: InitializeAdmin, db: Session = Depends(ge
             detail="用户ID长度必须在3-20个字符之间",
         )
 
-    # 验证手机号格式（如果提供了）
-    if admin_data.phone_number and not is_valid_phone_number(admin_data.phone_number):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号格式不正确")
-
     # 由于是首次初始化，直接使用输入的user_id
     user_id = admin_data.user_id
 
     new_admin = User(
         username=admin_data.user_id,  # username和user_id设置为相同值
         user_id=user_id,
-        phone_number=admin_data.phone_number,
         avatar=None,  # 初始化时头像为空
         password_hash=hashed_password,
         role="superadmin",
@@ -240,7 +224,6 @@ async def initialize_admin(admin_data: InitializeAdmin, db: Session = Depends(ge
         "user_id": new_admin.id,
         "username": new_admin.username,
         "user_id_login": new_admin.user_id,
-        "phone_number": new_admin.phone_number,
         "avatar": new_admin.avatar,
         "role": new_admin.role,
     }
@@ -291,25 +274,6 @@ async def update_profile(
         current_user.username = profile_data.username
         update_details.append(f"用户名: {profile_data.username}")
 
-    # 更新手机号
-    if profile_data.phone_number is not None:
-        # 如果手机号不为空，验证格式
-        if profile_data.phone_number and not is_valid_phone_number(profile_data.phone_number):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号格式不正确")
-
-        # 检查手机号是否已被其他用户使用
-        if profile_data.phone_number:
-            existing_phone = (
-                db.query(User)
-                .filter(User.phone_number == profile_data.phone_number, User.id != current_user.id)
-                .first()
-            )
-            if existing_phone:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号已被其他用户使用")
-
-        current_user.phone_number = profile_data.phone_number
-        update_details.append(f"手机号: {profile_data.phone_number or '已清空'}")
-
     db.commit()
 
     # 记录操作
@@ -345,15 +309,6 @@ async def create_user(
             detail="用户名已存在",
         )
 
-    # 检查手机号是否已存在（如果提供了）
-    if user_data.phone_number:
-        existing_phone = db.query(User).filter(User.phone_number == user_data.phone_number).first()
-        if existing_phone:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="手机号已存在",
-            )
-
     # 生成唯一的user_id
     existing_user_ids = [user.user_id for user in db.query(User.user_id).all()]
     user_id = generate_unique_user_id(user_data.username, existing_user_ids)
@@ -379,7 +334,6 @@ async def create_user(
     new_user = User(
         username=user_data.username,
         user_id=user_id,
-        phone_number=user_data.phone_number,
         password_hash=hashed_password,
         role=user_data.role,
     )

@@ -62,9 +62,7 @@
               <a-button size="small" @click="loadConversations" :loading="loading">
                 刷新
               </a-button>
-              <a-button size="small" @click="feedbackModal.show()">
-                反馈详情
-              </a-button>
+
             </a-space>
           </template>
 
@@ -100,8 +98,7 @@
       </div>
     </div>
 
-    <!-- 反馈模态框 -->
-    <FeedbackModalComponent ref="feedbackModal" />
+
 
     <!-- 对话详情模态框 -->
     <ConversationDetailModal ref="conversationDetailModal" />
@@ -120,11 +117,11 @@ import UserStatsComponent from '@/components/dashboard/UserStatsComponent.vue'
 import KnowledgeStatsComponent from '@/components/dashboard/KnowledgeStatsComponent.vue'
 import CallStatsComponent from '@/components/dashboard/CallStatsComponent.vue'
 import StatsOverviewComponent from '@/components/dashboard/StatsOverviewComponent.vue'
-import FeedbackModalComponent from '@/components/dashboard/FeedbackModalComponent.vue'
+
 import ConversationDetailModal from '@/components/dashboard/ConversationDetailModal.vue'
 
 // 组件引用
-const feedbackModal = ref(null)
+
 const conversationDetailModal = ref(null)
 
 // 统计数据 - 使用新的响应式结构

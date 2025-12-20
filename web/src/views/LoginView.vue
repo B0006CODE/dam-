@@ -1,27 +1,27 @@
 <template>
-  <!-- 登录页面根容器，根据服务器状态动态添加样式类 -->
+  <!-- 鐧诲綍椤甸潰鏍瑰鍣紝鏍规嵁鏈嶅姟鍣ㄧ姸鎬佸姩鎬佹坊鍔犳牱寮忕被 -->
   <div class="login-view" :class="{ 'has-alert': serverStatus === 'error' }">
-    <!-- 服务状态异常时的顶部提示条 -->
+    <!-- 鏈嶅姟鐘舵€佸紓甯告椂鐨勯《閮ㄦ彁绀烘潯 -->
     <div v-if="serverStatus === 'error'" class="server-status-alert">
       <div class="alert-content">
         <exclamation-circle-outlined class="alert-icon" />
         <div class="alert-text">
-          <div class="alert-title">服务端连接失败</div>
+          <div class="alert-title">鏈嶅姟绔繛鎺ュけ璐?/div>
           <div class="alert-message">{{ serverError }}</div>
         </div>
         <a-button type="link" size="small" @click="checkServerHealth" :loading="healthChecking">
-          重试
+          閲嶈瘯
         </a-button>
       </div>
     </div>
 
 
 
-    <!-- 登录页面主要布局 -->
+    <!-- 鐧诲綍椤甸潰涓昏甯冨眬 -->
     <div class="login-layout">
-      <!-- 左侧品牌形象图片区域 -->
+      <!-- 宸︿晶鍝佺墝褰㈣薄鍥剧墖鍖哄煙 -->
       <div class="login-image-section">
-        <img :src="loginBgImage" alt="登录背景" class="login-bg-image" />
+        <img :src="loginBgImage" alt="鐧诲綍鑳屾櫙" class="login-bg-image" />
         <div class="image-overlay">
           <div class="brand-info">
              <h1 class="brand-title">{{ brandName }}</h1>
@@ -29,93 +29,71 @@
              <p class="brand-description">{{ brandDescription }}</p>
            </div>
           <div class="brand-copyright">
-            <p>{{ infoStore.footer?.copyright || 'Smart Water' }}. {{ infoStore.branding?.copyright || '版权所有' }}</p>
+            <p>{{ infoStore.footer?.copyright || 'Smart Water' }}. {{ infoStore.branding?.copyright || '鐗堟潈鎵€鏈? }}</p>
           </div>
         </div>
       </div>
 
-      <!-- 右侧登录表单区域 -->
-      <!-- 右侧登录表单区域 -->
+      <!-- 鍙充晶鐧诲綍琛ㄥ崟鍖哄煙 -->
+      <!-- 鍙充晶鐧诲綍琛ㄥ崟鍖哄煙 -->
       <div class="login-form-section">
-        <!-- 登录框容器 -->
+        <!-- 鐧诲綍妗嗗鍣?-->
         <div class="login-container">
-          <!-- 登录框头部：显示欢迎语和品牌信息 -->
+          <!-- 鐧诲綍妗嗗ご閮細鏄剧ず娆㈣繋璇拰鍝佺墝淇℃伅 -->
           <header class="login-header">
-            <p class="login-title">欢迎登录</p>
+            <p class="login-title">娆㈣繋鐧诲綍</p>
             <h1 class="login-brand">{{ brandName }}</h1>
             <p v-if="!isFirstRun && brandSubtitle" class="login-subtitle">{{ brandSubtitle }}</p>
           </header>
 
-          <!-- 登录内容区域：包含表单 -->
+          <!-- 鐧诲綍鍐呭鍖哄煙锛氬寘鍚〃鍗?-->
           <div class="login-content" :class="{ 'is-initializing': isFirstRun }">
-            <!-- 初始化管理员表单 -->
+            <!-- 鍒濆鍖栫鐞嗗憳琛ㄥ崟 -->
             <div v-if="isFirstRun" class="login-form login-form--init">
-              <h2>系统初始化，请创建超级管理员</h2>
+              <h2>绯荤粺鍒濆鍖栵紝璇峰垱寤鸿秴绾х鐞嗗憳</h2>
               <a-form
                 :model="adminForm"
                 @finish="handleInitialize"
                 layout="vertical"
               >
                 <a-form-item
-                  label="用户ID"
+                  label="鐢ㄦ埛ID"
                   name="user_id"
                   :rules="[
-                    { required: true, message: '请输入用户ID' },
+                    { required: true, message: '璇疯緭鍏ョ敤鎴稩D' },
                     {
                       pattern: /^[a-zA-Z0-9_]+$/,
-                      message: '用户ID只能包含字母、数字和下划线'
+                      message: '鐢ㄦ埛ID鍙兘鍖呭惈瀛楁瘝銆佹暟瀛楀拰涓嬪垝绾?
                     },
                     {
                       min: 3,
                       max: 20,
-                      message: '用户ID长度必须在3-20个字符之间'
+                      message: '鐢ㄦ埛ID闀垮害蹇呴』鍦?-20涓瓧绗︿箣闂?
                     }
                   ]"
                 >
                   <a-input
                     v-model:value="adminForm.user_id"
-                    placeholder="请输入用户ID（3-20个字符）"
+                    placeholder="璇疯緭鍏ョ敤鎴稩D锛?-20涓瓧绗︼級"
                     :maxlength="20"
                   />
                 </a-form-item>
 
-                <a-form-item
-                  label="手机号（可选）"
-                  name="phone_number"
-                  :rules="[
-                    {
-                      validator: async (rule, value) => {
-                        if (!value || value.trim() === '') {
-                          return; // 空值允许
-                        }
-                        const phoneRegex = /^1[3-9]\d{9}$/;
-                        if (!phoneRegex.test(value)) {
-                          throw new Error('请输入正确的手机号格式');
-                        }
-                      }
-                    }
-                  ]"
-                >
-                  <a-input
-                    v-model:value="adminForm.phone_number"
-                    placeholder="可用于登录，可不填写"
-                    :max-length="11"
-                  />
-                </a-form-item>
+
 
                 <a-form-item
-                  label="密码"
+                  label="瀵嗙爜"
                   name="password"
-                  :rules="[{ required: true, message: '请输入密码' }]"
+                  :rules="[{ required: true, message: '璇疯緭鍏ュ瘑鐮? }]"
                 >
                   <a-input-password v-model:value="adminForm.password" prefix-icon="lock" />
                 </a-form-item>
 
                 <a-form-item
-                  label="确认密码"
+                  label="纭瀵嗙爜"
                   name="confirmPassword"
                   :rules="[
-                    { required: true, message: '请确认密码' },
+                    { required: true, message: '璇风‘璁ゅ瘑鐮? },
                     { validator: validateConfirmPassword }
                   ]"
                 >
@@ -123,12 +101,12 @@
                 </a-form-item>
 
                 <a-form-item>
-                  <a-button type="primary" html-type="submit" :loading="loading" block>创建管理员账户</a-button>
+                  <a-button type="primary" html-type="submit" :loading="loading" block>鍒涘缓绠＄悊鍛樿处鎴?/a-button>
                 </a-form-item>
               </a-form>
             </div>
 
-            <!-- 登录表单 -->
+            <!-- 鐧诲綍琛ㄥ崟 -->
             <div v-else class="login-form">
               <a-form
                 :model="loginForm"
@@ -136,11 +114,11 @@
                 layout="vertical"
               >
                 <a-form-item
-                  label="登录账号"
+                  label="鐧诲綍璐﹀彿"
                   name="loginId"
-                  :rules="[{ required: true, message: '请输入用户ID或手机号' }]"
+                  :rules="[{ required: true, message: '璇疯緭鍏ョ敤鎴稩D' }]"
                 >
-                  <a-input v-model:value="loginForm.loginId" placeholder="用户ID或手机号">
+                  <a-input v-model:value="loginForm.loginId" placeholder="璇疯緭鍏ョ敤鎴稩D">
                     <template #prefix>
                       <user-outlined />
                     </template>
@@ -148,9 +126,9 @@
                 </a-form-item>
 
                 <a-form-item
-                  label="密码"
+                  label="瀵嗙爜"
                   name="password"
-                  :rules="[{ required: true, message: '请输入密码' }]"
+                  :rules="[{ required: true, message: '璇疯緭鍏ュ瘑鐮? }]"
                 >
                   <a-input-password v-model:value="loginForm.password">
                     <template #prefix>
@@ -161,7 +139,7 @@
 
                 <a-form-item>
                   <div class="login-options" style="justify-content: flex-end;">
-                    <a class="forgot-password" @click="showDevMessage">忘记密码?</a>
+                    <a class="forgot-password" @click="showDevMessage">蹇樿瀵嗙爜?</a>
                   </div>
                 </a-form-item>
 
@@ -173,28 +151,28 @@
                     :disabled="isLocked"
                     block
                   >
-                    <span v-if="isLocked">账户已锁定 {{ formatTime(lockRemainingTime) }}</span>
-                    <span v-else>登录</span>
+                    <span v-if="isLocked">璐︽埛宸查攣瀹?{{ formatTime(lockRemainingTime) }}</span>
+                    <span v-else>鐧诲綍</span>
                   </a-button>
                 </a-form-item>
 
-                <!-- 第三方登录选项
+                <!-- 绗笁鏂圭櫥褰曢€夐」
                 <div class="third-party-login">
                   <div class="divider">
-                    <span>其他登录方式</span>
+                    <span>鍏朵粬鐧诲綍鏂瑰紡</span>
                   </div>
                   <div class="login-icons">
-                    <a-tooltip title="微信登录">
+                    <a-tooltip title="寰俊鐧诲綍">
                       <a-button shape="circle" class="login-icon" @click="showDevMessage">
                         <template #icon><wechat-outlined /></template>
                       </a-button>
                     </a-tooltip>
-                    <a-tooltip title="企业微信登录">
+                    <a-tooltip title="浼佷笟寰俊鐧诲綍">
                       <a-button shape="circle" class="login-icon" @click="showDevMessage">
                         <template #icon><qrcode-outlined /></template>
                       </a-button>
                     </a-tooltip>
-                    <a-tooltip title="飞书登录">
+                    <a-tooltip title="椋炰功鐧诲綍">
                       <a-button shape="circle" class="login-icon" @click="showDevMessage">
                         <template #icon><thunderbolt-outlined /></template>
                       </a-button>
@@ -204,17 +182,17 @@
               </a-form>
             </div>
 
-            <!-- 错误提示 -->
+            <!-- 閿欒鎻愮ず -->
             <div v-if="errorMessage" class="error-message">
               {{ errorMessage }}
             </div>
           </div>
 
-          <!-- 页脚 -->
+          <!-- 椤佃剼 -->
           <!-- <div class="login-footer">
-            <a href="#" @click.prevent>联系我们</a>
-            <a href="#" @click.prevent>使用帮助</a>
-            <a href="#" @click.prevent>隐私政策</a>
+            <a href="#" @click.prevent>鑱旂郴鎴戜滑</a>
+            <a href="#" @click.prevent>浣跨敤甯姪</a>
+            <a href="#" @click.prevent>闅愮鏀跨瓥</a>
           </div> -->
         </div>
       </div>
@@ -223,87 +201,86 @@
 </template>
 
 <script setup>
-// Vue 核心功能导入
+// Vue 鏍稿績鍔熻兘瀵煎叆
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
-// 路由功能导入
+// 璺敱鍔熻兘瀵煎叆
 import { useRouter } from 'vue-router';
-// 状态管理仓库导入
+// 鐘舵€佺鐞嗕粨搴撳鍏?
 import { useUserStore } from '@/stores/user';
 import { useInfoStore } from '@/stores/info';
 import { useAgentStore } from '@/stores/agent';
-// UI 组件库导入
+// UI 缁勪欢搴撳鍏?
 import { message } from 'ant-design-vue';
-// API 接口导入
+// API 鎺ュ彛瀵煎叆
 import { healthApi } from '@/apis/system_api';
-// 图标组件导入
+// 鍥炬爣缁勪欢瀵煎叆
 import { UserOutlined, LockOutlined, WechatOutlined, QrcodeOutlined, ThunderboltOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
 
-// 初始化路由和状态仓库
+// 鍒濆鍖栬矾鐢卞拰鐘舵€佷粨搴?
 const router = useRouter();
 const userStore = useUserStore();
 const infoStore = useInfoStore();
 const agentStore = useAgentStore();
 
-// 品牌展示数据
-// 品牌展示数据计算属性
-// 登录背景图，优先使用配置的背景，否则使用默认背景
+// 鍝佺墝灞曠ず鏁版嵁
+// 鍝佺墝灞曠ず鏁版嵁璁＄畻灞炴€?
+// 鐧诲綍鑳屾櫙鍥撅紝浼樺厛浣跨敤閰嶇疆鐨勮儗鏅紝鍚﹀垯浣跨敤榛樿鑳屾櫙
 const loginBgImage = computed(() => {
   return infoStore.organization?.login_bg || '/login-bg.jpg';
 });
-// 品牌名称，优先使用配置的名称，否则使用默认名称
+// 鍝佺墝鍚嶇О锛屼紭鍏堜娇鐢ㄩ厤缃殑鍚嶇О锛屽惁鍒欎娇鐢ㄩ粯璁ゅ悕绉?
 const brandName = computed(() => {
   const rawName = infoStore.branding?.name ?? '';
   const trimmed = rawName.trim();
-  return trimmed || 'AI 驱动的智能水利问答平台';
+  return trimmed || 'AI 椹卞姩鐨勬櫤鑳芥按鍒╅棶绛斿钩鍙?;
 });
-// 品牌副标题
+// 鍝佺墝鍓爣棰?
 const brandSubtitle = computed(() => {
   const rawSubtitle = infoStore.branding?.subtitle ?? '';
   const trimmed = rawSubtitle.trim();
-  return trimmed || '大模型驱动的知识库管理工具';
+  return trimmed || '澶фā鍨嬮┍鍔ㄧ殑鐭ヨ瘑搴撶鐞嗗伐鍏?;
 });
-// 品牌描述
+// 鍝佺墝鎻忚堪
 const brandDescription = computed(() => {
   const rawDescription = infoStore.branding?.description ?? '';
   const trimmed = rawDescription.trim();
-  return trimmed || '结合知识库与知识图谱，提供更准确、更全面的回答';
+  return trimmed || '缁撳悎鐭ヨ瘑搴撲笌鐭ヨ瘑鍥捐氨锛屾彁渚涙洿鍑嗙‘銆佹洿鍏ㄩ潰鐨勫洖绛?;
 });
 
-// 状态
-// 页面状态变量
-const isFirstRun = ref(false); // 是否首次运行（需要初始化管理员）
-const loading = ref(false); // 表单提交加载状态
-const errorMessage = ref(''); // 错误提示信息
-const serverStatus = ref('loading'); // 服务器连接状态：loading, ok, error
-const serverError = ref(''); // 服务器错误信息
-const healthChecking = ref(false); // 健康检查加载状态
+// 鐘舵€?
+// 椤甸潰鐘舵€佸彉閲?
+const isFirstRun = ref(false); // 鏄惁棣栨杩愯锛堥渶瑕佸垵濮嬪寲绠＄悊鍛橈級
+const loading = ref(false); // 琛ㄥ崟鎻愪氦鍔犺浇鐘舵€?
+const errorMessage = ref(''); // 閿欒鎻愮ず淇℃伅
+const serverStatus = ref('loading'); // 鏈嶅姟鍣ㄨ繛鎺ョ姸鎬侊細loading, ok, error
+const serverError = ref(''); // 鏈嶅姟鍣ㄩ敊璇俊鎭?
+const healthChecking = ref(false); // 鍋ュ悍妫€鏌ュ姞杞界姸鎬?
 
-// 登录锁定相关状态变量
-const isLocked = ref(false); // 账户是否被锁定
-const lockRemainingTime = ref(0); // 锁定剩余时间（秒）
-const lockCountdown = ref(null); // 倒计时定时器引用
+// 鐧诲綍閿佸畾鐩稿叧鐘舵€佸彉閲?
+const isLocked = ref(false); // 璐︽埛鏄惁琚攣瀹?
+const lockRemainingTime = ref(0); // 閿佸畾鍓╀綑鏃堕棿锛堢锛?
+const lockCountdown = ref(null); // 鍊掕鏃跺畾鏃跺櫒寮曠敤
 
-// 登录表单
+// 鐧诲綍琛ㄥ崟
 const loginForm = reactive({
-  loginId: '', // 支持user_id或phone_number登录
+  loginId: '', // 鐢ㄦ埛ID鐧诲綍
   password: ''
 });
 
-// 管理员初始化表单
+// 绠＄悊鍛樺垵濮嬪寲琛ㄥ崟
 const adminForm = reactive({
-  user_id: '', // 改为直接输入user_id
+  user_id: '', // 鐩存帴杈撳叆user_id
   password: '',
-  confirmPassword: '',
-  phone_number: '' // 手机号字段（可选）
+  confirmPassword: ''
 });
 
-// 开发中功能提示
-// 显示功能开发中提示
+// 寮€鍙戜腑鍔熻兘鎻愮ず
+// 鏄剧ず鍔熻兘寮€鍙戜腑鎻愮ず
 const showDevMessage = () => {
-  message.info('该功能正在开发中，敬请期待！');
+  message.info('璇ュ姛鑳芥鍦ㄥ紑鍙戜腑锛屾暚璇锋湡寰咃紒');
 };
 
-// 清理锁定倒计时器
+// 娓呯悊閿佸畾鍊掕鏃跺櫒
 const clearLockCountdown = () => {
   if (lockCountdown.value) {
     clearInterval(lockCountdown.value);
@@ -311,7 +288,7 @@ const clearLockCountdown = () => {
   }
 };
 
-// 启动锁定倒计时
+// 鍚姩閿佸畾鍊掕鏃?
 const startLockCountdown = (remainingSeconds) => {
   clearLockCountdown();
   isLocked.value = true;
@@ -327,106 +304,88 @@ const startLockCountdown = (remainingSeconds) => {
   }, 1000);
 };
 
-// 格式化时间显示
+// 鏍煎紡鍖栨椂闂存樉绀?
 const formatTime = (seconds) => {
   if (seconds < 60) {
-    return `${seconds}秒`;
+    return `${seconds}绉抈;
   } else if (seconds < 3600) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}分${remainingSeconds}秒`;
+    return `${minutes}鍒?{remainingSeconds}绉抈;
   } else if (seconds < 86400) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}小时${minutes}分钟`;
+    return `${hours}灏忔椂${minutes}鍒嗛挓`;
   } else {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
-    return `${days}天${hours}小时`;
+    return `${days}澶?{hours}灏忔椂`;
   }
 };
 
-// 密码确认验证
+// 瀵嗙爜纭楠岃瘉
 const validateConfirmPassword = async (rule, value) => {
   if (value === '') {
-    throw new Error('请确认密码');
+    throw new Error('璇风‘璁ゅ瘑鐮?);
   }
   if (value !== adminForm.password) {
-    throw new Error('两次输入的密码不一致');
+    throw new Error('涓ゆ杈撳叆鐨勫瘑鐮佷笉涓€鑷?);
   }
 };
 
-// 处理登录
-// 处理登录提交逻辑
+// 澶勭悊鐧诲綍
+// 澶勭悊鐧诲綍鎻愪氦閫昏緫
 const handleLogin = async () => {
-  // 如果当前被锁定，不允许登录
+  // 濡傛灉褰撳墠琚攣瀹氾紝涓嶅厑璁哥櫥褰?
   if (isLocked.value) {
-    message.warning(`账户被锁定，请等待 ${formatTime(lockRemainingTime.value)}`);
+    message.warning(`璐︽埛琚攣瀹氾紝璇风瓑寰?${formatTime(lockRemainingTime.value)}`);
     return;
   }
 
   try {
-    // 设置加载状态并清除错误信息
+    // 璁剧疆鍔犺浇鐘舵€佸苟娓呴櫎閿欒淇℃伅
     loading.value = true;
     errorMessage.value = '';
     clearLockCountdown();
 
-    // 调用 store 的登录方法
+    // 璋冪敤 store 鐨勭櫥褰曟柟娉?
     await userStore.login({
       loginId: loginForm.loginId,
       password: loginForm.password
     });
 
-    message.success('登录成功');
+    message.success('鐧诲綍鎴愬姛');
 
-    // 获取重定向路径（如果存在）
+    // 鑾峰彇閲嶅畾鍚戣矾寰勶紙濡傛灉瀛樺湪锛?
     const redirectPath = sessionStorage.getItem('redirect') || '/';
-    sessionStorage.removeItem('redirect'); // 清除重定向信息
+    sessionStorage.removeItem('redirect'); // 娓呴櫎閲嶅畾鍚戜俊鎭?
 
-    // 根据用户角色决定重定向目标
+    // 鏍规嵁鐢ㄦ埛瑙掕壊鍐冲畾閲嶅畾鍚戠洰鏍?
     if (redirectPath === '/') {
-      // 如果是管理员，直接跳转到智能体管理页面
+      // 濡傛灉鏄鐞嗗憳锛岀洿鎺ヨ烦杞埌鏅鸿兘浣撶鐞嗛〉闈?
       if (userStore.isAdmin) {
         router.push('/agent');
         return;
       }
 
-      // 普通用户跳转到默认智能体页面
+      // 鏅€氱敤鎴疯烦杞埌榛樿鏅鸿兘浣撻〉闈?
       try {
-        // 初始化agentStore并获取智能体信息
         await agentStore.initialize();
-
-        // 尝试获取默认智能体
-        const defaultAgent = agentStore.defaultAgent;
-        if (defaultAgent?.id) {
-          // 如果存在默认智能体，直接跳转
-          router.push(`/agent/${defaultAgent.id}`);
-          return;
-        }
-
-        // 没有默认智能体，获取第一个可用智能体
-        const agentIds = Object.keys(agentStore.agents);
-        if (agentIds.length > 0) {
-          router.push(`/agent/${agentIds[0]}`);
-          return;
-        }
-
-        // 没有可用的智能体，跳转到智能体管理页面
-        router.push('/agent');
       } catch (error) {
-        console.error('获取智能体信息失败:', error);
-        router.push('/agent');
+        console.error('鑾峰彇鏅鸿兘浣撲俊鎭け璐?', error);
       }
+      router.push('/agent');
+      return;
     } else {
-      // 跳转到其他预设的路径
+      // 璺宠浆鍒板叾浠栭璁剧殑璺緞
       router.push(redirectPath);
     }
   } catch (error) {
-    console.error('登录失败:', error);
+    console.error('鐧诲綍澶辫触:', error);
 
-    // 检查是否是锁定错误（HTTP 423）
+    // 妫€鏌ユ槸鍚︽槸閿佸畾閿欒锛圚TTP 423锛?
     if (error.status === 423) {
-      // 尝试从响应头中获取剩余时间
+      // 灏濊瘯浠庡搷搴斿ご涓幏鍙栧墿浣欐椂闂?
       let remainingTime = 0;
       if (error.headers && error.headers.get) {
         const lockRemainingHeader = error.headers.get('X-Lock-Remaining');
@@ -435,73 +394,72 @@ const handleLogin = async () => {
         }
       }
 
-      // 如果没有从头中获取到，尝试从错误消息中解析
+      // 濡傛灉娌℃湁浠庡ご涓幏鍙栧埌锛屽皾璇曚粠閿欒娑堟伅涓В鏋?
       if (remainingTime === 0) {
-        const lockTimeMatch = error.message.match(/(\d+)\s*秒/);
+        const lockTimeMatch = error.message.match(/(\d+)\s*绉?);
         if (lockTimeMatch) {
           remainingTime = parseInt(lockTimeMatch[1]);
         }
       }
 
-      // 如果获取到了剩余时间，启动倒计时
+      // 濡傛灉鑾峰彇鍒颁簡鍓╀綑鏃堕棿锛屽惎鍔ㄥ€掕鏃?
       if (remainingTime > 0) {
         startLockCountdown(remainingTime);
-        errorMessage.value = `由于多次登录失败，账户已被锁定 ${formatTime(remainingTime)}`;
+        errorMessage.value = `鐢变簬澶氭鐧诲綍澶辫触锛岃处鎴峰凡琚攣瀹?${formatTime(remainingTime)}`;
       } else {
-        errorMessage.value = error.message || '账户被锁定，请稍后再试';
+        errorMessage.value = error.message || '璐︽埛琚攣瀹氾紝璇风◢鍚庡啀璇?;
       }
     } else {
-      // 其他登录错误
-      errorMessage.value = error.message || '登录失败，请检查用户名和密码';
+      // 鍏朵粬鐧诲綍閿欒
+      errorMessage.value = error.message || '鐧诲綍澶辫触锛岃妫€鏌ョ敤鎴峰悕鍜屽瘑鐮?;
     }
   } finally {
-    // 无论成功失败，取消加载状态
+    // 鏃犺鎴愬姛澶辫触锛屽彇娑堝姞杞界姸鎬?
     loading.value = false;
   }
 };
 
-// 处理初始化管理员
+// 澶勭悊鍒濆鍖栫鐞嗗憳
 const handleInitialize = async () => {
   try {
     loading.value = true;
     errorMessage.value = '';
 
     if (adminForm.password !== adminForm.confirmPassword) {
-      errorMessage.value = '两次输入的密码不一致';
+      errorMessage.value = '涓ゆ杈撳叆鐨勫瘑鐮佷笉涓€鑷?;
       return;
     }
 
     await userStore.initialize({
       user_id: adminForm.user_id,
-      password: adminForm.password,
-      phone_number: adminForm.phone_number || null // 空字符串转为null
+      password: adminForm.password
     });
 
-    message.success('管理员账户创建成功');
+    message.success('绠＄悊鍛樿处鎴峰垱寤烘垚鍔?);
     router.push('/agent');
   } catch (error) {
-    console.error('初始化失败:', error);
-    errorMessage.value = error.message || '初始化失败，请重试';
+    console.error('鍒濆鍖栧け璐?', error);
+    errorMessage.value = error.message || '鍒濆鍖栧け璐ワ紝璇烽噸璇?;
   } finally {
     loading.value = false;
   }
 };
 
-// 检查是否是首次运行
+// 妫€鏌ユ槸鍚︽槸棣栨杩愯
 const checkFirstRunStatus = async () => {
   try {
     loading.value = true;
     const isFirst = await userStore.checkFirstRun();
     isFirstRun.value = isFirst;
   } catch (error) {
-    console.error('检查首次运行状态失败:', error);
-    errorMessage.value = '系统出错，请稍后重试';
+    console.error('妫€鏌ラ娆¤繍琛岀姸鎬佸け璐?', error);
+    errorMessage.value = '绯荤粺鍑洪敊锛岃绋嶅悗閲嶈瘯';
   } finally {
     loading.value = false;
   }
 };
 
-// 检查服务器健康状态
+// 妫€鏌ユ湇鍔″櫒鍋ュ悍鐘舵€?
 const checkServerHealth = async () => {
   try {
     healthChecking.value = true;
@@ -510,56 +468,56 @@ const checkServerHealth = async () => {
       serverStatus.value = 'ok';
     } else {
       serverStatus.value = 'error';
-      serverError.value = response.message || '服务端状态异常';
+      serverError.value = response.message || '鏈嶅姟绔姸鎬佸紓甯?;
     }
   } catch (error) {
-    console.error('检查服务器健康状态失败:', error);
+    console.error('妫€鏌ユ湇鍔″櫒鍋ュ悍鐘舵€佸け璐?', error);
     serverStatus.value = 'error';
-    serverError.value = error.message || '无法连接到服务端，请检查网络连接';
+    serverError.value = error.message || '鏃犳硶杩炴帴鍒版湇鍔＄锛岃妫€鏌ョ綉缁滆繛鎺?;
   } finally {
     healthChecking.value = false;
   }
 };
 
-// 组件挂载时
-// 组件挂载时的生命周期钩子
+// 缁勪欢鎸傝浇鏃?
+// 缁勪欢鎸傝浇鏃剁殑鐢熷懡鍛ㄦ湡閽╁瓙
 onMounted(async () => {
-  // 如果用户已登录，直接跳转到智能体页面
+  // 濡傛灉鐢ㄦ埛宸茬櫥褰曪紝鐩存帴璺宠浆鍒版櫤鑳戒綋椤甸潰
   if (userStore.isLoggedIn) {
     router.push('/agent');
     return;
   }
 
-  // 首先检查服务器健康状态
+  // 棣栧厛妫€鏌ユ湇鍔″櫒鍋ュ悍鐘舵€?
   await checkServerHealth();
 
-  // 检查系统是否是首次运行（是否需要初始化）
+  // 妫€鏌ョ郴缁熸槸鍚︽槸棣栨杩愯锛堟槸鍚﹂渶瑕佸垵濮嬪寲锛?
   await checkFirstRunStatus();
 });
 
-// 组件卸载时的生命周期钩子
+// 缁勪欢鍗歌浇鏃剁殑鐢熷懡鍛ㄦ湡閽╁瓙
 onUnmounted(() => {
-  // 清理锁定倒计时器，防止内存泄漏
+  // 娓呯悊閿佸畾鍊掕鏃跺櫒锛岄槻姝㈠唴瀛樻硠婕?
   clearLockCountdown();
 });
 </script>
 
 <style lang="less" scoped>
-/* 登录页面整体容器 */
+/* 鐧诲綍椤甸潰鏁翠綋瀹瑰櫒 */
 .login-view {
   height: 100vh;
   width: 100%;
   position: relative;
   padding-top: 0;
-  background: transparent; /* 使用全局背景 */
+  background: transparent; /* 浣跨敤鍏ㄥ眬鑳屾櫙 */
 
-  /* 当有顶部警告条时的样式调整 */
+  /* 褰撴湁椤堕儴璀﹀憡鏉℃椂鐨勬牱寮忚皟鏁?*/
   &.has-alert {
     padding-top: 60px;
   }
 }
 
-/* 顶部操作按钮区域 */
+/* 椤堕儴鎿嶄綔鎸夐挳鍖哄煙 */
 .login-top-action {
   position: absolute;
   top: 24px;
@@ -579,29 +537,29 @@ onUnmounted(() => {
   }
 }
 
-/* 登录布局容器：左右分栏 */
+/* 鐧诲綍甯冨眬瀹瑰櫒锛氬乏鍙冲垎鏍?*/
 .login-layout {
   display: flex;
   min-height: 100%;
   width: 100%;
-  background: transparent; /* 透明，显示 body 背景 */
+  background: transparent; /* 閫忔槑锛屾樉绀?body 鑳屾櫙 */
 }
 
-/* 左侧图片区域样式 */
+/* 宸︿晶鍥剧墖鍖哄煙鏍峰紡 */
 .login-image-section {
-  flex: 0 0 52%; /* 占据 52% 宽度 */
+  flex: 0 0 52%; /* 鍗犳嵁 52% 瀹藉害 */
   position: relative;
   overflow: hidden;
   max-height: 100vh;
-  border-right: var(--glass-border); /* 添加右侧边框 */
+  border-right: var(--glass-border); /* 娣诲姞鍙充晶杈规 */
 
-  /* 背景图片样式 */
+  /* 鑳屾櫙鍥剧墖鏍峰紡 */
   .login-bg-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: center;
-    filter: brightness(0.7) contrast(1.1); /* 降低亮度，增加对比度 */
+    filter: brightness(0.7) contrast(1.1); /* 闄嶄綆浜害锛屽鍔犲姣斿害 */
   }
 
   .image-overlay {
@@ -610,7 +568,7 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(to right, rgba(6, 42, 92, 0.8), rgba(6, 42, 92, 0.4)); /* 蓝色渐变遮罩 */
+    background: linear-gradient(to right, rgba(6, 42, 92, 0.8), rgba(6, 42, 92, 0.4)); /* 钃濊壊娓愬彉閬僵 */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -668,9 +626,9 @@ onUnmounted(() => {
   }
 }
 
-/* 右侧表单区域样式 */
+/* 鍙充晶琛ㄥ崟鍖哄煙鏍峰紡 */
 .login-form-section {
-  flex: 1; /* 占据剩余宽度 */
+  flex: 1; /* 鍗犳嵁鍓╀綑瀹藉害 */
   min-width: 420px;
   display: flex;
   justify-content: center;
@@ -679,7 +637,7 @@ onUnmounted(() => {
   background: transparent;
 }
 
-/* 登录框容器样式 */
+/* 鐧诲綍妗嗗鍣ㄦ牱寮?*/
 .login-container {
   width: 100%;
   max-width: 560px;

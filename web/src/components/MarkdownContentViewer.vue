@@ -185,7 +185,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bg-elevated); /* 使用系统提升背景色，与整体背景保持一致 */
+  background: #1e293b; /* 使用 Slate-800 */
   backdrop-filter: blur(10px);
 }
 
@@ -194,7 +194,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 4px 16px;
-  background: rgba(15, 23, 42, 0.8);
+  background: #1e293b;
   border-bottom: var(--glass-border);
 }
 
@@ -282,6 +282,7 @@ onUnmounted(() => {
 
 .markdown-content :deep(.md-editor-dark) {
   --md-bk-color: transparent !important; /* 强制编辑器背景透明 */
+  background: transparent !important;
 }
 
 .markdown-content :deep(.md-editor) {
@@ -295,7 +296,7 @@ onUnmounted(() => {
 .chunk-panel {
   width: 300px;
   overflow-y: auto;
-  background: rgba(15, 23, 42, 0.45);
+  background: #1e293b;
   padding: 16px;
   min-height: 0; /* 确保flex项目可以缩小 */
 }

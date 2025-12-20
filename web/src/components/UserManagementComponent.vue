@@ -45,10 +45,6 @@
 
               <div class="card-content">
                 <div class="info-item">
-                  <span class="info-label">手机号:</span>
-                  <span class="info-value phone-text">{{ user.phone_number || '-' }}</span>
-                </div>
-                <div class="info-item">
                   <span class="info-label">创建时间:</span>
                   <span class="info-value time-text">{{ formatTime(user.created_at) }}</span>
                 </div>
@@ -123,18 +119,7 @@
           <div v-else class="help-text">编辑模式下不能修改用户ID</div>
         </a-form-item>
 
-        <!-- 手机号字段 -->
-        <a-form-item label="手机号" class="form-item">
-          <a-input
-            v-model:value="userManagement.form.phoneNumber"
-            placeholder="请输入手机号（可选，可用于登录）"
-            size="large"
-            :maxlength="11"
-          />
-          <div v-if="userManagement.form.phoneError" class="error-text">
-            {{ userManagement.form.phoneError }}
-          </div>
-        </a-form-item>
+
 
         <template v-if="userManagement.editMode">
           <div class="password-toggle">
@@ -199,14 +184,12 @@ const userManagement = reactive({
   form: {
     username: '',
     generatedUserId: '', // 自动生成的user_id
-    phoneNumber: '', // 手机号
     password: '',
     confirmPassword: '',
     role: 'user', // 默认角色
-    usernameError: '', // 用户名错误信息
-    phoneError: '' // 手机号错误信息
+    usernameError: '' // 用户名错误信息
   },
-  displayPasswordFields: true, // 编辑时是否显示密码字段
+  displayPasswordFields: true // 编辑时是否显示密码字段
 });
 
 // 添加验证用户名并生成user_id的函数
@@ -234,32 +217,12 @@ const validateAndGenerateUserId = async () => {
   }
 };
 
-// 验证手机号格式
-const validatePhoneNumber = (phone) => {
-  if (!phone) {
-    return true; // 手机号可选
-  }
-
-  // 中国大陆手机号格式验证
-  const phoneRegex = /^1[3-9]\d{9}$/;
-  return phoneRegex.test(phone);
-};
-
 // 监听密码字段显示状态变化
 watch(() => userManagement.displayPasswordFields, (newVal) => {
   // 当取消显示密码字段时，清空密码输入
   if (!newVal) {
     userManagement.form.password = '';
     userManagement.form.confirmPassword = '';
-  }
-});
-
-// 监听手机号输入变化
-watch(() => userManagement.form.phoneNumber, (newPhone) => {
-  userManagement.form.phoneError = '';
-
-  if (newPhone && !validatePhoneNumber(newPhone)) {
-    userManagement.form.phoneError = '请输入正确的手机号格式';
   }
 });
 
@@ -289,12 +252,10 @@ const showAddUserModal = () => {
   userManagement.form = {
     username: '',
     generatedUserId: '',
-    phoneNumber: '',
     password: '',
     confirmPassword: '',
     role: 'user',  // 默认角色为普通用户
-    usernameError: '',
-    phoneError: ''
+    usernameError: ''
   };
   userManagement.displayPasswordFields = true;
   userManagement.modalVisible = true;
@@ -308,12 +269,10 @@ const showEditUserModal = (user) => {
   userManagement.form = {
     username: user.username,
     generatedUserId: user.user_id || '', // 编辑模式显示现有的user_id
-    phoneNumber: user.phone_number || '',
     password: '',
     confirmPassword: '',
     role: user.role,
-    usernameError: '',
-    phoneError: ''
+    usernameError: ''
   };
   userManagement.displayPasswordFields = false; // 默认不显示密码字段
   userManagement.modalVisible = true;
@@ -331,12 +290,6 @@ const handleUserFormSubmit = async () => {
     // 验证用户名长度
     if (userManagement.form.username.trim().length < 2 || userManagement.form.username.trim().length > 20) {
       notification.error({ message: '用户名长度必须在 2-20 个字符之间' });
-      return;
-    }
-
-    // 验证手机号
-    if (userManagement.form.phoneNumber && !validatePhoneNumber(userManagement.form.phoneNumber)) {
-      notification.error({ message: '请输入正确的手机号格式' });
       return;
     }
 
@@ -362,11 +315,6 @@ const handleUserFormSubmit = async () => {
         role: userManagement.form.role
       };
 
-      // 添加手机号字段
-      if (userManagement.form.phoneNumber) {
-        updateData.phone_number = userManagement.form.phoneNumber;
-      }
-
       // 如果显示了密码字段并且填写了密码，才更新密码
       if (userManagement.displayPasswordFields && userManagement.form.password) {
         updateData.password = userManagement.form.password;
@@ -381,11 +329,6 @@ const handleUserFormSubmit = async () => {
         password: userManagement.form.password,
         role: userManagement.form.role
       };
-
-      // 添加手机号字段（如果填写了）
-      if (userManagement.form.phoneNumber) {
-        createData.phone_number = userManagement.form.phoneNumber;
-      }
 
       await userStore.createUser(createData);
       notification.success({ message: '用户创建成功' });
@@ -611,10 +554,6 @@ onMounted(() => {
                 &.time-text {
                   color: var(--gray-700);
                 }
-
-                &.phone-text {
-                  font-family: 'Monaco', 'Consolas', monospace;
-                }
               }
             }
           }
@@ -660,7 +599,7 @@ onMounted(() => {
     color: var(--gray-700);
   }
 
-  .phone-text, .user-id-text {
+  .user-id-text {
     font-size: 13px;
     color: var(--gray-900);
     font-family: 'Monaco', 'Consolas', monospace;

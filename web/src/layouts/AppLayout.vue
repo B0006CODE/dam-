@@ -223,7 +223,7 @@ const visibleNavItems = computed(() =>
 
 <style lang="less" scoped>
 // Less 变量定义
-@header-width: 74px;
+@header-width: 86px;
 
 .app-layout {
   display: flex;
@@ -282,8 +282,8 @@ div.header, #app-router-view {
   }
 
   .logo {
-    width: 42px;
-    height: 42px;
+    width: 46px;
+    height: 46px;
     margin: 24px 0;
     padding: 2px;
     background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
@@ -300,12 +300,12 @@ div.header, #app-router-view {
   .nav-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     align-items: center;
     justify-content: center;
-    width: 60px;
-    min-height: 60px;
-    padding: 8px;
+    width: 64px;
+    min-height: 64px;
+    padding: 10px 8px;
     border-radius: 12px;
     color: rgba(255, 255, 255, 0.6);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -373,7 +373,64 @@ div.header, #app-router-view {
 }
 
 
+
+@media (max-width: 1024px) {
+  .app-layout {
+    .header {
+      .nav-item {
+        width: 58px;
+        min-height: 58px;
+        padding: 8px 6px;
+        gap: 4px;
+      }
+
+      .nav-text {
+        font-size: 10px;
+      }
+
+      .logo {
+        width: 40px;
+        height: 40px;
+        margin: 20px 0;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-container {
+    padding: 20px 24px !important;
+  }
+  
+  .app-layout {
+    .header {
+      width: 68px;
+      
+      .nav-item {
+        width: 52px;
+        min-height: 52px;
+        padding: 6px;
+        gap: 3px;
+      }
+
+      .nav-text {
+        font-size: 9px;
+      }
+
+      .logo {
+        width: 36px;
+        height: 36px;
+        margin: 16px 0;
+      }
+    }
+  }
+}
+
 @media (max-width: 520px) {
+  .layout-container {
+    padding: 16px 20px !important;
+  }
+  
   .app-layout {
     flex-direction: column-reverse;
 

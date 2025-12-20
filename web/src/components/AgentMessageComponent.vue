@@ -92,9 +92,7 @@
       </div>
 
 
-      <div v-if="(message.role=='received' || message.role=='assistant') && message.status=='finished' && showRefs">
-        <RefsComponent :message="message" :show-refs="showRefs" :is-latest-message="isLatestMessage" @retry="emit('retry')" @openRefs="emit('openRefs', $event)" />
-      </div>
+
       <!-- 错误消息 -->
     </div>
 
@@ -108,7 +106,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { CaretRightOutlined, ThunderboltOutlined, LoadingOutlined } from '@ant-design/icons-vue';
-import RefsComponent from '@/components/RefsComponent.vue'
+
 import { Loader, CircleCheckBig } from 'lucide-vue-next';
 import { ToolResultRenderer, KnowledgeGraphResult } from '@/components/ToolCallingResult'
 import { useAgentStore } from '@/stores/agent'

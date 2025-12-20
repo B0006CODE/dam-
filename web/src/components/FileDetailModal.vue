@@ -85,7 +85,7 @@ import MarkdownContentViewer from './MarkdownContentViewer.vue';
   }
 
   .ant-modal-content {
-    background: #020617 !important;
+    background: #1e293b !important;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
     padding: 0;

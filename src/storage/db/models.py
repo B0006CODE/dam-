@@ -222,7 +222,6 @@ class User(Base):
             "id": self.id,
             "username": self.username,
             "user_id": self.user_id,
-            "phone_number": self.phone_number,
             "avatar": self.avatar,
             "role": self.role,
             "created_at": format_utc_datetime(self.created_at),

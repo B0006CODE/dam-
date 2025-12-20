@@ -246,7 +246,19 @@ class ChromaKB(KnowledgeBase):
             raise ValueError(f"Database {db_id} not found")
 
         try:
-            top_k = kwargs.get("top_k", 10)
+            # 当启用 reranker 时，初始检索更多结果以供重排序
+            from src import config
+            from src.models.rerank import rerank_chunks
+            
+            rerank_top_k = config.rerank_top_k or 10
+            initial_top_k = kwargs.get("top_k", 10)
+            
+            # 如果启用了 reranker，检索更多结果用于重排序
+            if config.enable_reranker:
+                top_k = max(initial_top_k * 3, 30)  # 至少检索 3 倍或 30 个结果
+            else:
+                top_k = initial_top_k
+                
             similarity_threshold = kwargs.get("similarity_threshold", 0.0)
 
             results = collection.query(
@@ -275,6 +287,12 @@ class ChromaKB(KnowledgeBase):
                 retrieved_chunks.append({"content": doc, "metadata": metadata, "score": similarity})
 
             logger.debug(f"ChromaDB query response: {len(retrieved_chunks)} chunks found (after similarity filtering)")
+            
+            # 应用 rerank（如果启用）
+            if config.enable_reranker and retrieved_chunks:
+                retrieved_chunks = rerank_chunks(query_text, retrieved_chunks, top_k=rerank_top_k)
+                logger.debug(f"After rerank: {len(retrieved_chunks)} chunks returned")
+            
             return retrieved_chunks
 
         except Exception as e:

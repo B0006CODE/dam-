@@ -2,7 +2,7 @@ import os
 from collections import deque
 from pathlib import Path
 
-import requests
+import httpx
 import yaml
 from fastapi import APIRouter, Body, Depends, HTTPException
 
@@ -182,17 +182,18 @@ async def check_ocr_services_health(current_user: User = Depends(get_admin_user)
         mineru_uri = os.getenv("MINERU_OCR_URI", "http://localhost:30000")
         health_url = f"{mineru_uri}/health"
 
-        response = requests.get(health_url, timeout=5)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(health_url)
         if response.status_code == 200:
             health_status["mineru_ocr"]["status"] = "healthy"
             health_status["mineru_ocr"]["message"] = f"MinerU服务运行正常 ({mineru_uri})"
         else:
             health_status["mineru_ocr"]["status"] = "unhealthy"
             health_status["mineru_ocr"]["message"] = f"MinerU服务响应异常({mineru_uri}): {response.status_code}"
-    except requests.exceptions.ConnectionError:
+    except httpx.ConnectError:
         health_status["mineru_ocr"]["status"] = "unavailable"
         health_status["mineru_ocr"]["message"] = "MinerU服务无法连接，请检查服务是否启动"
-    except requests.exceptions.Timeout:
+    except httpx.TimeoutException:
         health_status["mineru_ocr"]["status"] = "timeout"
         health_status["mineru_ocr"]["message"] = "MinerU服务连接超时"
     except Exception as e:
@@ -204,17 +205,18 @@ async def check_ocr_services_health(current_user: User = Depends(get_admin_user)
         paddlex_uri = os.getenv("PADDLEX_URI", "http://localhost:8080")
         health_url = f"{paddlex_uri}/health"
 
-        response = requests.get(health_url, timeout=5)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(health_url)
         if response.status_code == 200:
             health_status["paddlex_ocr"]["status"] = "healthy"
             health_status["paddlex_ocr"]["message"] = f"PaddleX服务运行正常({paddlex_uri})"
         else:
             health_status["paddlex_ocr"]["status"] = "unhealthy"
             health_status["paddlex_ocr"]["message"] = f"PaddleX服务响应异常({paddlex_uri}): {response.status_code}"
-    except requests.exceptions.ConnectionError:
+    except httpx.ConnectError:
         health_status["paddlex_ocr"]["status"] = "unavailable"
         health_status["paddlex_ocr"]["message"] = "PaddleX服务无法连接，请检查服务是否启动({paddlex_uri})"
-    except requests.exceptions.Timeout:
+    except httpx.TimeoutException:
         health_status["paddlex_ocr"]["status"] = "timeout"
         health_status["paddlex_ocr"]["message"] = "PaddleX服务连接超时({paddlex_uri})"
     except Exception as e:

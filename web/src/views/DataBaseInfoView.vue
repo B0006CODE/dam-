@@ -1,6 +1,7 @@
 <template>
 <div class="database-info-container">
   <DatabaseHeader />
+  <BreadcrumbNav />
 
   <!-- Maximize Graph Modal -->
   <a-modal
@@ -75,6 +76,7 @@ import FileTable from '@/components/FileTable.vue';
 import FileDetailModal from '@/components/FileDetailModal.vue';
 import FileUploadModal from '@/components/FileUploadModal.vue';
 import KnowledgeGraphSection from '@/components/KnowledgeGraphSection.vue';
+import BreadcrumbNav from '@/components/BreadcrumbNav.vue';
 
 const route = useRoute();
 const store = useDatabaseStore();

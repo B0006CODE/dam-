@@ -144,13 +144,7 @@
             @retry="retryMessage(message)"
           >
           </AgentMessageComponent>
-          <!-- 显示对话最后一个消息使用的模型 -->
-          <RefsComponent
-            v-if="getLastMessage(conv) && conv.status !== 'streaming'"
-            :message="getLastMessage(conv)"
-            :show-refs="['model', 'copy']"
-            :is-latest-message="false"
-          />
+
         </div>
 
         <!-- 生成中的加载状态 -->
@@ -198,7 +192,7 @@ import { message } from 'ant-design-vue';
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import AgentMessageComponent from '@/components/AgentMessageComponent.vue'
 import ChatSidebarComponent from '@/components/ChatSidebarComponent.vue'
-import RefsComponent from '@/components/RefsComponent.vue'
+
 import { PanelLeftOpen, MessageCirclePlus } from 'lucide-vue-next';
 import CnkiResourceSelector from '@/components/CnkiResourceSelector.vue';
 import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined, RobotOutlined } from '@ant-design/icons-vue';

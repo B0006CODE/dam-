@@ -107,8 +107,7 @@
           :disabled="chunkLoading"
           :accept="acceptedFileTypes"
           :before-upload="beforeUpload"
-          :action="'/api/knowledge/files/upload?db_id=' + databaseId"
-          :headers="getAuthHeaders()"
+          :customRequest="customUploadRequest"
           @change="handleFileUpload"
           @drop="handleDrop"
         >
@@ -435,11 +434,105 @@ const beforeUpload = (file) => {
   return true;
 };
 
-const handleFileUpload = (info) => {
-  if (info?.file?.status === 'error') {
-    const errorMessage = info.file?.response?.detail || `文件上传失败：${info.file.name}`;
-    message.error(errorMessage);
+// 自定义上传请求
+const customUploadRequest = async (options) => {
+  const { file, onProgress, onSuccess, onError } = options;
+  
+  try {
+    console.log('开始上传文件:', file.name, '到数据库:', databaseId.value);
+    
+    // 创建FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 构建URL
+    const url = databaseId.value
+      ? `/api/knowledge/files/upload?db_id=${databaseId.value}`
+      : '/api/knowledge/files/upload';
+    
+    //获取认证头
+    const authHeaders = getAuthHeaders();
+    console.log('使用认证头:', authHeaders);
+    
+    // 发送请求
+    const xhr = new XMLHttpRequest();
+    
+    // 上传进度
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percent = (e.loaded / e.total) * 100;
+        onProgress({ percent });
+      }
+    });
+    
+    // 请求完成
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          console.log('上传成功:', response);
+          onSuccess(response, file);
+        } catch (e) {
+          console.error('解析响应失败:', e);
+          onError(new Error('解析服务器响应失败'));
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          console.error('上传失败:', xhr.status, error);
+          onError(new Error(error.detail || `上传失败: ${xhr.status}`));
+        } catch (e) {
+          console.error('上传失败,无法解析错误:', xhr.status, xhr.responseText);
+          onError(new Error(`上传失败: ${xhr.status} ${xhr.statusText}`));
+        }
+      }
+    });
+    
+    // 请求错误
+    xhr.addEventListener('error', () => {
+      console.error('网络错误');
+      onError(new Error('网络错误,请检查连接'));
+    });
+    
+    // 请求超时
+    xhr.addEventListener('timeout', () => {
+      console.error('请求超时');
+      onError(new Error('上传超时,请重试'));
+    });
+    
+    // 打开连接并设置请求头
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Authorization', authHeaders.Authorization);
+    xhr.timeout = 60000; // 60秒超时
+    
+    // 发送请求
+    xhr.send(formData);
+    
+  } catch (error) {
+    console.error('上传过程出错:', error);
+    onError(error);
   }
+};
+
+const handleFileUpload = (info) => {
+  console.log('文件上传状态变化:', info.file.status, info.file.name);
+  
+  if (info?.file?.status === 'error') {
+    const errorMessage = info.file?.error?.message || 
+                        info.file?.response?.detail || 
+                        `文件上传失败：${info.file.name}`;
+    console.error('上传错误详情:', {
+      status: info.file.status,
+      error: info.file.error,
+      response: info.file.response,
+      name: info.file.name
+    });
+    message.error(errorMessage);
+  } else if (info?.file?.status === 'done') {
+    console.log('文件上传成功:', info.file.name, info.file.response);
+    message.success(`${info.file.name} 上传成功`);
+  }
+  
   fileList.value = info?.fileList ?? [];
 };
 

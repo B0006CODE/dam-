@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiAdminGet, apiAdminPost, apiSuperAdminPost } from './base'
+import { apiGet, apiAdminGet, apiAdminPost, apiSuperAdminPost } from './base'
 
 /**
  * 系统管理API模块
@@ -22,7 +22,7 @@ export const healthApi = {
    * OCR服务健康检查
    * @returns {Promise} - OCR服务健康状态
    */
-  checkOcrHealth: async () => apiAdminGet('/api/system/health/ocr')
+  checkOcrHealth: async () => apiAdminGet('/api/system/ocr/health')
 }
 
 // =============================================================================
@@ -79,7 +79,7 @@ export const brandApi = {
    * 重新加载信息配置
    * @returns {Promise} - 重新加载结果
    */
-  reloadInfoConfig: async () =>  apiPost('/api/system/info/reload', {}, {}, false)
+  reloadInfoConfig: async () => apiAdminPost('/api/system/info/reload', {})
 }
 
 // =============================================================================
@@ -123,6 +123,4 @@ export const chatModelApi = {
     return apiAdminGet('/api/system/chat-models/all/status')
   }
 }
-
-
 

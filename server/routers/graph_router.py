@@ -7,7 +7,7 @@ from neo4j import GraphDatabase as Neo4jDriver
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from src.storage.db.models import User
-from server.utils.auth_middleware import get_admin_user
+from server.utils.auth_middleware import get_admin_user, get_required_user
 from src import graph_base, knowledge_base
 from src.utils.logging_config import logger
 
@@ -40,7 +40,7 @@ async def get_lightrag_subgraph(
     node_label: str = Query(..., description="节点标签或实体名称"),
     max_depth: int = Query(2, description="最大深度", ge=1, le=5),
     max_nodes: int = Query(100, description="最大节点数", ge=1, le=1000),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
 ):
     """
     使用 LightRAG 原生方法获取知识图谱子图
@@ -135,7 +135,7 @@ async def get_subgraph(
     limit: int = Query(200, description="每页节点数", ge=1, le=1000),
     page: int = Query(1, description="页码(从1开始)", ge=1),
     fields: str = Query("compact", description="字段模式: compact | full"),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
 ):
     """
     通用子图接口，支持分页与紧凑字段返回。
@@ -286,7 +286,7 @@ async def get_subgraph(
 
 
 @graph.get("/lightrag/databases")
-async def get_lightrag_databases(current_user: User = Depends(get_admin_user)):
+async def get_lightrag_databases(current_user: User = Depends(get_required_user)):
     """
     获取所有可用的 LightRAG 知识库列表
 
@@ -316,7 +316,7 @@ async def get_lightrag_databases(current_user: User = Depends(get_admin_user)):
 
 @graph.get("/lightrag/labels")
 async def get_lightrag_labels(
-    db_id: str = Query(..., description="数据库ID"), current_user: User = Depends(get_admin_user)
+    db_id: str = Query(..., description="数据库ID"), current_user: User = Depends(get_required_user)
 ):
     """
     获取知识图谱中的所有标签
@@ -359,7 +359,7 @@ async def get_lightrag_labels(
 async def get_neo4j_nodes(
     kgdb_name: str = Query(..., description="知识图谱数据库名称"),
     num: int = Query(100, description="节点数量", ge=1, le=1000),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
 ):
     """
     获取图谱节点样本数据
@@ -381,7 +381,7 @@ async def get_neo4j_nodes(
 
 @graph.get("/neo4j/node")
 async def get_neo4j_node(
-    entity_name: str = Query(..., description="实体名称"), current_user: User = Depends(get_admin_user)
+    entity_name: str = Query(..., description="实体名称"), current_user: User = Depends(get_required_user)
 ):
     """
     根据实体名称查询图节点
@@ -403,7 +403,7 @@ async def get_neo4j_node(
 async def expand_neo4j_node(
     node_id: str = Query(..., description="Neo4j elementId"),
     limit: int = Query(80, description="最大边数量", ge=1, le=500),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
 ):
     """
     通过 Neo4j elementId 展开一个节点的 1-hop 邻居子图
@@ -435,7 +435,7 @@ async def expand_neo4j_node(
 
 @graph.get("/lightrag/stats")
 async def get_lightrag_stats(
-    db_id: str = Query(..., description="数据库ID"), current_user: User = Depends(get_admin_user)
+    db_id: str = Query(..., description="数据库ID"), current_user: User = Depends(get_required_user)
 ):
     """
     获取知识图谱统计信息
@@ -491,7 +491,7 @@ async def get_lightrag_stats(
 
 
 @graph.get("/neo4j/info")
-async def get_neo4j_info(current_user: User = Depends(get_admin_user)):
+async def get_neo4j_info(current_user: User = Depends(get_required_user)):
     """获取Neo4j图数据库信息"""
     try:
         graph_info = graph_base.get_graph_info()

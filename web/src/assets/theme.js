@@ -59,9 +59,9 @@ export const themeConfig = {
         },
         Modal: {
             borderRadius: 20,
-            colorBgElevated: '#020617',
+            colorBgElevated: '#1e293b',
             headerBg: 'transparent',
-            contentBg: 'rgba(15, 23, 42, 0.8)',
+            contentBg: 'rgba(30, 41, 59, 0.8)',
         },
         Table: {
             borderRadius: 12,
