@@ -95,7 +95,8 @@ class OCRPlugin:
             file_path_list = [file_path]
             output_dir = os.path.join(os.getcwd(), "tmp", "mineru_ocr")
 
-            text = parse_doc(file_path_list, output_dir, backend="vlm-sglang-client", server_url=mineru_ocr_uri)[0]
+            backend = os.getenv("MINERU_BACKEND", "pipeline")
+            text = parse_doc(file_path_list, output_dir, backend=backend, server_url=mineru_ocr_uri)[0]
 
             processing_time = time.time() - start_time
             log_ocr_request("mineru_ocr", file_path, True, processing_time)
@@ -174,4 +175,3 @@ def plainreader(file_path):
     with open(file_path) as f:
         text = f.read()
     return text
-
