@@ -4,7 +4,6 @@
  */
 
 import * as d3 from 'd3'
-import { Graph } from 'graphology'
 
 export class LayoutManager {
   constructor() {
@@ -36,15 +35,6 @@ export class LayoutManager {
       description: '以中心节点为核心的环形分布',
       type: '2d',
       execute: (graph, options = {}) => this.radialLayout(graph, options),
-      animate: true
-    })
-
-    // 扇形布局
-    this.layouts.set('fan', {
-      name: '扇形布局',
-      description: '按节点类型分区域的扇形分布',
-      type: '2d',
-      execute: (graph, options = {}) => this.fanLayout(graph, options),
       animate: true
     })
 
@@ -194,68 +184,6 @@ export class LayoutManager {
           x: centerX + radius * Math.cos(angle),
           y: centerY + radius * Math.sin(angle),
           z: level * 20 // 添加深度层次
-        }
-      })
-    })
-
-    return Promise.resolve(positions)
-  }
-
-  /**
-   * 扇形布局
-   */
-  fanLayout(graph, options = {}) {
-    const nodes = graph.nodes()
-    const edges = graph.edges()
-    const width = options.width || 800
-    const height = options.height || 600
-
-    // 按节点类型分组
-    const nodeTypes = new Map()
-    const typeColors = new Map()
-    const colorPalette = ['#60a5fa', '#34d399', '#f59e0b', '#f472b6', '#22d3ee']
-    let colorIndex = 0
-
-    nodes.forEach(node => {
-      const nodeData = graph.getNodeAttributes(node)
-      const type = nodeData.entity_type || nodeData.labels?.[0] || 'default'
-
-      if (!nodeTypes.has(type)) {
-        nodeTypes.set(type, [])
-        typeColors.set(type, colorPalette[colorIndex % colorPalette.length])
-        colorIndex++
-      }
-      nodeTypes.get(type).push(node)
-    })
-
-    const positions = {}
-    const centerX = width / 2
-    const centerY = height / 2
-    const maxRadius = Math.min(width, height) * 0.4
-
-    // 中心区域放置主要类型节点
-    const types = Array.from(nodeTypes.keys())
-    const anglePerType = (2 * Math.PI) / types.length
-
-    types.forEach((type, typeIndex) => {
-      const nodesInType = nodeTypes.get(type)
-      const typeCenterAngle = typeIndex * anglePerType
-      const typeAngleRange = anglePerType / 2 // 每种类型占用的角度范围
-
-      // 类型中心位置
-      const typeCenterX = centerX + maxRadius * 0.5 * Math.cos(typeCenterAngle)
-      const typeCenterY = centerY + maxRadius * 0.5 * Math.sin(typeCenterAngle)
-
-      // 该类型内的节点扇形分布
-      nodesInType.forEach((node, nodeIndex) => {
-        const angle = typeCenterAngle - typeAngleRange/2 +
-                     (nodeIndex / nodesInType.length) * typeAngleRange
-        const radius = maxRadius * (0.6 + Math.random() * 0.4)
-
-        positions[node] = {
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle),
-          z: 0
         }
       })
     })

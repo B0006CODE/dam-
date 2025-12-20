@@ -15,12 +15,7 @@
       </div>
     </div>
 
-    <!-- 顶部操作区域 -->
-    <div class="login-top-action">
-      <a-button type="text" size="small" class="back-home-btn" @click="goHome">
-        返回首页
-      </a-button>
-    </div>
+
 
     <!-- 登录页面主要布局 -->
     <div class="login-layout">
@@ -165,8 +160,7 @@
                 </a-form-item>
 
                 <a-form-item>
-                  <div class="login-options">
-                    <a-checkbox v-model:checked="rememberMe" @click="showDevMessage">记住我</a-checkbox>
+                  <div class="login-options" style="justify-content: flex-end;">
                     <a class="forgot-password" @click="showDevMessage">忘记密码?</a>
                   </div>
                 </a-form-item>
@@ -280,7 +274,6 @@ const brandDescription = computed(() => {
 const isFirstRun = ref(false); // 是否首次运行（需要初始化管理员）
 const loading = ref(false); // 表单提交加载状态
 const errorMessage = ref(''); // 错误提示信息
-const rememberMe = ref(false); // 记住我选项
 const serverStatus = ref('loading'); // 服务器连接状态：loading, ok, error
 const serverError = ref(''); // 服务器错误信息
 const healthChecking = ref(false); // 健康检查加载状态
@@ -308,11 +301,6 @@ const adminForm = reactive({
 // 显示功能开发中提示
 const showDevMessage = () => {
   message.info('该功能正在开发中，敬请期待！');
-};
-
-// 返回首页
-const goHome = () => {
-  router.push('/');
 };
 
 // 清理锁定倒计时器
@@ -423,11 +411,11 @@ const handleLogin = async () => {
           return;
         }
 
-        // 没有可用智能体，回退到首页
-        router.push('/');
+        // 没有可用的智能体，跳转到智能体管理页面
+        router.push('/agent');
       } catch (error) {
         console.error('获取智能体信息失败:', error);
-        router.push('/');
+        router.push('/agent');
       }
     } else {
       // 跳转到其他预设的路径
@@ -490,7 +478,7 @@ const handleInitialize = async () => {
     });
 
     message.success('管理员账户创建成功');
-    router.push('/');
+    router.push('/agent');
   } catch (error) {
     console.error('初始化失败:', error);
     errorMessage.value = error.message || '初始化失败，请重试';
@@ -536,9 +524,9 @@ const checkServerHealth = async () => {
 // 组件挂载时
 // 组件挂载时的生命周期钩子
 onMounted(async () => {
-  // 如果用户已登录，直接跳转到首页
+  // 如果用户已登录，直接跳转到智能体页面
   if (userStore.isLoggedIn) {
-    router.push('/');
+    router.push('/agent');
     return;
   }
 
@@ -563,7 +551,7 @@ onUnmounted(() => {
   width: 100%;
   position: relative;
   padding-top: 0;
-  background: var(--bg-body); /* 使用全局深色渐变背景 */
+  background: transparent; /* 使用全局背景 */
 
   /* 当有顶部警告条时的样式调整 */
   &.has-alert {
@@ -622,7 +610,7 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(to right, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.4)); /* 深色渐变遮罩 */
+    background: linear-gradient(to right, rgba(6, 42, 92, 0.8), rgba(6, 42, 92, 0.4)); /* 蓝色渐变遮罩 */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -643,6 +631,7 @@ onUnmounted(() => {
       letter-spacing: -0.5px;
       background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -695,18 +684,21 @@ onUnmounted(() => {
   width: 100%;
   max-width: 560px;
   padding: 50px;
-  background: var(--bg-container); /* 玻璃拟态背景 */
-  backdrop-filter: blur(20px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
   border-radius: 24px;
-  border: var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   display: flex;
   flex-direction: column;
   gap: 32px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 
   &:hover {
-    box-shadow: 0 20px 40px -10px rgba(6, 182, 212, 0.15);
+    box-shadow: 
+      0 20px 40px -10px rgba(6, 182, 212, 0.2),
+      0 0 0 1px rgba(6, 182, 212, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
     border-color: rgba(6, 182, 212, 0.3);
   }
 }
@@ -770,16 +762,23 @@ onUnmounted(() => {
     color: var(--text-secondary);
   }
 
-  :deep(.ant-input-affix-wrapper) {
+  :deep(.ant-input) {
     padding: 10px 11px;
     height: auto;
-    background-color: var(--bg-input);
-    border-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(6, 42, 92, 0.3);
     color: var(--text-primary);
+    border-radius: 8px;
+    transition: all 0.3s ease;
 
-    &:hover, &:focus-within {
+    &:hover {
+      border-color: rgba(6, 182, 212, 0.5);
+      background-color: rgba(15, 23, 42, 0.9);
+    }
+
+    &:focus-within, &.ant-input-affix-wrapper-focused {
       border-color: var(--main-color);
-      background-color: rgba(15, 23, 42, 0.8);
+      background-color: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
     }
 
     input {
@@ -792,21 +791,52 @@ onUnmounted(() => {
 
     .anticon {
       color: var(--text-tertiary);
+      transition: color 0.2s ease;
+    }
+
+    &:hover .anticon,
+    &:focus-within .anticon {
+      color: var(--text-secondary);
+    }
+  }
+
+  :deep(.ant-input-password) {
+    .ant-input-suffix {
+      .anticon {
+        cursor: pointer;
+        &:hover {
+          color: var(--main-color);
+        }
+      }
     }
   }
 
   :deep(.ant-btn) {
     font-size: 16px;
-    padding: 0.5rem;
+    font-weight: 500;
+    padding: 12px 16px;
     height: auto;
     background: linear-gradient(135deg, var(--main-color) 0%, var(--main-active) 100%);
     border: none;
-    box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.39);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.35);
+    transition: all 0.3s ease;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: linear-gradient(135deg, var(--main-hover) 0%, var(--main-color) 100%);
-      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.23);
-      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+      transform: translateY(-2px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+    }
+
+    &:disabled {
+      background: rgba(107, 114, 128, 0.5);
+      box-shadow: none;
+      cursor: not-allowed;
     }
   }
 }

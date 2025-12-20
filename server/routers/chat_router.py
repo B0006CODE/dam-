@@ -21,7 +21,6 @@ from src import config as conf
 from src.agents import agent_manager
 from src.agents.common.tools import gen_tool_info, get_buildin_tools
 from src.models import select_model
-from src.plugins.guard import content_guard
 from src.utils.datetime_utils import utc_now
 from src.utils.logging_config import logger
 
@@ -264,11 +263,6 @@ async def chat_agent(
         # 代表服务端已经收到了请求
         yield make_chunk(status="init", meta=meta, msg=HumanMessage(content=query).model_dump())
 
-        # Input guard
-        if conf.enable_content_guard and await content_guard.check(query):
-            yield make_chunk(status="error", message="输入内容包含敏感词", meta=meta)
-            return
-
         try:
             agent = agent_manager.get_agent(agent_id)
         except Exception as e:
@@ -316,24 +310,10 @@ async def chat_agent(
             async for msg, metadata in agent.stream_messages(messages, input_context=input_context):
                 if isinstance(msg, AIMessageChunk):
                     full_msg = msg if not full_msg else full_msg + msg
-                    if conf.enable_content_guard and await content_guard.check_with_keywords(full_msg.content[-20:]):
-                        logger.warning("Sensitive content detected in stream")
-                        yield make_chunk(message="检测到敏感内容，已中断输出", status="error")
-                        return
-
                     yield make_chunk(content=msg.content, msg=msg.model_dump(), metadata=metadata, status="loading")
 
                 else:
                     yield make_chunk(msg=msg.model_dump(), metadata=metadata, status="loading")
-
-            if (
-                conf.enable_content_guard
-                and hasattr(full_msg, "content")
-                and await content_guard.check(full_msg.content)
-            ):
-                logger.warning("Sensitive content detected in final message")
-                yield make_chunk(message="检测到敏感内容，已中断输出", status="error")
-                return
 
             meta["time_cost"] = asyncio.get_event_loop().time() - start_time
             yield make_chunk(status="finished", meta=meta)

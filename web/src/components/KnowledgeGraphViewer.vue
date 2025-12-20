@@ -65,11 +65,7 @@
       </div>
 
       <div class="layout-section">
-        <a-select v-model:value="layoutType" size="small" style="width: 140px">
-          <a-select-option value="force">力导向</a-select-option>
-          <a-select-option value="circular">环形</a-select-option>
-        </a-select>
-        <a-button size="small" style="margin-left: 6px" @click="reapplyLayout">应用布局</a-button>
+        <a-button size="small" @click="reapplyLayout">重新布局</a-button>
       </div>
 
       <div v-if="!props.hideStats" class="stats-section">
@@ -216,8 +212,7 @@ const availableDatabases = ref([]);
 const selectedLabel = ref('*');
 const availableLabels = ref([]);
 
-const layoutType = ref('force');
-const layoutOptions = computed(() => ({ type: layoutType.value }));
+const layoutOptions = computed(() => ({ type: 'force' }));
 
 const searchParams = reactive({
   max_nodes: props.initialLimit,

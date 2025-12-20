@@ -205,12 +205,7 @@ def parse_pdf(file, params=None):
         return pdfreader(file, params=params)
 
     try:
-        if opt_ocr == "onnx_rapid_ocr":
-            from src.plugins import ocr
-
-            return ocr.process_pdf(file, params=params)
-
-        elif opt_ocr == "mineru_ocr":
+        if opt_ocr == "mineru_ocr":
             from src.plugins import ocr
 
             return ocr.process_file_mineru(file, params=params)
@@ -241,16 +236,11 @@ def parse_image(file, params=None):
     opt_ocr = params.get("enable_ocr", "disable")
 
     if opt_ocr == "disable":
-        logger.warning(f"OCR is disabled for image file: {file}, Using `onnx_rapid_ocr` instead")
-        opt_ocr = "onnx_rapid_ocr"
+        logger.warning(f"OCR is disabled for image file: {file}, Using `mineru_ocr` instead")
+        opt_ocr = "mineru_ocr"
 
     try:
-        if opt_ocr == "onnx_rapid_ocr":
-            from src.plugins import ocr
-
-            return ocr.process_image(file, params=params)
-
-        elif opt_ocr == "mineru_ocr":
+        if opt_ocr == "mineru_ocr":
             from src.plugins import ocr
 
             return ocr.process_file_mineru(file, params=params)

@@ -63,10 +63,6 @@
               </a-input>
             </div>
             <div class="actions-right">
-              <a-select v-model:value="layoutType" style="width: 180px; margin-right: 8px" size="middle">
-                <a-select-option value="force">力导向布局</a-select-option>
-                <a-select-option value="circular">扇形布局</a-select-option>
-              </a-select>
               <a-button type="default" @click="state.showInfoModal = true" :icon="h(InfoCircleOutlined)">
                 说明
               </a-button>
@@ -309,10 +305,7 @@ const mergeSubgraphIntoGraphData = (subgraph) => {
   graphData.edges = nextEdges;
 };
 
-const layoutType = ref('force') // force | circular
-const layoutOptions = computed(() => {
-  return { type: layoutType.value }
-})
+const layoutOptions = computed(() => ({ type: 'force' }))
 
 const state = reactive({
   fetching: false,

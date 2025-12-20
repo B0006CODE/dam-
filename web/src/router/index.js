@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue';
-import BlankLayout from '@/layouts/BlankLayout.vue';
 import { useUserStore } from '@/stores/user';
 import { useAgentStore } from '@/stores/agent';
 
@@ -9,16 +8,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'main',
-      component: BlankLayout,
-      children: [
-        {
-          path: '',
-          name: 'Home',
-          component: () => import('../views/HomeView.vue'),
-          meta: { keepAlive: true, requiresAuth: false }
-        }
-      ]
+      redirect: '/login'
     },
     {
       path: '/login',
@@ -162,20 +152,20 @@ router.beforeEach(async (to, from, next) => {
         if (agentIds.length > 0) {
           next(`/agent/${agentIds[0]}`);
         } else {
-          // 没有可用的智能体，跳转到首页
-          next('/');
+          // 没有可用的智能体，跳转到登录页
+          next('/login');
         }
       }
     } catch (error) {
       console.error('获取智能体信息失败:', error);
-      next('/');
+      next('/login');
     }
     return;
   }
 
-  // 如果用户已登录但访问登录页
+  // 如果用户已登录但访问登录页，跳转到智能体页面
   if (to.path === '/login' && isLoggedIn) {
-    next('/');
+    next('/agent');
     return;
   }
 

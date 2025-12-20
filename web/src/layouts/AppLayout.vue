@@ -122,7 +122,7 @@ const visibleNavItems = computed(() =>
   <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar }">
     <div class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
       <div class="logo circle">
-        <router-link to="/">
+        <router-link to="/agent">
           <img :src="infoStore.organization.avatar">
         </router-link>
       </div>

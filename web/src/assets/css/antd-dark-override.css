@@ -196,3 +196,101 @@
 .ant-card-body {
     color: var(--text-primary);
 }
+
+/* Form Inputs - 表单输入框深色主题 */
+.ant-input {
+    background-color: rgba(6, 42, 92, 0.3);
+    border-color: rgba(0, 212, 255, 0.2);
+    color: var(--text-primary);
+}
+
+.ant-input:hover {
+    border-color: var(--neon-cyan, #00d4ff);
+    background-color: rgba(6, 42, 92, 0.5);
+}
+
+.ant-input:focus,
+.ant-input-focused {
+    border-color: var(--main-color);
+    background-color: rgba(6, 42, 92, 0.5);
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+}
+
+.ant-input::placeholder {
+    color: var(--text-disabled);
+}
+
+/* Input Affix Wrapper (带图标的输入框) */
+.ant-input-affix-wrapper {
+    background-color: rgba(6, 42, 92, 0.3);
+    border-color: rgba(0, 212, 255, 0.2);
+}
+
+.ant-input-affix-wrapper:hover {
+    border-color: var(--neon-cyan, #00d4ff);
+    background-color: rgba(6, 42, 92, 0.5);
+}
+
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+    border-color: var(--main-color);
+    background-color: rgba(6, 42, 92, 0.5);
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+}
+
+.ant-input-affix-wrapper .ant-input {
+    background-color: transparent;
+    color: var(--text-primary);
+}
+
+.ant-input-affix-wrapper .ant-input-prefix,
+.ant-input-affix-wrapper .ant-input-suffix {
+    color: var(--text-tertiary);
+}
+
+/* Password Input */
+.ant-input-password .ant-input {
+    background-color: transparent;
+    color: var(--text-primary);
+}
+
+.ant-input-password-icon {
+    color: var(--text-tertiary);
+}
+
+.ant-input-password-icon:hover {
+    color: var(--text-primary);
+}
+
+/* Checkbox */
+.ant-checkbox-wrapper {
+    color: var(--text-secondary);
+}
+
+.ant-checkbox-inner {
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ant-checkbox:hover .ant-checkbox-inner {
+    border-color: var(--main-color);
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+    background-color: var(--main-color);
+    border-color: var(--main-color);
+}
+
+/* Form Labels */
+.ant-form-item-label>label {
+    color: var(--text-secondary);
+}
+
+.ant-form-item-label>label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+    color: var(--error-color);
+}
+
+/* Form Validation */
+.ant-form-item-explain-error {
+    color: var(--error-color);
+}

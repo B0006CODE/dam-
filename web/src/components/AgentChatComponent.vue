@@ -945,7 +945,6 @@ defineExpose({
   getExportPayload: buildExportPayload
 });
 
-const retryMessage = (msg) => { /* TODO */ };
 const toggleSidebar = () => {
   uiState.isSidebarOpen = !uiState.isSidebarOpen;
   localStorage.setItem('chat_sidebar_open', uiState.isSidebarOpen);

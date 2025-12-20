@@ -47,8 +47,12 @@ ENV HTTP_PROXY=$HTTP_PROXY \
     https_proxy=$HTTPS_PROXY
 
 # 如果网络还是不好，可以在后面添加 --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+# 设置较长的超时时间和重试次数，解决大型包下载超时问题
+ENV UV_HTTP_TIMEOUT=300 \
+    UV_CONCURRENT_DOWNLOADS=4
+
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev
+    uv sync --no-dev --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 激活虚拟环境并添加到PATH
 ENV PATH="/app/.venv/bin:$PATH"

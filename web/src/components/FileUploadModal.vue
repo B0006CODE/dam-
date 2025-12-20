@@ -24,9 +24,9 @@
           <div class="upload-mode-selector" @click="uploadMode = 'file'" :class="{ active: uploadMode === 'file' }">
             <FileOutlined /> 上传文件
           </div>
-          <div class="upload-mode-selector" @click="uploadMode = 'url'" :class="{ active: uploadMode === 'url' }">
+          <!-- <div class="upload-mode-selector" @click="uploadMode = 'url'" :class="{ active: uploadMode === 'url' }">
             <LinkOutlined /> 输入网址
-          </div>
+          </div> -->
         </div>
         <div class="config-controls">
           <a-button type="dashed" @click="showChunkConfigModal" v-if="!isGraphBased">
@@ -298,7 +298,6 @@ const urlList = ref('');
 
 // OCR服务健康状态
 const ocrHealthStatus = ref({
-  rapid_ocr: { status: 'unknown', message: '' },
   mineru_ocr: { status: 'unknown', message: '' },
   paddlex_ocr: { status: 'unknown', message: '' }
 });
@@ -345,12 +344,6 @@ const enableOcrOptions = computed(() => [
     title: '不启用'
   },
   {
-    value: 'onnx_rapid_ocr',
-    label: getRapidOcrLabel(),
-    title: 'ONNX with RapidOCR',
-    disabled: ocrHealthStatus.value.rapid_ocr.status === 'unavailable' || ocrHealthStatus.value.rapid_ocr.status === 'error'
-  },
-  {
     value: 'mineru_ocr',
     label: getMinerULabel(),
     title: 'MinerU OCR',
@@ -367,8 +360,6 @@ const enableOcrOptions = computed(() => [
 // 获取当前选中OCR服务的状态
 const selectedOcrStatus = computed(() => {
   switch (chunkParams.value.enable_ocr) {
-    case 'onnx_rapid_ocr':
-      return ocrHealthStatus.value.rapid_ocr.status;
     case 'mineru_ocr':
       return ocrHealthStatus.value.mineru_ocr.status;
     case 'paddlex_ocr':
@@ -381,8 +372,6 @@ const selectedOcrStatus = computed(() => {
 // 获取当前选中OCR服务的状态消息
 const selectedOcrMessage = computed(() => {
   switch (chunkParams.value.enable_ocr) {
-    case 'onnx_rapid_ocr':
-      return ocrHealthStatus.value.rapid_ocr.message;
     case 'mineru_ocr':
       return ocrHealthStatus.value.mineru_ocr.message;
     case 'paddlex_ocr':
@@ -391,18 +380,6 @@ const selectedOcrMessage = computed(() => {
       return '';
   }
 });
-
-// OCR选项标签生成函数
-const getRapidOcrLabel = () => {
-  const status = ocrHealthStatus.value.rapid_ocr.status;
-  const statusIcons = {
-    'healthy': '✅',
-    'unavailable': '❌',
-    'error': '⚠️',
-    'unknown': '❓'
-  };
-  return `${statusIcons[status] || '❓'} RapidOCR (ONNX)`;
-};
 
 const getMinerULabel = () => {
   const status = ocrHealthStatus.value.mineru_ocr.status;

@@ -173,33 +173,9 @@ async def check_ocr_services_health(current_user: User = Depends(get_admin_user)
     返回各个OCR服务的可用性信息
     """
     health_status = {
-        "rapid_ocr": {"status": "unknown", "message": ""},
         "mineru_ocr": {"status": "unknown", "message": ""},
         "paddlex_ocr": {"status": "unknown", "message": ""},
     }
-
-    # 检查 RapidOCR (ONNX) 模型
-    try:
-        model_dir_root = (
-            os.getenv("MODEL_DIR") if not os.getenv("RUNNING_IN_DOCKER") else os.getenv("MODEL_DIR_IN_DOCKER")
-        )
-        model_dir = os.path.join(model_dir_root, "SWHL/RapidOCR")
-        det_model_path = os.path.join(model_dir, "PP-OCRv4/ch_PP-OCRv4_det_infer.onnx")
-        rec_model_path = os.path.join(model_dir, "PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx")
-
-        if os.path.exists(model_dir) and os.path.exists(det_model_path) and os.path.exists(rec_model_path):
-            # 尝试初始化RapidOCR
-            from rapidocr_onnxruntime import RapidOCR
-
-            test_ocr = RapidOCR(det_box_thresh=0.3, det_model_path=det_model_path, rec_model_path=rec_model_path)  # noqa: F841
-            health_status["rapid_ocr"]["status"] = "healthy"
-            health_status["rapid_ocr"]["message"] = "RapidOCR模型已加载"
-        else:
-            health_status["rapid_ocr"]["status"] = "unavailable"
-            health_status["rapid_ocr"]["message"] = f"模型文件不存在: {model_dir}"
-    except Exception as e:
-        health_status["rapid_ocr"]["status"] = "error"
-        health_status["rapid_ocr"]["message"] = f"RapidOCR初始化失败: {str(e)}"
 
     # 检查 MinerU OCR 服务
     try:

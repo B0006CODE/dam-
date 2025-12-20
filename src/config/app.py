@@ -48,11 +48,6 @@ class Config(SimpleConfig):
         ### >>> 默认配置
         # 功能选项
         self.add_item("enable_reranker", default=False, des="是否开启重排序")
-        self.add_item("enable_content_guard", default=False, des="是否启用内容审查")
-        self.add_item("enable_content_guard_llm", default=False, des="是否启用LLM内容审查")
-        self.add_item(
-            "content_guard_llm_model", default="siliconflow/Qwen/Qwen3-235B-A22B-Instruct-2507", des="内容审查LLM模型"
-        )
         # 默认智能体配置
         self.add_item("default_agent_id", default="", des="默认智能体ID")
         # 模型配置

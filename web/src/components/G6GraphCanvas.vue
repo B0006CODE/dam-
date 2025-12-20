@@ -47,7 +47,6 @@ const highlightedEdgeIds = new Set();
 const inactiveNodeIds = new Set();
 const inactiveEdgeIds = new Set();
 
-const layoutType = computed(() => props.layoutOptions.type || 'force');
 const normalizedKeywords = computed(() =>
   (props.highlightKeywords || [])
     .filter(Boolean)
@@ -265,19 +264,6 @@ const FONT_SIZE_MIN = 11;
 
 const getLayoutConfig = (nodeSizeById) => {
   const { type: _ignoredType, ...userOptions } = props.layoutOptions || {};
-
-  if (layoutType.value === 'circular') {
-    return {
-      type: 'circular',
-      startAngle: 0,
-      endAngle: Math.PI * 2,
-      radius: null,
-      animation: false,
-      ...userOptions,
-      type: 'circular',
-      animation: false,
-    };
-  }
 
   const getNodeSize = (node, fallbackId) => {
     if (fallbackId != null && nodeSizeById?.get?.(String(fallbackId))) {

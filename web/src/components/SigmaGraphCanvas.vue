@@ -16,23 +16,10 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue'
+import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import Graph from 'graphology'
 import Sigma from 'sigma'
 import { buildNodeColorMap, filterByDimensions, getDimensionColor } from '@/utils/nodeColorMapper'
-
-// 手动实现圆形布局
-function applyCircularLayout(graph) {
-  const nodes = graph.nodes()
-  const nodeCount = nodes.length
-  const radius = 500
-  
-  nodes.forEach((node, index) => {
-    const angle = (2 * Math.PI * index) / nodeCount
-    graph.setNodeAttribute(node, 'x', radius * Math.cos(angle))
-    graph.setNodeAttribute(node, 'y', radius * Math.sin(angle))
-  })
-}
 
 // 手动实现随机布局，使用更大的距离避免重叠
 function applyRandomLayout(graph) {
@@ -210,9 +197,6 @@ let graph = null
 let sigmaInstance = null
 let resizeObserver = null
 let focusedNode = null
-
-// 布局类型
-const layoutType = computed(() => props.layoutOptions.type || 'force')
 
 // 初始化图实例
 function initGraph() {
@@ -484,19 +468,12 @@ function setGraphData() {
 // 应用布局
 function applyLayout() {
   if (!graph || graph.order === 0) return
-  
-  const type = layoutType.value
-  
-  if (type === 'circular' || type === 'radial') {
-    // 环形/扇形布局
-    applyCircularLayout(graph)
-  } else {
-    // 先应用随机布局作为初始位置
-    applyRandomLayout(graph)
-    
-    // 使用简单力导向布局，使节点分散并不重叠 - 增加迭代次数
-    applySimpleForceLayout(graph, 100)
-  }
+
+  // 先应用随机布局作为初始位置
+  applyRandomLayout(graph)
+
+  // 使用简单力导向布局，使节点分散并不重叠 - 增加迭代次数
+  applySimpleForceLayout(graph, 100)
 }
 
 // 刷新图

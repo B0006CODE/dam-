@@ -88,32 +88,6 @@
             </a-select>
           </div>
         </div>
-        <h3>内容审查配置</h3>
-        <div class="section">
-          <!-- 内容审查配置 -->
-          <div class="card">
-            <span class="label">{{ items?.enable_content_guard.des }}</span>
-            <a-switch
-              :checked="configStore.config?.enable_content_guard"
-              @change="handleChange('enable_content_guard', $event)"
-            />
-          </div>
-          <div class="card" v-if="configStore.config?.enable_content_guard">
-            <span class="label">{{ items?.enable_content_guard_llm.des }}</span>
-            <a-switch
-              :checked="configStore.config?.enable_content_guard_llm"
-              @change="handleChange('enable_content_guard_llm', $event)"
-            />
-          </div>
-          <div class="card card-select" v-if="configStore.config?.enable_content_guard && configStore.config?.enable_content_guard_llm">
-            <span class="label">{{ items?.content_guard_llm_model.des }}</span>
-            <ModelSelectorComponent
-              @select-model="handleContentGuardModelSelect"
-              :model_spec="configStore.config?.content_guard_llm_model"
-              placeholder="请选择模型"
-            />
-          </div>
-        </div>
 
         <!-- 服务链接部分 -->
         <div v-if="userStore.isAdmin">
@@ -168,7 +142,6 @@
         <ModelProvidersComponent />
       </div>
 
-      <!-- TODO 用户管理优化，添加姓名（默认使用用户名配置项） -->
       <div class="setting" v-if="(state.windowWidth <= 520 || state.section === 'user') && userStore.isAdmin">
          <UserManagementComponent />
       </div>
@@ -260,12 +233,6 @@ const handleChatModelSelect = (spec) => {
 const handleFastModelSelect = (spec) => {
   if (typeof spec === 'string' && spec) {
     configStore.setConfigValue('fast_model', spec)
-  }
-}
-
-const handleContentGuardModelSelect = (spec) => {
-  if (typeof spec === 'string' && spec) {
-    configStore.setConfigValue('content_guard_llm_model', spec)
   }
 }
 
@@ -398,12 +365,12 @@ const openLink = (url) => {
     color: var(--gray-700);
 
     &:hover {
-      background: var(--gray-50);
+      background: rgba(6, 182, 212, 0.1);
     }
 
     &.activesec {
-      background: var(--gray-100);
-      color: var(--main-700);
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--main-color);
     }
   }
 }
@@ -425,24 +392,13 @@ const openLink = (url) => {
 
   .section {
     margin-top: 10px;
-    background-color: var(--gray-0);
+    background-color: var(--glass-bg);
     padding: 12px 16px;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    border: 1px solid var(--gray-150);
-
-    .content-guard-section {
-      h4 {
-        margin: 0 0 12px 0;
-        color: var(--gray-900);
-        font-size: 16px;
-        font-weight: 600;
-        border-bottom: 1px solid var(--gray-150);
-        padding-bottom: 8px;
-      }
-    }
+    border: var(--glass-border);
   }
 
   .card {
