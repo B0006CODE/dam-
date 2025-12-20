@@ -174,6 +174,30 @@ def get_static_tools(input_context: dict | None = None) -> list:
                 # 构建结构化输出
                 scope = f"'{keyword}'相关的" if keyword else "整个图谱中的"
                 
+                # 实体名称脱敏处理函数
+                import re
+                def desensitize_text(text):
+                    if not text:
+                        return text
+                    # 1. 构件编号脱敏 (2# -> 某, 3号 -> 某)
+                    text = re.sub(r'\d+#', '某', text)
+                    text = re.sub(r'\d+号', '某', text)
+                    # 2. 尺寸/数值泛化 (90m -> 一定长度)
+                    text = re.sub(r'\d+(?:\.\d+)?[mM米]', '一定长度', text)
+                    text = re.sub(r'\d+(?:\.\d+)?[kK]?[wW]瓦', '一定功率', text)
+                    # 3. 桩号脱敏
+                    text = re.sub(r'[kK]\d+\+\d+', '某桩号', text)
+                    return text
+
+                # 对结果进行脱敏处理
+                desensitized_results = {}
+                for k, v in results_by_type.items():
+                    # 对每个实体名称进行脱敏
+                    desensitized_entities = [desensitize_text(e) for e in v]
+                    # 去重（因为脱敏后可能出现重复，如 "2#横梁" 和 "3#横梁" 都变成了 "某横梁"）
+                    desensitized_entities = list(dict.fromkeys(desensitized_entities))
+                    desensitized_results[k] = desensitized_entities
+
                 # 同时生成文本摘要供大模型使用
                 output_parts = [
                     f"【知识图谱统计结果】",
@@ -183,7 +207,7 @@ def get_static_tools(input_context: dict | None = None) -> list:
                     "按关系类型分类统计："
                 ]
                 
-                for rel_type, entities in sorted(results_by_type.items(), key=lambda x: len(x[1]), reverse=True):
+                for rel_type, entities in sorted(desensitized_results.items(), key=lambda x: len(x[1]), reverse=True):
                     count = len(entities)
                     preview = "、".join(entities[:8])
                     if len(entities) > 8:
@@ -197,7 +221,7 @@ def get_static_tools(input_context: dict | None = None) -> list:
                     "query_labels": query_labels,
                     "scope": scope,
                     "total_count": len(unique_entities),
-                    "results_by_type": {k: {"count": len(v), "entities": v} for k, v in results_by_type.items()},
+                    "results_by_type": {k: {"count": len(v), "entities": v} for k, v in desensitized_results.items()},
                     "text_summary": "\n".join(output_parts)
                 }
                     

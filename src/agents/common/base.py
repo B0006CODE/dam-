@@ -125,7 +125,11 @@ class BaseAgent:
 
     async def get_async_conn(self) -> aiosqlite.Connection:
         """获取异步数据库连接"""
-        return await aiosqlite.connect(os.path.join(self.workdir, "aio_history.db"))
+        conn = await aiosqlite.connect(os.path.join(self.workdir, "aio_history.db"))
+        # Fix: langgraph-checkpoint-sqlite may call is_alive() which aiosqlite doesn't have
+        if not hasattr(conn, "is_alive"):
+            conn.is_alive = lambda: True
+        return conn
 
     async def get_aio_memory(self) -> AsyncSqliteSaver:
         """获取异步存储实例"""
