@@ -164,20 +164,26 @@ class QuestionGenerator:
         client = await self._get_client()
         
         try:
+            # 构建请求体
+            request_body = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 2048,
+            }
+            
+            # 对于 qwen3 模型，需要关闭 thinking 模式（非流式调用时必须）
+            if "qwen3" in self.model.lower():
+                request_body["enable_thinking"] = False
+            
             response = await client.post(
                 f"{self.base_url}/chat/completions",
-                json={
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7,
-                    "max_tokens": 2048,
-                },
+                json=request_body,
             )
             response.raise_for_status()
             data = response.json()
             return data["choices"][0]["message"]["content"]
         except httpx.HTTPStatusError as e:
-            # 输出详细的错误信息
             error_detail = e.response.text if e.response else "No response body"
             print(f"   API 错误详情: {error_detail}")
             raise
