@@ -160,21 +160,27 @@ class QuestionGenerator:
         return content[:half] + "\n\n...[内容已截断]...\n\n" + content[-half:]
 
     async def _call_llm(self, prompt: str) -> str:
-        """调用本地 LLM"""
+        """调用 LLM API"""
         client = await self._get_client()
         
-        response = await client.post(
-            f"{self.base_url}/chat/completions",
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7,  # 稍高的温度以增加多样性
-                "max_tokens": 2048,
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        try:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                json={
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 2048,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        except httpx.HTTPStatusError as e:
+            # 输出详细的错误信息
+            error_detail = e.response.text if e.response else "No response body"
+            print(f"   API 错误详情: {error_detail}")
+            raise
 
     def _parse_questions(self, response: str, source_doc: str, doc_content: str) -> list[QuestionAnswer]:
         """解析 LLM 生成的问题"""
