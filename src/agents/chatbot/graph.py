@@ -37,14 +37,22 @@ class ChatbotAgent(BaseAgent):
         - global: 只注入知识图谱相关工具（不包括知识库工具）
         - mix: 注入所有工具
         """
-        # 获取 retrieval_mode
-        try:
-            input_context = runtime.config.configurable if runtime and hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable') else None
-            retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
-        except Exception:
-            retrieval_mode = "mix"
+        # 获取 retrieval_mode - 添加详细调试日志
+        input_context = None
+        retrieval_mode = "mix"
         
-        logger.info(f"_get_invoke_tools called with retrieval_mode: {retrieval_mode}")
+        try:
+            # 调试：打印 runtime 的结构
+            logger.info(f"DEBUG runtime: {runtime}")
+            if runtime:
+                logger.info(f"DEBUG runtime.config: {runtime.config if hasattr(runtime, 'config') else 'NO CONFIG'}")
+                if hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable'):
+                    input_context = runtime.config.configurable
+                    logger.info(f"DEBUG input_context from runtime.config.configurable: {input_context}")
+                    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+        except Exception as e:
+            logger.error(f"Error getting retrieval_mode: {e}")
+            retrieval_mode = "mix"
         
         # 在 llm 模式下，不注入任何工具（包括 MCP）
         if retrieval_mode == "llm":
