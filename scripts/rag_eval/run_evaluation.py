@@ -101,6 +101,12 @@ def parse_args():
         default=3,
         help="每个文档生成的问题数 (默认: 3)",
     )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=2,
+        help="LLM API 并发数 (默认: 2，减少以避免限流)",
+    )
     
     # 输出配置
     parser.add_argument(
@@ -171,6 +177,7 @@ async def main():
             llm_model=args.llm_model,
             username=args.username,
             password=args.password,
+            concurrency=args.concurrency,
         )
         
         print()

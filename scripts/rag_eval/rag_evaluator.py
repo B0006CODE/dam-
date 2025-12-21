@@ -204,6 +204,7 @@ async def run_full_evaluation(
     llm_model: str | None = None,
     username: str | None = None,
     password: str | None = None,
+    concurrency: int | None = None,
 ) -> str:
     """
     运行完整的 RAG 评估流程
@@ -220,6 +221,7 @@ async def run_full_evaluation(
         llm_model: LLM 模型名称
         username: API 用户名
         password: API 密码
+        concurrency: LLM 评估并发数
     
     Returns:
         报告文件路径
@@ -241,6 +243,8 @@ async def run_full_evaluation(
         config.username = username
     if password:
         config.password = password
+    if concurrency:
+        config.eval_concurrency = concurrency
     
     if not config.db_id:
         raise ValueError("必须指定知识库 ID (db_id)")
