@@ -138,8 +138,10 @@ class LLMJudge:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
-    async def _call_llm(self, prompt: str) -> str:
-        """调用 LLM API"""
+    async def _call_llm(self, prompt: str, max_retries: int = 3) -> str:
+        """调用 LLM API，支持自动重试"""
+        import asyncio
+        
         client = await self._get_client()
         
         # 构建请求体
@@ -154,13 +156,28 @@ class LLMJudge:
         if "qwen3" in self.model.lower():
             request_body["enable_thinking"] = False
         
-        response = await client.post(
-            f"{self.base_url}/chat/completions",
-            json=request_body,
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    json=request_body,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                if e.response.status_code == 429:
+                    # 限流，等待后重试
+                    wait_time = (attempt + 1) * 10  # 10s, 20s, 30s
+                    print(f"   ⏳ 限流，等待 {wait_time}s 后重试...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
+        
+        # 重试次数用尽
+        raise last_error
 
     def _parse_json_response(self, response: str) -> dict:
         """解析 LLM 的 JSON 响应"""

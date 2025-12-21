@@ -159,34 +159,48 @@ class QuestionGenerator:
         half = self.max_doc_length // 2
         return content[:half] + "\n\n...[内容已截断]...\n\n" + content[-half:]
 
-    async def _call_llm(self, prompt: str) -> str:
-        """调用 LLM API"""
+    async def _call_llm(self, prompt: str, max_retries: int = 3) -> str:
+        """调用 LLM API，支持自动重试"""
+        import asyncio
+        
         client = await self._get_client()
         
-        try:
-            # 构建请求体
-            request_body = {
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7,
-                "max_tokens": 2048,
-            }
-            
-            # 对于 qwen3 模型，需要关闭 thinking 模式（非流式调用时必须）
-            if "qwen3" in self.model.lower():
-                request_body["enable_thinking"] = False
-            
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                json=request_body,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-        except httpx.HTTPStatusError as e:
-            error_detail = e.response.text if e.response else "No response body"
-            print(f"   API 错误详情: {error_detail}")
-            raise
+        # 构建请求体
+        request_body = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7,
+            "max_tokens": 2048,
+        }
+        
+        # 对于 qwen3 模型，需要关闭 thinking 模式（非流式调用时必须）
+        if "qwen3" in self.model.lower():
+            request_body["enable_thinking"] = False
+        
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    json=request_body,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                if e.response.status_code == 429:
+                    # 限流，等待后重试
+                    wait_time = (attempt + 1) * 10  # 10s, 20s, 30s
+                    print(f"   ⏳ 限流，等待 {wait_time}s 后重试...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    error_detail = e.response.text if e.response else "No response body"
+                    print(f"   API 错误详情: {error_detail}")
+                    raise
+        
+        # 重试次数用尽
+        raise last_error
 
     def _parse_questions(self, response: str, source_doc: str, doc_content: str) -> list[QuestionAnswer]:
         """解析 LLM 生成的问题"""
