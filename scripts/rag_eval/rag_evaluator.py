@@ -116,13 +116,14 @@ class RAGEvaluator:
             async with eval_semaphore:
                 try:
                     # 1. 执行 RAG 查询
-                    rag_result = await self.rag_executor.query(qa.question)
+                    rag_result = await self.rag_executor.query_with_answer(qa.question)
+                    answer_for_eval = rag_result.answer or qa.answer
                     
                     # 2. 使用 LLM 评估
                     eval_results = await self.llm_judge.evaluate_all(
                         question=qa.question,
                         context=rag_result.context,
-                        answer=qa.answer,  # ground truth 作为参考
+                        answer=answer_for_eval,
                     )
                     
                     # 3. 提取分数
@@ -132,7 +133,7 @@ class RAGEvaluator:
                     self.metrics_calc.add_result(
                         question=qa.question,
                         context=rag_result.context,
-                        answer=qa.answer,
+                        answer=answer_for_eval,
                         ground_truth=qa.answer,
                         faithfulness_score=scores.get("faithfulness", 0),
                         relevancy_score=scores.get("answer_relevancy", 0),

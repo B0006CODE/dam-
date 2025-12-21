@@ -51,6 +51,34 @@ class RAGExecutor:
             )
         return self._client
 
+    def _format_context(self, result) -> str:
+        """Normalize retrieval result into a readable context string."""
+        if result is None:
+            return ""
+
+        if isinstance(result, list):
+            blocks = []
+            for idx, item in enumerate(result, 1):
+                if isinstance(item, dict):
+                    content = item.get("content") or ""
+                    if content:
+                        blocks.append(f"[{idx}]\n{content}".strip())
+                else:
+                    blocks.append(str(item))
+            return "\n\n".join(blocks).strip()
+
+        if isinstance(result, dict):
+            for key in ("context", "content", "result"):
+                value = result.get(key)
+                if value:
+                    return str(value)
+            return str(result)
+
+        if isinstance(result, str):
+            return result
+
+        return str(result)
+
     async def close(self):
         if self._client and not self._client.is_closed:
             await self._client.aclose()
@@ -97,10 +125,17 @@ class RAGExecutor:
         
         # 解析结果
         result = data.get("result", "")
+        context_text = self._format_context(result)
+        answer_text = ""
+        if isinstance(result, dict):
+            answer_text = result.get("answer") or result.get("response") or ""
+        elif isinstance(result, str):
+            answer_text = result
+        context_text = self._format_context(result)
         
         return RAGResult(
             question=question,
-            context=result if isinstance(result, str) else str(result),
+            context=context_text,
             answer="",  # only_need_context 模式下没有答案
             raw_response=data,
             latency_ms=latency_ms,
@@ -133,8 +168,8 @@ class RAGExecutor:
         
         return RAGResult(
             question=question,
-            context=result if isinstance(result, str) else str(result),
-            answer=result if isinstance(result, str) else str(result),
+            context=context_text,
+            answer=answer_text,
             raw_response=data,
             latency_ms=latency_ms,
         )
