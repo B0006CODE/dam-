@@ -24,7 +24,6 @@ class ChatbotAgent(BaseAgent):
         self.graph = None
         self.checkpointer = None
         self.context_schema = Context
-        self.agent_tools = None
 
     def get_tools(self, runtime: Runtime[Context] = None):
         input_context = runtime.config.configurable if runtime and hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable') else None
@@ -32,16 +31,12 @@ class ChatbotAgent(BaseAgent):
 
     async def _get_invoke_tools(self, selected_tools: list[str], selected_mcps: list[str], runtime: Runtime[Context] = None):
         """根据配置获取工具。
-        默认不使用任何工具。
-        如果配置为列表，则使用列表中的工具。
         工具注入根据 retrieval_mode 进行过滤：
         - llm: 不注入任何工具（纯大模型回答）
         - local: 只注入知识库相关工具（不包括图谱工具）
         - global: 只注入知识图谱相关工具（不包括知识库工具）
         - mix: 注入所有工具
         """
-        enabled_tools = []
-
         # 获取 retrieval_mode
         try:
             input_context = runtime.config.configurable if runtime and hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable') else None
@@ -49,43 +44,60 @@ class ChatbotAgent(BaseAgent):
         except Exception:
             retrieval_mode = "mix"
         
+        logger.info(f"_get_invoke_tools called with retrieval_mode: {retrieval_mode}")
+        
         # 在 llm 模式下，不注入任何工具（包括 MCP）
         if retrieval_mode == "llm":
+            logger.info("LLM mode: returning empty tools")
             return []
         
-        self.agent_tools = self.agent_tools or self.get_tools(runtime)
+        # 每次都重新获取工具，不使用缓存，以确保根据当前 retrieval_mode 获取正确的工具
+        # get_tools 内部会调用 get_buildin_tools，它会根据 retrieval_mode 过滤工具
+        all_tools = self.get_tools(runtime)
         
-        # 根据 retrieval_mode 决定是否添加核心图谱工具
-        # local 模式不应该有图谱工具，global 模式应该只有图谱工具
+        # 图谱相关工具名称
         core_graph_tool_names = {"global_knowledge_graph_search", "knowledge_graph_statistics"}
         
+        enabled_tools = []
+        
+        if retrieval_mode == "local":
+            # local 模式：只使用知识库工具，排除所有图谱工具
+            enabled_tools = [tool for tool in all_tools if tool.name not in core_graph_tool_names]
+            logger.info(f"Local mode: filtered out graph tools, remaining: {[t.name for t in enabled_tools]}")
+        elif retrieval_mode == "global":
+            # global 模式：只使用图谱工具
+            enabled_tools = [tool for tool in all_tools if tool.name in core_graph_tool_names]
+            logger.info(f"Global mode: only graph tools: {[t.name for t in enabled_tools]}")
+        else:
+            # mix 模式：使用所有工具
+            enabled_tools = all_tools
+            logger.info(f"Mix mode: using all tools: {[t.name for t in enabled_tools]}")
+        
+        # 如果有 selected_tools 配置，进一步过滤
         if selected_tools and isinstance(selected_tools, list) and len(selected_tools) > 0:
-            # 使用配置中指定的工具，但需要根据 retrieval_mode 过滤
+            # 只保留在 selected_tools 中的工具，但仍需遵守 retrieval_mode 的限制
             if retrieval_mode == "local":
-                # local 模式：排除图谱工具
-                enabled_tools = [tool for tool in self.agent_tools 
+                enabled_tools = [tool for tool in enabled_tools 
                                 if tool.name in selected_tools and tool.name not in core_graph_tool_names]
             elif retrieval_mode == "global":
-                # global 模式：只保留图谱工具
-                enabled_tools = [tool for tool in self.agent_tools 
-                                if tool.name in selected_tools and tool.name in core_graph_tool_names]
+                enabled_tools = [tool for tool in enabled_tools 
+                                if tool.name in selected_tools or tool.name in core_graph_tool_names]
             else:
-                # mix 模式：使用所有选中的工具
-                enabled_tools = [tool for tool in self.agent_tools if tool.name in selected_tools]
+                enabled_tools = [tool for tool in enabled_tools if tool.name in selected_tools]
+            
+            # mix 和 global 模式确保核心图谱工具始终可用
+            if retrieval_mode in ("mix", "global"):
+                existing_names = {t.name for t in enabled_tools}
+                for tool in all_tools:
+                    if tool.name in core_graph_tool_names and tool.name not in existing_names:
+                        enabled_tools.append(tool)
         
-        # 根据 retrieval_mode 决定是否自动添加核心工具
-        if retrieval_mode in ("mix", "global"):
-            # mix 或 global 模式：自动添加图谱核心工具
-            core_tools = [tool for tool in self.agent_tools if tool.name in core_graph_tool_names]
-            for core_tool in core_tools:
-                if core_tool not in enabled_tools:
-                    enabled_tools.append(core_tool)
-        # local 模式：不自动添加图谱工具（知识库工具已由 get_buildin_tools 根据 retrieval_mode 提供）
-
+        # 处理 MCP 工具
         if selected_mcps and isinstance(selected_mcps, list) and len(selected_mcps) > 0:
             for mcp in selected_mcps:
                 enabled_tools.extend(await get_mcp_tools(mcp))
 
+        logger.info(f"Final enabled tools for {retrieval_mode} mode: {[t.name for t in enabled_tools]}")
         return enabled_tools
 
     async def llm_call(self, state: State, runtime: Runtime[Context] = None) -> dict[str, Any]:
