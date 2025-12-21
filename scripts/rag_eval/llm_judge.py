@@ -81,12 +81,13 @@ class EvalResult:
 
 
 class LLMJudge:
-    """使用本地 LLM 进行评估打分"""
+    """使用 LLM 进行评估打分，支持本地和在线 API"""
 
     def __init__(
         self,
         base_url: str = "http://localhost:8000/v1",
         model: str = "Qwen/Qwen3-32B",
+        api_key: str | None = None,
         temperature: float = 0.1,
         max_tokens: int = 1024,
         timeout: float = 120.0,
@@ -97,10 +98,40 @@ class LLMJudge:
         self.max_tokens = max_tokens
         self.timeout = timeout
         self._client: httpx.AsyncClient | None = None
+        
+        # 自动检测 API Key
+        if api_key:
+            self.api_key = api_key
+        else:
+            # 根据 base_url 自动检测对应的环境变量
+            self.api_key = self._auto_detect_api_key()
+
+    def _auto_detect_api_key(self) -> str | None:
+        """根据 base_url 自动检测对应的 API Key"""
+        url_to_env = {
+            "siliconflow": "SILICONFLOW_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "dashscope": "DASHSCOPE_API_KEY",
+            "bigmodel": "ZHIPUAI_API_KEY",
+            "together": "TOGETHER_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+            "ark": "ARK_API_KEY",
+        }
+        for keyword, env_var in url_to_env.items():
+            if keyword in self.base_url.lower():
+                key = os.getenv(env_var)
+                if key:
+                    print(f"✓ 使用 {env_var} 进行认证")
+                    return key
+        return None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=self.timeout)
+            headers = {}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            self._client = httpx.AsyncClient(timeout=self.timeout, headers=headers)
         return self._client
 
     async def close(self):

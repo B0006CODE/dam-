@@ -102,6 +102,7 @@ class QuestionGenerator:
         self,
         base_url: str = "http://localhost:8000/v1",
         model: str = "Qwen/Qwen3-32B",
+        api_key: str | None = None,
         questions_per_doc: int = 3,
         max_doc_length: int = 8000,
         timeout: float = 180.0,
@@ -112,10 +113,38 @@ class QuestionGenerator:
         self.max_doc_length = max_doc_length
         self.timeout = timeout
         self._client: httpx.AsyncClient | None = None
+        
+        # 自动检测 API Key
+        if api_key:
+            self.api_key = api_key
+        else:
+            self.api_key = self._auto_detect_api_key()
+
+    def _auto_detect_api_key(self) -> str | None:
+        """根据 base_url 自动检测对应的 API Key"""
+        url_to_env = {
+            "siliconflow": "SILICONFLOW_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "dashscope": "DASHSCOPE_API_KEY",
+            "bigmodel": "ZHIPUAI_API_KEY",
+            "together": "TOGETHER_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+            "ark": "ARK_API_KEY",
+        }
+        for keyword, env_var in url_to_env.items():
+            if keyword in self.base_url.lower():
+                key = os.getenv(env_var)
+                if key:
+                    return key
+        return None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=self.timeout)
+            headers = {}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            self._client = httpx.AsyncClient(timeout=self.timeout, headers=headers)
         return self._client
 
     async def close(self):

@@ -167,6 +167,8 @@ async def main():
             output_dir=args.output,
             sample_size=args.sample,
             questions_per_doc=args.questions_per_doc,
+            llm_url=args.llm_url,
+            llm_model=args.llm_model,
         )
         
         print()

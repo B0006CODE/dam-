@@ -200,6 +200,8 @@ async def run_full_evaluation(
     output_dir: str = "./eval_results",
     sample_size: int | None = None,
     questions_per_doc: int = 3,
+    llm_url: str | None = None,
+    llm_model: str | None = None,
 ) -> str:
     """
     运行完整的 RAG 评估流程
@@ -212,6 +214,8 @@ async def run_full_evaluation(
         output_dir: 输出目录
         sample_size: 采样数量（用于测试）
         questions_per_doc: 每个文档生成的问题数
+        llm_url: LLM 服务 URL（在线 API 或本地服务）
+        llm_model: LLM 模型名称
     
     Returns:
         报告文件路径
@@ -225,6 +229,10 @@ async def run_full_evaluation(
     # 命令行参数覆盖配置
     if db_id:
         config.db_id = db_id
+    if llm_url:
+        config.llm_base_url = llm_url
+    if llm_model:
+        config.llm_model = llm_model
     
     if not config.db_id:
         raise ValueError("必须指定知识库 ID (db_id)")
