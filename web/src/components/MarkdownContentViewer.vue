@@ -185,8 +185,8 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   overflow: hidden;
-  background: #1e293b; /* 使用 Slate-800 */
-  backdrop-filter: blur(10px);
+  background: var(--glass-bg); /* 使用玻璃拟态背景 */
+  backdrop-filter: var(--glass-blur);
 }
 
 .viewer-header {
@@ -194,7 +194,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 4px 16px;
-  background: #1e293b;
+  background: var(--bg-container);
   border-bottom: var(--glass-border);
 }
 
@@ -247,7 +247,7 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background: transparent;
+  background: var(--glass-bg-light); /* 使用较浅的玻璃背景 */
   border-right: var(--glass-border);
   min-height: 0; /* 关键：确保flex项目可以缩小 */
 }
@@ -257,46 +257,38 @@ onUnmounted(() => {
   overflow: visible;
 }
 
-/* MdPreview 组件样式覆盖 */
-.markdown-content :deep(.md-editor) {
-  /* height: auto !important; */
-  min-height: 100%;
+/* MdPreview 组件样式覆盖 - 强化覆盖 */
+.markdown-content :deep(.md-editor),
+.markdown-content :deep(.md-editor-dark),
+.markdown-content :deep(.md-editor-preview),
+.markdown-content :deep(.md-editor-preview-wrapper),
+.markdown-content :deep([class*="md-editor"]) {
   background: transparent !important;
+  background-color: transparent !important;
+  --md-bk-color: transparent !important;
+}
+
+.markdown-content :deep(.md-editor) {
+  min-height: 100%;
 }
 
 .markdown-content :deep(.md-editor-preview) {
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  /* height: auto !important; */
   font-size: small;
   min-height: 100%;
-  background: transparent !important;
   color: var(--text-primary);
 }
 
 .markdown-content :deep(.md-editor-preview-wrapper) {
   padding: 0;
   min-height: 100%;
-  background: transparent !important;
-}
-
-.markdown-content :deep(.md-editor-dark) {
-  --md-bk-color: transparent !important; /* 强制编辑器背景透明 */
-  background: transparent !important;
-}
-
-.markdown-content :deep(.md-editor) {
-  background: transparent !important;
-}
-
-.markdown-content :deep(.md-editor-preview) {
-  background: transparent !important;
 }
 
 .chunk-panel {
   width: 300px;
   overflow-y: auto;
-  background: #1e293b;
+  background: var(--bg-container);
   padding: 16px;
   min-height: 0; /* 确保flex项目可以缩小 */
 }

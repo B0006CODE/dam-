@@ -101,7 +101,7 @@
         <!-- 服务链接部分 -->
         <div v-if="userStore.isAdmin">
           <h3>服务链接</h3>
-          <p>快速访问系统相关的外部服务，需要将 localhost 替换为实际的 IP 地址。</p>
+          <p>快速访问系统相关的外部服务。</p>
           <div class="services-grid">
             <div class="service-link-card">
               <div class="service-info">

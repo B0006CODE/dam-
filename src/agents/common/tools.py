@@ -154,12 +154,6 @@ def get_static_tools(input_context: dict | None = None) -> list:
                 for rel_type in results_by_type:
                     results_by_type[rel_type] = list(dict.fromkeys(results_by_type[rel_type]))
                 
-                # 重新计算总数
-                all_entities = []
-                for entities in results_by_type.values():
-                    all_entities.extend(entities)
-                unique_entities = list(dict.fromkeys(all_entities))
-                
                 if not results_by_type:
                     scope = f"'{keyword}'相关的" if keyword else "整个图谱中的"
                     return {
@@ -198,11 +192,14 @@ def get_static_tools(input_context: dict | None = None) -> list:
                     desensitized_entities = list(dict.fromkeys(desensitized_entities))
                     desensitized_results[k] = desensitized_entities
 
+                # 计算各类型数量之和作为总数
+                total_type_count = sum(len(v) for v in desensitized_results.values())
+
                 # 同时生成文本摘要供大模型使用
                 output_parts = [
                     f"【知识图谱统计结果】",
                     f"查询范围：{scope}{'/'.join(query_labels)}",
-                    f"共找到 {len(unique_entities)} 种不同的{'/'.join(query_labels)}类型",
+                    f"共找到 {total_type_count} 种不同的{'/'.join(query_labels)}类型",
                     "",
                     "按关系类型分类统计："
                 ]
@@ -220,7 +217,7 @@ def get_static_tools(input_context: dict | None = None) -> list:
                     "keyword": keyword,
                     "query_labels": query_labels,
                     "scope": scope,
-                    "total_count": len(unique_entities),
+                    "total_count": total_type_count,
                     "results_by_type": {k: {"count": len(v), "entities": v} for k, v in desensitized_results.items()},
                     "text_summary": "\n".join(output_parts)
                 }
@@ -340,17 +337,166 @@ def get_kb_based_tools(input_context: dict = None) -> list:
     return kb_tools
 
 
+class HybridSearchModel(BaseModel):
+    """混合检索工具的参数模型"""
+    query_text: str = Field(
+        description="要检索的关键词或问题，应该是能够帮助回答用户问题的关键信息"
+    )
+
+
+def get_hybrid_search_tool(input_context: dict = None) -> list:
+    """获取混合检索工具（仅在 mix 模式下使用）"""
+    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+    if retrieval_mode != "mix":
+        return []
+
+    # 获取配置
+    raw_whitelist = input_context.get("kb_whitelist") if input_context else []
+    if isinstance(raw_whitelist, str):
+        raw_whitelist = [raw_whitelist]
+    kb_whitelist = set(raw_whitelist or [])
+    graph_name = (input_context or {}).get("graph_name") or "neo4j"
+
+    async def hybrid_search(query_text: str) -> dict:
+        """同时查询知识库和知识图谱，合并结果"""
+        results = {
+            "query": query_text,
+            "knowledge_base_results": [],
+            "knowledge_graph_results": [],
+            "summary": "",
+        }
+        
+        # 1. 查询所有选中的知识库
+        kb_results = []
+        retrievers = knowledge_base.get_retrievers()
+        for db_id, retriever_info in retrievers.items():
+            if kb_whitelist and db_id not in kb_whitelist:
+                continue
+            try:
+                retriever = retriever_info["retriever"]
+                if asyncio.iscoroutinefunction(retriever):
+                    result = await retriever(query_text, mode="mix")
+                else:
+                    result = retriever(query_text, mode="mix")
+                
+                if isinstance(result, list):
+                    for item in result:
+                        item["source_db"] = retriever_info["name"]
+                        item["source_db_id"] = db_id
+                    kb_results.extend(result)
+                elif isinstance(result, str) and result:
+                    kb_results.append({
+                        "content": result,
+                        "source_db": retriever_info["name"],
+                        "source_db_id": db_id,
+                        "score": 1.0,
+                    })
+                logger.debug(f"Hybrid search: Retrieved {len(result) if isinstance(result, list) else 1} results from {db_id}")
+            except Exception as e:
+                logger.error(f"Hybrid search: Error querying {db_id}: {e}")
+        
+        results["knowledge_base_results"] = kb_results
+        
+        # 2. 查询知识图谱
+        try:
+            if graph_name == "neo4j":
+                # 使用 Neo4j 原生图谱查询（用户上传的图谱）
+                if graph_base.is_running():
+                    graph_base.use_database(graph_name)
+                    graph_result = graph_base.query_node(query_text, hops=2, kgdb_name=graph_name, return_format="triples")
+                    if isinstance(graph_result, dict):
+                        graph_result["query_type"] = "search"
+                        graph_result["query"] = query_text
+                        graph_result["graph_type"] = "neo4j"
+                    results["knowledge_graph_results"] = graph_result
+                    logger.debug(f"Hybrid search: Neo4j graph query completed for '{query_text}'")
+            else:
+                # 使用 LightRAG 图谱查询
+                # LightRAG 知识库同时包含向量检索和图谱，通过 mode='global' 进行图谱检索
+                try:
+                    lightrag_result = await knowledge_base.aquery(query_text, graph_name, mode="global")
+                    if lightrag_result:
+                        # 将 LightRAG 的图谱结果格式化
+                        if isinstance(lightrag_result, list) and len(lightrag_result) > 0:
+                            content = lightrag_result[0].get("content", "") if isinstance(lightrag_result[0], dict) else str(lightrag_result[0])
+                        else:
+                            content = str(lightrag_result)
+                        
+                        results["knowledge_graph_results"] = {
+                            "query_type": "search",
+                            "query": query_text,
+                            "graph_type": "lightrag",
+                            "content": content,
+                            "triples": [],  # LightRAG 返回的是文本，不是三元组
+                        }
+                    logger.debug(f"Hybrid search: LightRAG graph query completed for '{query_text}' in {graph_name}")
+                except Exception as e:
+                    logger.error(f"Hybrid search: Error querying LightRAG graph {graph_name}: {e}")
+                    results["knowledge_graph_results"] = {"error": str(e)}
+        except Exception as e:
+            logger.error(f"Hybrid search: Error querying knowledge graph: {e}")
+            results["knowledge_graph_results"] = {"error": str(e)}
+        
+        # 3. 生成摘要
+        kb_count = len(kb_results)
+        kg_result = results["knowledge_graph_results"]
+        if isinstance(kg_result, dict):
+            if kg_result.get("graph_type") == "lightrag":
+                kg_count = 1 if kg_result.get("content") else 0
+                kg_desc = f"从 LightRAG 图谱检索到相关内容"
+            else:
+                kg_count = len(kg_result.get("triples", []))
+                kg_desc = f"从知识图谱检索到 {kg_count} 条相关三元组"
+        else:
+            kg_count = 0
+            kg_desc = "图谱查询未返回结果"
+        
+        results["summary"] = f"从知识库检索到 {kb_count} 条相关内容，{kg_desc}。"
+        
+        return results
+
+    # 构建工具描述
+    kb_names = []
+    retrievers = knowledge_base.get_retrievers()
+    for db_id, retriever_info in retrievers.items():
+        if kb_whitelist and db_id not in kb_whitelist:
+            continue
+        kb_names.append(retriever_info["name"])
+    
+    description = (
+        "混合检索工具：同时查询知识库和知识图谱，返回综合结果。\n"
+        f"将检索的知识库：{', '.join(kb_names) if kb_names else '全部知识库'}\n"
+        f"将检索的知识图谱：{graph_name}\n"
+        "使用此工具可以获得最全面的信息，综合向量语义检索和实体关系检索的结果。"
+    )
+
+    hybrid_tool = StructuredTool.from_function(
+        coroutine=hybrid_search,
+        name="hybrid_knowledge_search",
+        description=description,
+        args_schema=HybridSearchModel,
+        metadata={"tag": ["hybrid", "knowledgebase", "knowledge_graph"]},
+    )
+
+    return [hybrid_tool]
+
+
 def get_buildin_tools(input_context: dict = None) -> list:
     """获取所有可运行的工具（给大模型使用）"""
     tools = []
+    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
 
     try:
-        # 获取所有知识库基于的工具
-        tools.extend(get_kb_based_tools(input_context))
-        tools.extend(get_static_tools(input_context))
-
-        # MySQL工具已移除，只保留知识库相关功能
-        # 如需数据库功能，请手动配置
+        if retrieval_mode == "mix":
+            # 混合检索模式：使用专门的混合检索工具
+            tools.extend(get_hybrid_search_tool(input_context))
+            # 同时保留单独的知识库和图谱工具，供大模型选择使用
+            tools.extend(get_kb_based_tools(input_context))
+            tools.extend(get_static_tools(input_context))
+        else:
+            # 其他模式：使用原有逻辑
+            tools.extend(get_kb_based_tools(input_context))
+            tools.extend(get_static_tools(input_context))
 
     except Exception as e:
         logger.error(f"Failed to get knowledge base retrievers: {e}")

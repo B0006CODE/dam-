@@ -114,28 +114,19 @@ const router = createRouter({
     },
   ]
 })
-
-// 鍏ㄥ眬鍓嶇疆瀹堝崼
 router.beforeEach(async (to, from, next) => {
-  // 妫€鏌ヨ矾鐢辨槸鍚﹂渶瑕佽璇?
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth === true);
   const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
 
   const userStore = useUserStore();
   const isLoggedIn = userStore.isLoggedIn;
   const isAdmin = userStore.isAdmin;
-
-  // 濡傛灉璺敱闇€瑕佽璇佷絾鐢ㄦ埛鏈櫥褰?
   if (requiresAuth && !isLoggedIn) {
-    // 淇濆瓨灏濊瘯璁块棶鐨勮矾寰勶紝鐧诲綍鍚庤烦杞?
     sessionStorage.setItem('redirect', to.fullPath);
     next('/login');
     return;
   }
-
-  // 濡傛灉璺敱闇€瑕佺鐞嗗憳鏉冮檺浣嗙敤鎴蜂笉鏄鐞嗗憳
   if (requiresAdmin && !isAdmin) {
-    // 濡傛灉鏄櫘閫氱敤鎴凤紝璺宠浆鍒伴粯璁ゆ櫤鑳戒綋椤甸潰
     try {
       const agentStore = useAgentStore();
       if (!agentStore.isInitialized) {
@@ -148,14 +139,10 @@ router.beforeEach(async (to, from, next) => {
     }
     return;
   }
-
-  // 濡傛灉鐢ㄦ埛宸茬櫥褰曚絾璁块棶鐧诲綍椤碉紝璺宠浆鍒版櫤鑳戒綋椤甸潰
   if (to.path === '/login' && isLoggedIn) {
     next('/agent');
     return;
   }
-
-  // 鍏朵粬鎯呭喌姝ｅ父瀵艰埅
   next();
 });
 

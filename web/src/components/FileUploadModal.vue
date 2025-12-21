@@ -441,6 +441,21 @@ const customUploadRequest = async (options) => {
   try {
     console.log('开始上传文件:', file.name, '到数据库:', databaseId.value);
     
+    // 获取认证头并检查有效性
+    const authHeaders = getAuthHeaders();
+    console.log('使用认证头:', authHeaders);
+    
+    if (!authHeaders || !authHeaders.Authorization || authHeaders.Authorization === 'Bearer ' || authHeaders.Authorization === 'Bearer undefined' || authHeaders.Authorization === 'Bearer null') {
+      console.error('认证头无效，用户可能未登录');
+      message.error('登录已过期，请重新登录');
+      onError(new Error('未登录或登录已过期，请重新登录'));
+      // 延迟跳转到登录页
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+    
     // 创建FormData
     const formData = new FormData();
     formData.append('file', file);
@@ -449,10 +464,6 @@ const customUploadRequest = async (options) => {
     const url = databaseId.value
       ? `/api/knowledge/files/upload?db_id=${databaseId.value}`
       : '/api/knowledge/files/upload';
-    
-    //获取认证头
-    const authHeaders = getAuthHeaders();
-    console.log('使用认证头:', authHeaders);
     
     // 发送请求
     const xhr = new XMLHttpRequest();
@@ -475,6 +486,23 @@ const customUploadRequest = async (options) => {
         } catch (e) {
           console.error('解析响应失败:', e);
           onError(new Error('解析服务器响应失败'));
+        }
+      } else if (xhr.status === 401) {
+        // 处理认证失败
+        console.error('认证失败，需要重新登录');
+        message.error('登录已过期，请重新登录');
+        onError(new Error('登录已过期，请重新登录'));
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1500);
+      } else if (xhr.status === 409) {
+        // 处理文件已存在
+        try {
+          const error = JSON.parse(xhr.responseText);
+          console.error('文件已存在:', error);
+          onError(new Error(error.detail || '相同内容的文件已存在'));
+        } catch (e) {
+          onError(new Error('相同内容的文件已存在'));
         }
       } else {
         try {
@@ -503,7 +531,7 @@ const customUploadRequest = async (options) => {
     // 打开连接并设置请求头
     xhr.open('POST', url, true);
     xhr.setRequestHeader('Authorization', authHeaders.Authorization);
-    xhr.timeout = 60000; // 60秒超时
+    xhr.timeout = 300000; // 5分钟超时，大文件需要更长时间
     
     // 发送请求
     xhr.send(formData);

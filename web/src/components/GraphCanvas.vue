@@ -49,17 +49,16 @@ const MAX_RETRIES = 5
 const defaultLayout = {
   type: 'd3-force',
   preventOverlap: true,
-  // 性能优化参数 - 减少迭代次数，加快收敛
-  alphaDecay: 0.15,      // 加快衰减 (原0.1)
-  alphaMin: 0.02,        // 提高最小alpha阈值 (原0.01)
-  velocityDecay: 0.75,   // 增加速度衰减 (原0.7)
-  iterations: 60,        // 减少迭代次数 (原100)
+  alphaDecay: 0.15,
+  alphaMin: 0.02,
+  velocityDecay: 0.75,
+  iterations: 60,
   force: {
-    center: { x: 0.5, y: 0.5, strength: 0.05 },  // 降低中心力 (原0.1)
-    charge: { strength: -300, distanceMax: 300 }, // 降低斥力 (原-400)
-    link: { distance: 80, strength: 0.6 },        // 减少连接距离 (原100)
+    center: { x: 0.5, y: 0.5, strength: 0.05 },
+    charge: { strength: -300, distanceMax: 300 },
+    link: { distance: 80, strength: 0.6 },
   },
-  collide: { radius: 30, strength: 0.6, iterations: 2 }, // 减少碰撞检测 (原3)
+  collide: { radius: 30, strength: 0.6, iterations: 2 },
 }
 
 const paletteColors = [
@@ -82,7 +81,6 @@ function formatData() {
   }
 
   const nodes = (data.nodes || []).map((n) => {
-    // 推断实体类型：优先 entity_type -> type -> labels[0] -> unknown
     let inferredType = 'unknown'
     if (n && typeof n === 'object') {
       if (n.entity_type) inferredType = String(n.entity_type)
@@ -276,15 +274,11 @@ function setGraphData() {
   const data = formatData()
   graphInstance.setData(data)
   graphInstance.render()
-
-  // 搴旂敤鍏抽敭璇嶉珮浜?
   setTimeout(() => {
     applyHighlightKeywords()
     emit('data-rendered')
   }, 100)
 }
-
-// 鍏抽敭璇嶉珮浜姛鑳?
 function applyHighlightKeywords() {
   if (!graphInstance || !props.highlightKeywords || props.highlightKeywords.length === 0) return
 
@@ -307,8 +301,6 @@ function applyHighlightKeywords() {
     graphInstance.draw()
   }
 }
-
-// 娓呴櫎楂樹寒
 function clearHighlights() {
   if (!graphInstance) return
 
@@ -382,10 +374,6 @@ watch(() => props.graphData, () => {
   clearTimeout(renderTimeout)
   renderTimeout = setTimeout(() => setGraphData(), 50)
 }, { deep: true })
-
-// 鐩戝惉鍏抽敭璇嶅彉鍖?
-
-// 监听布局参数变化，重新渲染以应用新布局
 watch(() => props.layoutOptions, () => {
   refreshGraph()
 }, { deep: true })
@@ -398,7 +386,6 @@ watch(() => props.highlightKeywords, () => {
 }, { deep: true })
 
 onMounted(() => {
-  // ResizeObserver 鐩戝惉瀹瑰櫒灏哄锛岃嚜鍔ㄩ噸娓叉煋
   if (window.ResizeObserver) {
     resizeObserver = new ResizeObserver(() => {
       if (!container.value || !graphInstance) return
@@ -422,8 +409,6 @@ onUnmounted(() => {
   try { graphInstance?.destroy() } catch (e) {}
   graphInstance = null
 })
-
-// 鏆撮湶鏂规硶
 defineExpose({
   refreshGraph,
   fitView,
@@ -449,7 +434,6 @@ defineExpose({
   }
 
   .slots {
-    // 璁╂暣灞傝鐩栧鍣ㄩ粯璁や笉鎺ユ敹鎸囬拡浜嬩欢锛堜究浜庣┛閫忓埌搴曚笅鐢诲竷锛?
     pointer-events: none;
     position: absolute;
     top: 0;
@@ -470,7 +454,6 @@ defineExpose({
       &.bottom { bottom: 0; }
     }
     .content {
-      // 涓棿鍐呭灞傚強鍏跺瓙鍏冪礌鍏ㄩ儴绌块€?
       pointer-events: none;
       flex: 1;
     }
@@ -480,7 +463,6 @@ defineExpose({
   }
 }
 
-/* 楂樹寒鑺傜偣鐨勮剦鍐插姩鐢绘晥鏋?*/
 @keyframes highlightPulse {
   0% {
     filter: brightness(1);

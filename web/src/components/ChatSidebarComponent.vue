@@ -163,7 +163,7 @@ const props = defineProps({
   agents: { type: Object, default: () => ({}) },
   selectedAgentId: { type: String, default: null },
   retrievalMode: { type: String, default: 'mix' },
-  modelValue: { type: Object, default: () => ({ kbIds: [], graph: 'neo4j' }) }
+  modelValue: { type: Object, default: () => ({ kbIds: [], graph: '' }) }
 });
 
 // 折叠分组状态

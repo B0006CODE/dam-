@@ -298,30 +298,59 @@ class LightRagKB(KnowledgeBase):
 
         return processed_items_info
 
-    async def aquery(self, query_text: str, db_id: str, mode="mix", **kwargs) -> str:
-        """异步查询知识库"""
+    # 前端模式到 LightRAG 模式的映射
+    MODE_MAPPING = {
+        "mix": "hybrid",    # 混合检索 → LightRAG hybrid
+        "local": "local",   # 知识库检索 → LightRAG local (向量检索)
+        "global": "global", # 知识图谱检索 → LightRAG global (图谱检索)
+    }
+
+    async def aquery(self, query_text: str, db_id: str, mode="mix", **kwargs) -> list[dict]:
+        """异步查询知识库，返回统一格式的结果"""
         rag = await self._get_lightrag_instance(db_id)
         if not rag:
             raise ValueError(f"Database {db_id} not found")
 
         try:
-            # 设置查询参数，使用传入的检索模式
+            # 映射前端模式到 LightRAG 模式
+            lightrag_mode = self.MODE_MAPPING.get(mode, "hybrid")
+            
+            # 设置查询参数
             params_dict = {
-                "mode": mode,
+                "mode": lightrag_mode,
                 "only_need_context": True,
-                "top_k": 10,
-            } | kwargs
+                "top_k": kwargs.get("top_k", 10),
+            }
+            # 合并其他参数（排除已处理的）
+            for k, v in kwargs.items():
+                if k not in ["top_k", "mode"]:
+                    params_dict[k] = v
+            
             param = QueryParam(**params_dict)
 
             # 执行查询
             response = await rag.aquery(query_text, param)
-            logger.debug(f"Query response with mode {mode}: {response}")
+            logger.debug(f"Query response with mode {lightrag_mode} (from {mode}): {response[:200] if response else 'empty'}...")
 
-            return response
+            # 统一返回格式为 list[dict]，与 Milvus 保持一致
+            if not response:
+                return []
+            
+            # LightRAG 返回的是上下文文本，需要包装成统一格式
+            return [{
+                "content": response,
+                "metadata": {
+                    "source": f"LightRAG ({lightrag_mode})",
+                    "db_id": db_id,
+                    "mode": lightrag_mode,
+                    "kb_type": "lightrag",
+                },
+                "score": 1.0,  # LightRAG 不返回相似度分数
+            }]
 
         except Exception as e:
             logger.error(f"Query error with mode {mode}: {e}, {traceback.format_exc()}")
-            return ""
+            return []
 
     async def delete_file(self, db_id: str, file_id: str) -> None:
         """删除文件"""

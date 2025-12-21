@@ -54,8 +54,8 @@
         <span v-else-if="message.error_type === 'unexpect'">生成过程中出现异常</span>
       </div>
 
-      <div v-if="message.tool_calls && Object.keys(message.tool_calls).length > 0" class="tool-calls-container">
-        <div v-for="(toolCall, index) in message.tool_calls || {}" :key="index" class="tool-call-container">
+      <div v-if="filteredToolCalls && Object.keys(filteredToolCalls).length > 0" class="tool-calls-container">
+        <div v-for="(toolCall, index) in filteredToolCalls" :key="index" class="tool-call-container">
           <div v-if="toolCall" class="tool-call-display" :class="{ 'is-collapsed': !expandedToolCalls.has(toolCall.id) }">
             <div class="tool-header" @click="toggleToolCall(toolCall.id)">
               <span v-if="!toolCall.tool_call_result">
@@ -111,6 +111,7 @@ import { Loader, CircleCheckBig } from 'lucide-vue-next';
 import { ToolResultRenderer, KnowledgeGraphResult } from '@/components/ToolCallingResult'
 import { useAgentStore } from '@/stores/agent'
 import { useInfoStore } from '@/stores/info'
+import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 
 
@@ -161,9 +162,38 @@ const expandedToolCalls = ref(new Set()); // 展开的工具调用集合
 // 引入智能体 store
 const agentStore = useAgentStore();
 const infoStore = useInfoStore();
+const userStore = useUserStore();
 // KG 折叠开关（默认收起）
 const kgCollapsed = ref(false);
 const { availableTools } = storeToRefs(agentStore);
+const { isAdmin } = storeToRefs(userStore);
+
+// 过滤工具调用（非管理员隐藏 sequentialthinking）
+const filteredToolCalls = computed(() => {
+  const toolCalls = props.message.tool_calls;
+  if (!toolCalls) return {};
+  
+  // 管理员可以看到所有工具
+  if (isAdmin.value) return toolCalls;
+  
+  // 非管理员过滤掉 sequentialthinking 工具
+  if (Array.isArray(toolCalls)) {
+    return toolCalls.filter(tc => {
+      const toolName = tc?.name || tc?.function?.name || '';
+      return !toolName.toLowerCase().includes('sequentialthinking');
+    });
+  }
+  
+  // 对象格式
+  const filtered = {};
+  for (const [key, tc] of Object.entries(toolCalls)) {
+    const toolName = tc?.name || tc?.function?.name || '';
+    if (!toolName.toLowerCase().includes('sequentialthinking')) {
+      filtered[key] = tc;
+    }
+  }
+  return filtered;
+});
 
 // 工具相关方法
 const getToolNameByToolCall = (toolCall) => {

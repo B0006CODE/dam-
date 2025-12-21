@@ -226,9 +226,17 @@ const userInput = ref('');
 const retrievalMode = ref('mix');
 const kbOptions = ref([]);
 const selectedKbIds = ref([]);
-const graphOptions = ref([{ label: '默认 Neo4j 图谱', value: 'neo4j' }]);
-const selectedGraph = ref('neo4j');
-const resourceSelection = ref({ kbIds: [], graph: 'neo4j' });
+const graphOptions = ref([]);
+const selectedGraph = ref('');
+
+// resourceSelection 与 selectedKbIds/selectedGraph 双向同步
+const resourceSelection = computed({
+  get: () => ({ kbIds: selectedKbIds.value, graph: selectedGraph.value }),
+  set: (val) => {
+    if (val.kbIds !== undefined) selectedKbIds.value = val.kbIds;
+    if (val.graph !== undefined) selectedGraph.value = val.graph;
+  }
+});
 
 // 从智能体元数据获取示例问题
 const exampleQuestions = computed(() => {
@@ -249,6 +257,11 @@ const loadKnowledgeOptions = async () => {
     }));
     // 保留已选择但仍然存在的ID
     selectedKbIds.value = selectedKbIds.value.filter(id => kbOptions.value.find(opt => opt.value === id));
+    
+    // 如果用户未选择任何知识库，默认选中第一个
+    if (selectedKbIds.value.length === 0 && kbOptions.value.length > 0) {
+      selectedKbIds.value = [kbOptions.value[0].value];
+    }
   } catch (error) {
     console.error('加载知识库列表失败:', error);
     message.warning('获取知识库列表失败，将使用全部知识库检索');
@@ -381,7 +394,7 @@ const retrievalModeLabels = {
 };
 const retrievalModeHintsMap = {
   mix: '同时利用知识库与知识图谱进行智能混合检索',
-  local: '只使用知识库进行语义/向量检索',
+  local: '只使用知识库进行向量检索',
   global: '只使用知识图谱进行检索',
   llm: '调用大模型自身知识，不访问知识库或图谱'
 };
@@ -804,6 +817,23 @@ const renameChat = async (data) => {
 const handleSendMessage = async () => {
   const text = userInput.value.trim();
   if (!text || !currentAgent.value || isProcessing.value) return;
+
+  // 根据检索模式验证资源选择
+  const mode = retrievalMode.value;
+  if (['mix', 'local'].includes(mode)) {
+    // 混合检索或知识库检索模式需要选择知识库
+    if (selectedKbIds.value.length === 0) {
+      message.warning('请至少选择一个知识库');
+      return;
+    }
+  }
+  if (['mix', 'global'].includes(mode)) {
+    // 混合检索或知识图谱检索模式需要选择图谱
+    if (!selectedGraph.value) {
+      message.warning('请选择一个知识图谱');
+      return;
+    }
+  }
 
   // 如果没有当前线程，先创建一个新线程
   if (!currentChatId.value) {

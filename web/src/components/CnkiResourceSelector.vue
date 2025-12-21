@@ -111,7 +111,7 @@ import {
   ExclamationCircleOutlined 
 } from '@ant-design/icons-vue';
 import { databaseApi } from '@/apis/knowledge_api';
-import { lightragApi } from '@/apis/graph_api';
+import { lightragApi, neo4jApi } from '@/apis/graph_api';
 
 // Props
 const props = defineProps({
@@ -121,7 +121,7 @@ const props = defineProps({
   },
   modelValue: {
     type: Object,
-    default: () => ({ kbIds: [], graph: 'neo4j' })
+    default: () => ({ kbIds: [], graph: '' })
   }
 });
 
@@ -144,7 +144,7 @@ const selectedKbIds = computed({
 });
 
 const selectedGraph = computed({
-  get: () => props.modelValue.graph || 'neo4j',
+  get: () => props.modelValue.graph || '',
   set: (val) => emit('update:modelValue', { ...props.modelValue, graph: val })
 });
 
@@ -260,6 +260,11 @@ const loadKnowledgeBases = async () => {
   try {
     const res = await databaseApi.getDatabases();
     kbOptionsRaw.value = res?.databases || [];
+    
+    // 如果用户未选择任何知识库，默认选中第一个
+    if (selectedKbIds.value.length === 0 && kbOptionsRaw.value.length > 0) {
+      selectedKbIds.value = [kbOptionsRaw.value[0].db_id];
+    }
   } catch (error) {
     console.error('加载知识库列表失败:', error);
     kbOptionsRaw.value = [];
@@ -269,20 +274,93 @@ const loadKnowledgeBases = async () => {
 // 加载知识图谱列表和统计信息
 const loadGraphOptions = async () => {
   try {
-    // 获取 LightRAG 数据库列表
-    const res = await lightragApi.getDatabases();
-    graphOptionsRaw.value = res?.data?.databases || res?.databases || [];
+    const allGraphs = [];
     
-    // 为每个图谱获取统计信息
-    for (const db of graphOptionsRaw.value) {
-      try {
-        const stats = await lightragApi.getStats(db.db_id);
-        if (stats?.data) {
-          graphStats.value[db.db_id] = stats.data;
+    // 1. 始终添加 Neo4j 原生图谱选项（与 GraphView 保持一致）
+    let neo4jName = '大坝安全知识图谱';
+    let neo4jEntityCount = 0;
+    let neo4jRelationCount = 0;
+    
+    // 尝试加载已保存的别名
+    try {
+      const savedAliases = localStorage.getItem('graph_aliases');
+      if (savedAliases) {
+        const aliases = JSON.parse(savedAliases);
+        if (aliases['neo4j']) {
+          neo4jName = aliases['neo4j'];
         }
-      } catch (e) {
-        console.warn(`获取图谱 ${db.db_id} 统计信息失败:`, e);
       }
+    } catch (e) {}
+    
+    // 尝试获取 Neo4j 统计信息
+    try {
+      const neo4jInfo = await neo4jApi.getInfo();
+      const info = neo4jInfo?.data || neo4jInfo;
+      if (info?.entity_count !== undefined) {
+        neo4jEntityCount = info.entity_count;
+        neo4jRelationCount = info.relationship_count || 0;
+      }
+    } catch (e) {
+      console.warn('获取 Neo4j 图谱信息失败:', e);
+    }
+    
+    // 始终添加 Neo4j 选项
+    allGraphs.push({
+      db_id: 'neo4j',
+      name: neo4jName,
+      kb_type: 'neo4j',
+      entity_count: neo4jEntityCount,
+      relationship_count: neo4jRelationCount,
+    });
+    graphStats.value['neo4j'] = {
+      total_nodes: neo4jEntityCount,
+      total_edges: neo4jRelationCount,
+      is_truncated: false,
+    };
+    
+    // 2. 获取所有 LightRAG 知识库（与 GraphView 保持一致）
+    try {
+      const res = await lightragApi.getDatabases();
+      // 安全地提取数据库列表
+      let lightragDbs = res?.databases || res?.data?.databases || res?.data || [];
+      if (!Array.isArray(lightragDbs)) {
+        if (lightragDbs && typeof lightragDbs === 'object' && lightragDbs.databases) {
+          lightragDbs = lightragDbs.databases;
+        } else {
+          lightragDbs = [];
+        }
+      }
+      
+      for (const db of lightragDbs) {
+        const dbId = db.db_id || db.id || db.name;
+        if (!dbId) continue;
+        
+        allGraphs.push({
+          db_id: dbId,
+          name: db.name || dbId,
+          kb_type: 'lightrag',
+          row_count: db.row_count || 0,
+        });
+        
+        // 尝试异步获取统计信息（不阻塞）
+        lightragApi.getStats(dbId).then(stats => {
+          if (stats?.data) {
+            graphStats.value[dbId] = stats.data;
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('获取 LightRAG 图谱列表失败:', e);
+    }
+    
+    graphOptionsRaw.value = allGraphs;
+    
+    // 检查当前选中的图谱是否在列表中
+    const currentValid = allGraphs.some(db => db.db_id === selectedGraph.value);
+    
+    // 如果当前选中的图谱无效或未选择，默认选中第一个
+    if ((!selectedGraph.value || !currentValid) && allGraphs.length > 0) {
+      selectedGraph.value = allGraphs[0].db_id;
     }
   } catch (error) {
     console.error('加载知识图谱列表失败:', error);

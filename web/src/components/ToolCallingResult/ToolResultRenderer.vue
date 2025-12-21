@@ -1,8 +1,14 @@
 <template>
   <div class="tool-result-renderer">
+    <!-- 混合检索结果 -->
+    <HybridSearchResult
+      v-if="isHybridSearchResult"
+      :data="parsedData"
+    />
+
     <!-- 网页搜索结果 -->
     <WebSearchResult
-      v-if="isWebSearchResult"
+      v-else-if="isWebSearchResult"
       :data="parsedData"
     />
 
@@ -45,6 +51,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { ToolOutlined } from '@ant-design/icons-vue'
+import HybridSearchResult from './HybridSearchResult.vue'
 import WebSearchResult from './WebSearchResult.vue'
 import KnowledgeBaseResult from './KnowledgeBaseResult.vue'
 import KnowledgeGraphResult from './KnowledgeGraphResult.vue'
@@ -81,12 +88,31 @@ const parsedData = computed(() => {
   return props.resultContent
 })
 
+// 判断是否为混合检索结果
+const isHybridSearchResult = computed(() => {
+  const toolNameLower = props.toolName.toLowerCase()
+  const isHybridTool = toolNameLower.includes('hybrid') ||
+                       toolNameLower === 'hybrid_knowledge_search'
+
+  if (!isHybridTool) return false
+
+  const data = parsedData.value
+  return data &&
+         typeof data === 'object' &&
+         'knowledge_base_results' in data &&
+         'knowledge_graph_results' in data &&
+         'summary' in data
+})
+
 // 判断是否为网页搜索结果
 const isWebSearchResult = computed(() => {
   const toolNameLower = props.toolName.toLowerCase()
   const isWebSearchTool = toolNameLower.includes('search') ||
                          toolNameLower.includes('tavily') ||
                          toolNameLower.includes('web')
+
+  // 排除混合检索
+  if (isHybridSearchResult.value) return false
 
   if (!isWebSearchTool) return false
 
