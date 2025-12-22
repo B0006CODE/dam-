@@ -177,8 +177,6 @@ const userRoleText = computed(() => {
   switch (userStore.userRole) {
     case 'superadmin':
       return '超级管理员';
-    case 'admin':
-      return '管理员';
     case 'user':
       return '普通用户';
     default:
@@ -190,7 +188,6 @@ const userRoleText = computed(() => {
 const userRoleClass = computed(() => {
   return {
     'superadmin': userStore.userRole === 'superadmin',
-    'admin': userStore.userRole === 'admin',
     'user': userStore.userRole === 'user'
   };
 });
@@ -228,7 +225,6 @@ const openProfile = async () => {
 const getRoleColor = (role) => {
   switch (role) {
     case 'superadmin': return 'red';
-    case 'admin': return 'blue';
     case 'user': return 'green';
     default: return 'default';
   }
@@ -376,10 +372,6 @@ const handleAvatarChange = async (info) => {
 
   &.superadmin {
     background-color: #c1bd00; // 红色，超管
-  }
-
-  &.admin {
-    background-color: #1890ff; // 蓝色，管理员
   }
 
   &.user {

@@ -199,7 +199,6 @@ import { MergeCellsOutlined, DatabaseOutlined, GlobalOutlined, RobotOutlined } f
 import { handleChatError, handleValidationError } from '@/utils/errorHandler';
 import { ScrollController } from '@/utils/scrollController';
 import { AgentValidator } from '@/utils/agentValidator';
-import { databaseApi } from '@/apis/knowledge_api';
 import { useAgentStore } from '@/stores/agent';
 import { storeToRefs } from 'pinia';
 import { MessageProcessor } from '@/utils/messageProcessor';
@@ -224,9 +223,7 @@ const defaultAgent = computed(() => agentStore.defaultAgent);
 // ==================== LOCAL CHAT & UI STATE ====================
 const userInput = ref('');
 const retrievalMode = ref('mix');
-const kbOptions = ref([]);
 const selectedKbIds = ref([]);
-const graphOptions = ref([]);
 const selectedGraph = ref('');
 
 // resourceSelection 与 selectedKbIds/selectedGraph 双向同步
@@ -247,26 +244,6 @@ const exampleQuestions = computed(() => {
   }));
 });
 
-const loadKnowledgeOptions = async () => {
-  try {
-    const res = await (databaseApi.getDatabasesForChat ? databaseApi.getDatabasesForChat() : databaseApi.getDatabases());
-    const dbs = res?.databases || res?.data || [];
-    kbOptions.value = dbs.map(db => ({
-      label: `${db.name || db.db_id}${db.kb_type ? `（${db.kb_type}）` : ''}`,
-      value: db.db_id
-    }));
-    // 保留已选择但仍然存在的ID
-    selectedKbIds.value = selectedKbIds.value.filter(id => kbOptions.value.find(opt => opt.value === id));
-    
-    // 如果用户未选择任何知识库，默认选中第一个
-    if (selectedKbIds.value.length === 0 && kbOptions.value.length > 0) {
-      selectedKbIds.value = [kbOptions.value[0].value];
-    }
-  } catch (error) {
-    console.error('加载知识库列表失败:', error);
-    message.warning('获取知识库列表失败，将使用全部知识库检索');
-  }
-};
 
 const chatState = reactive({
   currentThreadId: null,
@@ -370,22 +347,6 @@ const isStreaming = computed(() => {
 const isProcessing = computed(() => isStreaming.value || chatState.creatingNewChat);
 const isSmallContainer = computed(() => uiState.containerWidth <= 520);
 const isMediumContainer = computed(() => uiState.containerWidth <= 768);
-const allowKbSelect = computed(() => ['mix', 'local'].includes(retrievalMode.value));
-const allowGraphSelect = computed(() => ['mix', 'global'].includes(retrievalMode.value));
-const kbSummary = computed(() => {
-  if (!allowKbSelect.value) return '由模式决定';
-  if (!selectedKbIds.value.length) return '全部知识库';
-  const labels = kbOptions.value
-    .filter((opt) => selectedKbIds.value.includes(opt.value))
-    .map((opt) => opt.label);
-  const preview = labels.slice(0, 2).join('、');
-  return labels.length > 2 ? `${preview} 等${labels.length}个` : preview || '全部知识库';
-});
-const graphSummary = computed(() => {
-  if (!allowGraphSelect.value) return '由模式决定';
-  const found = graphOptions.value.find((g) => g.value === selectedGraph.value);
-  return found?.label || '未选择图谱';
-});
 const retrievalModeLabels = {
   mix: '混合检索',
   local: '知识库检索',
@@ -1420,7 +1381,6 @@ const initAll = async () => {
     if (!agentStore.isInitialized) {
       await agentStore.initialize();
     }
-    await loadKnowledgeOptions();
   } catch (error) {
     handleChatError(error, 'load');
   }
@@ -1431,16 +1391,6 @@ onMounted(async () => {
   scrollController.enableAutoScroll();
 });
 
-watch(retrievalMode, () => {
-  if (!allowKbSelect.value) {
-    selectedKbIds.value = [];
-  }
-  if (!allowGraphSelect.value) {
-    selectedGraph.value = null;
-  } else if (!selectedGraph.value) {
-    selectedGraph.value = graphOptions.value[0]?.value || null;
-  }
-});
 
 watch(currentAgentId, async (newAgentId, oldAgentId) => {
   if (newAgentId !== oldAgentId) {

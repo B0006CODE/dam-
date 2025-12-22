@@ -279,7 +279,22 @@ async def chat_agent(
         if retrieval_mode not in {"mix", "local", "global", "llm"}:
             retrieval_mode = "mix"
         kb_whitelist = config.get("kb_whitelist") if retrieval_mode in {"mix", "local"} else None
+        if isinstance(kb_whitelist, str):
+            kb_whitelist = [kb_whitelist]
+        if isinstance(kb_whitelist, list):
+            kb_whitelist = [kb for kb in kb_whitelist if kb]
+
         graph_name = config.get("graph_name") if retrieval_mode in {"mix", "global"} else None
+        if isinstance(graph_name, str):
+            graph_name = graph_name.strip() or None
+
+        if retrieval_mode in {"mix", "local"} and not kb_whitelist:
+            yield make_chunk(status="error", message="请至少选择一个知识库", meta=meta)
+            return
+
+        if retrieval_mode in {"mix", "global"} and not graph_name:
+            yield make_chunk(status="error", message="请至少选择一个知识图谱", meta=meta)
+            return
         input_context = {"user_id": user_id, "thread_id": thread_id, "retrieval_mode": retrieval_mode}
         if kb_whitelist:
             input_context["kb_whitelist"] = kb_whitelist

@@ -53,6 +53,10 @@
       </div>
 
       <!-- 推理链路（仅搜索类显示） -->
+      <div class="graph-content" v-if="showContent">
+        <div class="content-text">{{ contentPreview }}</div>
+      </div>
+
       <div class="kg-reasoning" v-show="!isCollapsed && reasoningPaths.length > 0">
         <div class="reasoning-header">
           <span class="reasoning-title">
@@ -220,6 +224,20 @@ const graphData = computed(() => {
 // 统计信息 - 使用 Set 确保准确去重
 const totalNodes = computed(() => graphData.value.nodes.length)
 const totalRelations = computed(() => graphData.value.edges.length)
+
+const graphContent = computed(() => {
+  if (!props.data || typeof props.data !== 'object') return ''
+  const content = props.data.content
+  return typeof content === 'string' ? content.trim() : ''
+})
+
+const showContent = computed(() => !isStatisticsResult.value && graphContent.value)
+
+const contentPreview = computed(() => {
+  const content = graphContent.value
+  if (!content) return ''
+  return content.length > 800 ? `${content.slice(0, 800)}...` : content
+})
 
 // 截断信息
 const isTruncated = computed(() => props.data?.is_truncated || false)
@@ -512,6 +530,18 @@ const reasoningPaths = computed(() => {
     }
 
     // ============ 推理链路样式 ============
+    .graph-content {
+      margin: 8px 0 12px;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
     .kg-reasoning {
       margin: 12px 8px 10px;
       padding: 16px;

@@ -33,6 +33,7 @@ SEMANTIC_MAPPING = {
     "病因": ["典型病因", "TYPICAL_CAUSE", "主要病因", "MAIN_CAUSE"],
     "原因": ["典型病因", "TYPICAL_CAUSE", "主要病因", "MAIN_CAUSE"],
     "隐患": ["存在隐患"],
+    "风险": ["常见缺陷", "COMMON_DEFECT", "典型病因", "TYPICAL_CAUSE", "主要病因", "MAIN_CAUSE", "存在隐患", "典型缺陷", "TYPICAL_DEFECT"],
     "解决方法": ["处置措施", "TREATMENT_MEASURE", "整改措施"],
     "措施": ["处置措施", "TREATMENT_MEASURE", "整改措施"],
     "处理": ["处置措施", "TREATMENT_MEASURE", "整改措施"],
@@ -52,6 +53,24 @@ def get_static_tools(input_context: dict | None = None) -> list:
     async def graph_search(query: str) -> Any:
         try:
             logger.debug(f"Querying knowledge graph [{graph_name}] with: {query}")
+            if graph_name != "neo4j":
+                lightrag_result = await knowledge_base.aquery(query, graph_name, mode="global")
+                if isinstance(lightrag_result, list) and lightrag_result:
+                    first_item = lightrag_result[0]
+                    if isinstance(first_item, dict):
+                        content = first_item.get("content", "") or str(first_item)
+                    else:
+                        content = str(first_item)
+                else:
+                    content = str(lightrag_result) if lightrag_result else ""
+                return {
+                    "query_type": "search",
+                    "query": query,
+                    "graph_type": "lightrag",
+                    "content": content,
+                    "triples": [],
+                }
+
             result = graph_base.query_node(query, hops=2, kgdb_name=graph_name, return_format="triples")
             # 添加查询类型元数据，便于前端区分搜索和统计查询
             if isinstance(result, dict):
@@ -67,6 +86,9 @@ def get_static_tools(input_context: dict | None = None) -> list:
         try:
             logger.debug(f"统计知识图谱 [{graph_name}] 关键词: {keyword}, 查询类型: {query_type}")
             
+            if graph_name != "neo4j":
+                return f"LightRAG ??????????: {graph_name}"
+
             if not graph_base.is_running():
                 return "知识图谱数据库未连接，无法进行统计查询。"
             
@@ -242,7 +264,7 @@ def get_static_tools(input_context: dict | None = None) -> list:
             "当用户询问'有多少'、'数量是多少'、'统计一下'、'有哪些'等统计性问题时，优先使用此工具。"
             "参数说明：keyword为可选的实体关键词（如'重力坝'），不指定则查询整个图谱；"
             "query_type可选'病害'(常见缺陷/病因)、'解决方法'(处置措施/整改措施)、'全部'、或'病害和解决方法'等组合。"
-            "例如：'有多少种病害'→keyword='', query_type='病害'；'重力坝有多少种病害和解决方法'→keyword='重力坝', query_type='病害和解决方法'"
+            "例如：'有多少种病害'→keyword='', query_type='病害'；'重力坝有多少种病害和解决方法'→keyword='重力坝', query_type='病害和解决方法'；'有哪些风险'→keyword='', query_type='风险'"
         ),
         args_schema=GraphStatisticsModel,
         metadata={"graph_name": graph_name, "tag": ["knowledge_graph", "statistics"]},

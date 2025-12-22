@@ -12,7 +12,7 @@ export const useUserStore = defineStore('user', () => {
 
   // 计算属性
   const isLoggedIn = computed(() => !!token.value)
-  const isAdmin = computed(() => userRole.value === 'admin' || userRole.value === 'superadmin')
+  const isAdmin = computed(() => userRole.value === 'superadmin')
   const isSuperAdmin = computed(() => userRole.value === 'superadmin')
 
   // 动作

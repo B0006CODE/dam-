@@ -150,7 +150,6 @@
         <a-form-item label="角色" class="form-item">
           <a-select v-model:value="userManagement.form.role" size="large">
             <a-select-option value="user">普通用户</a-select-option>
-            <a-select-option value="admin" v-if="userStore.isSuperAdmin">管理员</a-select-option>
             <a-select-option value="superadmin" v-if="userStore.isSuperAdmin">超级管理员</a-select-option>
           </a-select>
         </a-form-item>
@@ -388,7 +387,6 @@ const confirmDeleteUser = (user) => {
 const getRoleLabel = (role) => {
   switch (role) {
     case 'superadmin': return '超级管理员';
-    case 'admin': return '管理员';
     case 'user': return '普通用户';
     default: return role;
   }
@@ -398,7 +396,6 @@ const getRoleLabel = (role) => {
 const getRoleColor = (role) => {
   switch (role) {
     case 'superadmin': return 'red';
-    case 'admin': return 'blue';
     case 'user': return 'green';
     default: return 'default';
   }

@@ -150,7 +150,7 @@ const emit = defineEmits([
   'update:modelValue',
   'send',
   'keydown',
-  'update:retrievalMode'
+  'update:retrieval-mode'
 ]);
 const slots = useSlots();
 const hasOptionsLeft = computed(() => {
@@ -235,7 +235,7 @@ const inputValue = computed({
 // 检索模式的双向绑定
 const localRetrievalMode = computed({
   get: () => props.retrievalMode,
-  set: (val) => emit('update:retrievalMode', val)
+  set: (val) => emit('update:retrieval-mode', val)
 });
 
 // 处理键盘事件

@@ -1,10 +1,12 @@
+import re
 from typing import Any, cast
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.runtime import Runtime
 
+from src import graph_base, knowledge_base
 from src.agents.common.base import BaseAgent
 from src.agents.common.mcp import get_mcp_tools
 from src.agents.common.models import load_chat_model
@@ -13,6 +15,228 @@ from src.utils import logger
 from .context import Context
 from .state import State
 from .tools import get_tools
+
+
+def _get_runtime_input_context(runtime: Runtime[Context] | None) -> dict | None:
+    if not runtime:
+        return None
+    config = getattr(runtime, "config", None)
+    if not config:
+        config_context = None
+    elif isinstance(config, dict):
+        config_context = config.get("configurable")
+    else:
+        config_context = getattr(config, "configurable", None)
+    if config_context:
+        return config_context
+
+    runtime_context = getattr(runtime, "context", None)
+    if not runtime_context:
+        return None
+    fallback = {}
+    for key in ("retrieval_mode", "kb_whitelist", "graph_name", "thread_id", "user_id"):
+        if hasattr(runtime_context, key):
+            value = getattr(runtime_context, key)
+            if value not in (None, "", []):
+                fallback[key] = value
+    return fallback or None
+
+
+_STAT_QUERY_PATTERN = re.compile(
+    r"(统计|总数|数量|数目|多少|几种|多少种|占比|比例|分布|排名|排行|top\s*\d*|top|rank|ranking|ratio|percentage|"
+    r"count|how many|number of|list|列表|清单|有哪些)",
+    re.IGNORECASE,
+)
+
+
+def _extract_message_text(message: Any) -> str:
+    if message is None:
+        return ""
+    if isinstance(message, dict):
+        return str(message.get("content") or "").strip()
+    return str(getattr(message, "content", "") or "").strip()
+
+
+def _last_message_is_user(messages: list[Any]) -> bool:
+    if not messages:
+        return False
+    last = messages[-1]
+    if isinstance(last, HumanMessage):
+        return True
+    msg_type = getattr(last, "type", None)
+    if msg_type == "human":
+        return True
+    if isinstance(last, dict):
+        return last.get("role") in {"user", "human"}
+    return False
+
+
+def _get_latest_user_text(messages: list[Any]) -> str:
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage):
+            return _extract_message_text(msg)
+        if getattr(msg, "type", None) == "human":
+            return _extract_message_text(msg)
+        if isinstance(msg, dict) and msg.get("role") in {"user", "human"}:
+            return _extract_message_text(msg)
+    return ""
+
+
+def _is_statistical_query(text: str) -> bool:
+    if not text:
+        return False
+    return bool(_STAT_QUERY_PATTERN.search(text))
+
+
+def _trim_text(text: str, max_chars: int = 800) -> str:
+    content = str(text or "").strip()
+    if len(content) <= max_chars:
+        return content
+    return f"{content[:max_chars].rstrip()}..."
+
+
+def _extract_kb_text(item: Any) -> tuple[str, str]:
+    if isinstance(item, dict):
+        content = item.get("content") or item.get("text") or item.get("chunk") or ""
+        metadata = item.get("metadata") or {}
+        source = (
+            metadata.get("source")
+            or metadata.get("file_name")
+            or metadata.get("filename")
+            or metadata.get("path")
+            or metadata.get("db_id")
+            or ""
+        )
+    else:
+        content = item
+        source = ""
+    return str(content or "").strip(), str(source or "").strip()
+
+
+def _format_kb_results(kb_results: list[Any], max_items: int = 8) -> list[str]:
+    lines: list[str] = []
+    for item in kb_results:
+        content, source = _extract_kb_text(item)
+        if not content:
+            continue
+        content = _trim_text(content)
+        if source:
+            lines.append(f"- ({source}) {content}")
+        else:
+            lines.append(f"- {content}")
+        if len(lines) >= max_items:
+            break
+    return lines
+
+
+def _format_graph_results(graph_results: Any, max_items: int = 12) -> list[str]:
+    lines: list[str] = []
+    if isinstance(graph_results, dict):
+        triples = graph_results.get("triples") or []
+        for triple in triples[:max_items]:
+            if isinstance(triple, (list, tuple)) and len(triple) >= 3:
+                h, r, t = triple[:3]
+                lines.append(f"- {h} -[{r}]-> {t}")
+            else:
+                lines.append(f"- {_trim_text(triple)}")
+        if not lines:
+            content = graph_results.get("content") or ""
+            if content:
+                lines.append(f"- {_trim_text(content)}")
+    elif isinstance(graph_results, list):
+        lines.extend(_format_kb_results(graph_results, max_items=max_items))
+    elif isinstance(graph_results, str) and graph_results.strip():
+        lines.append(f"- {_trim_text(graph_results)}")
+    return lines
+
+
+def _has_retrieval_results(kb_results: list[Any], graph_results: Any) -> bool:
+    for item in kb_results:
+        content, _ = _extract_kb_text(item)
+        if content:
+            return True
+    if not graph_results:
+        return False
+    if isinstance(graph_results, dict):
+        if graph_results.get("triples"):
+            return True
+        if graph_results.get("content"):
+            return True
+        if graph_results.get("nodes") or graph_results.get("edges"):
+            return True
+        return False
+    if isinstance(graph_results, list):
+        return any(_extract_kb_text(item)[0] for item in graph_results)
+    if isinstance(graph_results, str):
+        return bool(graph_results.strip())
+    return False
+
+
+def _build_retrieval_context(kb_results: list[Any], graph_results: Any) -> str:
+    kb_lines = _format_kb_results(kb_results)
+    graph_lines = _format_graph_results(graph_results)
+    if not kb_lines and not graph_lines:
+        return ""
+    sections = ["以下是检索到的资料，仅供回答使用："]
+    if kb_lines:
+        sections.append("【知识库】")
+        sections.extend(kb_lines)
+    if graph_lines:
+        sections.append("【知识图谱】")
+        sections.extend(graph_lines)
+    return "\n".join(sections)
+
+
+async def _prefetch_retrieval(
+    query_text: str,
+    input_context: dict | None,
+    retrieval_mode: str,
+) -> tuple[list[Any], Any]:
+    kb_results: list[Any] = []
+    graph_results: Any = None
+    context = input_context or {}
+
+    if retrieval_mode in {"mix", "local"}:
+        kb_whitelist = set(context.get("kb_whitelist") or [])
+        try:
+            retrievers = knowledge_base.get_retrievers()
+        except Exception as e:
+            logger.error(f"Failed to get knowledge base retrievers: {e}")
+            retrievers = {}
+
+        for db_id, retriever_info in retrievers.items():
+            if kb_whitelist and db_id not in kb_whitelist:
+                continue
+            retriever = retriever_info.get("retriever")
+            if not retriever:
+                continue
+            try:
+                result = await retriever(query_text, mode=retrieval_mode)
+            except Exception as e:
+                logger.error(f"Prefetch KB query failed ({db_id}): {e}")
+                continue
+            if isinstance(result, list):
+                kb_results.extend(result)
+            elif result:
+                kb_results.append(result)
+
+    if retrieval_mode in {"mix", "global"}:
+        graph_name = context.get("graph_name") or "neo4j"
+        try:
+            if graph_name != "neo4j":
+                graph_results = await knowledge_base.aquery(query_text, graph_name, mode="global")
+            else:
+                graph_results = graph_base.query_node(
+                    query_text,
+                    hops=2,
+                    kgdb_name=graph_name,
+                    return_format="triples",
+                )
+        except Exception as e:
+            logger.error(f"Prefetch graph query failed ({graph_name}): {e}")
+            graph_results = None
+
+    return kb_results, graph_results
 
 
 class ChatbotAgent(BaseAgent):
@@ -26,7 +250,7 @@ class ChatbotAgent(BaseAgent):
         self.context_schema = Context
 
     def get_tools(self, runtime: Runtime[Context] = None):
-        input_context = runtime.config.configurable if runtime and hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable') else None
+        input_context = _get_runtime_input_context(runtime)
         return get_tools(input_context)
 
     async def _get_invoke_tools(self, selected_tools: list[str], selected_mcps: list[str], runtime: Runtime[Context] = None):
@@ -45,11 +269,10 @@ class ChatbotAgent(BaseAgent):
             # 调试：打印 runtime 的结构
             logger.info(f"DEBUG runtime: {runtime}")
             if runtime:
-                logger.info(f"DEBUG runtime.config: {runtime.config if hasattr(runtime, 'config') else 'NO CONFIG'}")
-                if hasattr(runtime, 'config') and hasattr(runtime.config, 'configurable'):
-                    input_context = runtime.config.configurable
-                    logger.info(f"DEBUG input_context from runtime.config.configurable: {input_context}")
-                    retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
+                logger.info(f"DEBUG runtime.config: {getattr(runtime, 'config', 'NO CONFIG')}")
+            input_context = _get_runtime_input_context(runtime)
+            logger.info(f"DEBUG input_context from runtime.configurable: {input_context}")
+            retrieval_mode = input_context.get("retrieval_mode", "mix") if input_context else "mix"
         except Exception as e:
             logger.error(f"Error getting retrieval_mode: {e}")
             retrieval_mode = "mix"
@@ -108,9 +331,71 @@ class ChatbotAgent(BaseAgent):
         logger.info(f"Final enabled tools for {retrieval_mode} mode: {[t.name for t in enabled_tools]}")
         return enabled_tools
 
+    async def _classify_retrieval_policy(self, query_text: str, runtime_context: Context) -> str:
+        model_name = (runtime_context.retrieval_classifier_model or runtime_context.model or "").strip()
+        if not model_name:
+            return "inject"
+
+        model = load_chat_model(model_name)
+        system_prompt = (
+            "你是检索策略分类器，只能输出 enforce 或 inject。\n"
+            "enforce 表示必须先检索，没结果就直接返回资料不足。\n"
+            "inject 表示先检索并注入结果，再由模型回答。"
+        )
+        try:
+            response = await model.ainvoke(
+                [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": query_text},
+                ]
+            )
+        except Exception as e:
+            logger.error(f"Retrieval policy classification failed: {e}")
+            return "inject"
+
+        content = str(getattr(response, "content", "") or "").strip().lower()
+        if "enforce" in content:
+            return "enforce"
+        if "inject" in content:
+            return "inject"
+        return "inject"
+
+    async def _decide_retrieval_policy(
+        self,
+        query_text: str,
+        runtime_context: Context,
+        retrieval_mode: str,
+    ) -> str:
+        policy = (getattr(runtime_context, "retrieval_policy", "auto") or "auto").strip().lower()
+        if retrieval_mode == "llm":
+            return "llm"
+        if policy in {"inject", "enforce"}:
+            return policy
+        if _is_statistical_query(query_text):
+            return "enforce"
+        if getattr(runtime_context, "retrieval_classifier_enabled", False):
+            return await self._classify_retrieval_policy(query_text, runtime_context)
+        return "inject"
+
     async def llm_call(self, state: State, runtime: Runtime[Context] = None) -> dict[str, Any]:
         """调用 llm 模型 - 异步版本以支持异步工具"""
         model = load_chat_model(runtime.context.model)
+
+        input_context = _get_runtime_input_context(runtime) or {}
+        retrieval_mode = input_context.get("retrieval_mode", "mix")
+        retrieval_context = ""
+
+        if _last_message_is_user(state.messages) and retrieval_mode != "llm":
+            query_text = _get_latest_user_text(state.messages)
+            if query_text:
+                policy = await self._decide_retrieval_policy(query_text, runtime.context, retrieval_mode)
+                if policy in {"inject", "enforce"}:
+                    kb_results, graph_results = await _prefetch_retrieval(query_text, input_context, retrieval_mode)
+                    has_results = _has_retrieval_results(kb_results, graph_results)
+                    if policy == "enforce" and not has_results:
+                        no_result_reply = getattr(runtime.context, "retrieval_no_result_reply", "资料不足") or "资料不足"
+                        return {"messages": [AIMessage(content=no_result_reply)]}
+                    retrieval_context = _build_retrieval_context(kb_results, graph_results)
 
         # 这里要根据配置动态获取工具
         available_tools = await self._get_invoke_tools(runtime.context.tools, runtime.context.mcps, runtime)
@@ -120,9 +405,13 @@ class ChatbotAgent(BaseAgent):
             model = model.bind_tools(available_tools)
 
         # 使用异步调用
+        messages = [{"role": "system", "content": runtime.context.system_prompt}]
+        if retrieval_context:
+            messages.append({"role": "system", "content": retrieval_context})
+        messages.extend(state.messages)
         response = cast(
             AIMessage,
-            await model.ainvoke([{"role": "system", "content": runtime.context.system_prompt}, *state.messages]),
+            await model.ainvoke(messages),
         )
         return {"messages": [response]}
 

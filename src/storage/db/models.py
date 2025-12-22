@@ -192,7 +192,7 @@ class User(Base):
     phone_number = Column(String, nullable=True, unique=True, index=True)  # 手机号，可选登录方式
     avatar = Column(String, nullable=True)  # 头像URL
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="user")  # 角色: superadmin, admin, user
+    role = Column(String, nullable=False, default="user")  # 角色: superadmin, user
     created_at = Column(DateTime, default=utc_now)
     last_login = Column(DateTime, nullable=True)
 

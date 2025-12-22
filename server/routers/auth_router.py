@@ -324,13 +324,6 @@ async def create_user(
             detail="只有超级管理员才能创建超级管理员账户",
         )
 
-    # 管理员只能创建普通用户
-    if current_user.role == "admin" and user_data.role != "user":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="管理员只能创建普通用户账户",
-        )
-
     new_user = User(
         username=user_data.username,
         user_id=user_id,

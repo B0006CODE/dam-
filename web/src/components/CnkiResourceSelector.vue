@@ -210,18 +210,18 @@ const retrievalModeLabel = computed(() => retrievalModeLabels[props.retrievalMod
 // 摘要信息
 const kbSummary = computed(() => {
   if (!allowKbSelect.value) return '由模式决定';
-  if (!selectedKbIds.value.length) return '全部知识库';
+  if (!selectedKbIds.value.length) return '未选择';
   const labels = kbOptionsWithStats.value
     .filter(opt => selectedKbIds.value.includes(opt.value))
     .map(opt => opt.name);
   const preview = labels.slice(0, 2).join('、');
-  return labels.length > 2 ? `${preview} 等${labels.length}个` : preview || '全部知识库';
+  return labels.length > 2 ? `${preview} 等${labels.length}个` : preview || '未选择';
 });
 
 const graphSummary = computed(() => {
   if (!allowGraphSelect.value) return '由模式决定';
   const found = graphOptionsWithStats.value.find(g => g.value === selectedGraph.value);
-  return found?.name || '未选择图谱';
+  return found?.name || '未选择';
 });
 
 // 切换知识库选择
@@ -249,17 +249,31 @@ const handleKbCheckChange = (value, checked) => {
   selectedKbIds.value = current;
 };
 
+const loadGraphStats = async (dbId) => {
+  if (!dbId || dbId === 'neo4j') return;
+  if (graphStats.value[dbId]) return;
+  try {
+    const stats = await lightragApi.getStats(dbId);
+    if (stats?.data) {
+      graphStats.value[dbId] = stats.data;
+    }
+  } catch (error) {
+    console.warn('获取图谱统计失败:', error);
+  }
+};
+
 // 选择图谱
 const selectGraphOption = (value) => {
   if (!allowGraphSelect.value) return;
   selectedGraph.value = value;
+  void loadGraphStats(value);
 };
 
 // 加载知识库列表
 const loadKnowledgeBases = async () => {
   try {
-    const res = await databaseApi.getDatabases();
-    kbOptionsRaw.value = res?.databases || [];
+    const res = await (databaseApi.getDatabasesForChat ? databaseApi.getDatabasesForChat() : databaseApi.getDatabases());
+    kbOptionsRaw.value = res?.databases || res?.data || [];
     
     // 如果用户未选择任何知识库，默认选中第一个
     if (selectedKbIds.value.length === 0 && kbOptionsRaw.value.length > 0) {
@@ -341,13 +355,6 @@ const loadGraphOptions = async () => {
           kb_type: 'lightrag',
           row_count: db.row_count || 0,
         });
-        
-        // 尝试异步获取统计信息（不阻塞）
-        lightragApi.getStats(dbId).then(stats => {
-          if (stats?.data) {
-            graphStats.value[dbId] = stats.data;
-          }
-        }).catch(() => {});
       }
     } catch (e) {
       console.warn('获取 LightRAG 图谱列表失败:', e);
@@ -362,6 +369,7 @@ const loadGraphOptions = async () => {
     if ((!selectedGraph.value || !currentValid) && allGraphs.length > 0) {
       selectedGraph.value = allGraphs[0].db_id;
     }
+    void loadGraphStats(selectedGraph.value);
   } catch (error) {
     console.error('加载知识图谱列表失败:', error);
     graphOptionsRaw.value = [];

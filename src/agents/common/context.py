@@ -41,6 +41,69 @@ class BaseContext:
         metadata={"name": "用户ID", "configurable": False, "description": "用来描述智能体的角色和行为"},
     )
 
+    retrieval_mode: str = field(
+        default="mix",
+        metadata={
+            "name": "retrieval_mode",
+            "configurable": False,
+            "hide": True,
+            "description": "Runtime retrieval mode.",
+        },
+    )
+
+    kb_whitelist: list[str] = field(
+        default_factory=list,
+        metadata={
+            "name": "kb_whitelist",
+            "configurable": False,
+            "hide": True,
+            "description": "Runtime knowledge base whitelist.",
+        },
+    )
+
+    graph_name: str | None = field(
+        default=None,
+        metadata={
+            "name": "graph_name",
+            "configurable": False,
+            "hide": True,
+            "description": "Runtime graph name.",
+        },
+    )
+
+    retrieval_policy: str = field(
+        default="auto",
+        metadata={
+            "name": "检索策略",
+            "options": ["auto", "inject", "enforce"],
+            "description": "auto=规则/可选分类器决定，inject=先检索后注入，enforce=无结果直接资料不足",
+        },
+    )
+
+    retrieval_classifier_enabled: bool = field(
+        default=False,
+        metadata={
+            "name": "检索策略分类器",
+            "description": "auto 模式下启用 LLM 分类器辅助判断",
+        },
+    )
+
+    retrieval_classifier_model: str = field(
+        default="",
+        metadata={
+            "name": "检索策略分类器模型",
+            "description": "为空则使用当前对话模型",
+        },
+    )
+
+    retrieval_no_result_reply: str = field(
+        default="资料不足",
+        metadata={
+            "name": "检索无结果回复",
+            "description": "enforce 模式无结果时直接返回的内容",
+        },
+    )
+
     system_prompt: str = field(
         default="""你是一个大坝安全知识问答助手，专注于提供准确、专业的大坝与水库相关知识。
 

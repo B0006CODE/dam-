@@ -104,14 +104,11 @@ export const useAgentStore = defineStore('agent', {
 
       try {
         const response = await agentApi.getAgents();
-        // 过滤前端不需要展示的智能体
-        const filteredAgents = (response.agents || []).filter(
-          (agent) => agent.id !== 'ReActAgent' && agent.name !== 'ReAct (all tools)'
-        );
-        const validIds = new Set(filteredAgents.map((a) => a.id));
+        const agents = response.agents || [];
+        const validIds = new Set(agents.map((agent) => agent.id));
 
         // 将数组转换为以ID为键的对象
-        this.agents = filteredAgents.reduce((acc, agent) => {
+        this.agents = agents.reduce((acc, agent) => {
           acc[agent.id] = agent;
           return acc;
         }, {});

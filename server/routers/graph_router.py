@@ -1,6 +1,8 @@
 import traceback
 import math
 import os
+import time
+import asyncio
 
 from neo4j import GraphDatabase as Neo4jDriver
 
@@ -12,6 +14,33 @@ from src import graph_base, knowledge_base
 from src.utils.logging_config import logger
 
 graph = APIRouter(prefix="/graph", tags=["graph"])
+
+_STATS_CACHE_TTL_SECONDS = 300
+_stats_cache: dict[str, dict] = {}
+_stats_cache_lock = asyncio.Lock()
+_stats_locks: dict[str, asyncio.Lock] = {}
+
+
+def _get_stats_lock(db_id: str) -> asyncio.Lock:
+    lock = _stats_locks.get(db_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _stats_locks[db_id] = lock
+    return lock
+
+
+def _read_stats_cache(db_id: str) -> dict | None:
+    entry = _stats_cache.get(db_id)
+    if not entry:
+        return None
+    if time.monotonic() - entry["ts"] > _STATS_CACHE_TTL_SECONDS:
+        _stats_cache.pop(db_id, None)
+        return None
+    return entry["data"]
+
+
+def _write_stats_cache(db_id: str, data: dict) -> None:
+    _stats_cache[db_id] = {"ts": time.monotonic(), "data": data}
 
 
 def _get_neo4j_labels() -> set[str]:
@@ -449,37 +478,50 @@ async def get_lightrag_stats(
                 status_code=400, detail=f"数据库 {db_id} 不是 LightRAG 类型，图谱功能仅支持 LightRAG 知识库"
             )
 
-        # 获取 LightRAG 实例
-        rag_instance = await knowledge_base._get_lightrag_instance(db_id)
-        if not rag_instance:
-            raise HTTPException(status_code=404, detail=f"LightRAG 数据库 {db_id} 不存在或无法访问")
+        async with _stats_cache_lock:
+            cached = _read_stats_cache(db_id)
+        if cached is not None:
+            return {"success": True, "data": cached, "cached": True}
 
-        # 通过获取全图来统计节点和边的数量
-        knowledge_graph = await rag_instance.get_knowledge_graph(
-            node_label="*",
-            max_depth=1,
-            max_nodes=10000,  # 设置较大值以获取完整统计
-        )
+        async with _get_stats_lock(db_id):
+            async with _stats_cache_lock:
+                cached = _read_stats_cache(db_id)
+            if cached is not None:
+                return {"success": True, "data": cached, "cached": True}
 
-        # 统计实体类型分布
-        entity_types = {}
-        for node in knowledge_graph.nodes:
-            entity_type = node.properties.get("entity_type", "unknown")
-            entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
+            # 获取 LightRAG 实例
+            rag_instance = await knowledge_base._get_lightrag_instance(db_id)
+            if not rag_instance:
+                raise HTTPException(status_code=404, detail=f"LightRAG 数据库 {db_id} 不存在或无法访问")
 
-        entity_types_list = [
-            {"type": k, "count": v} for k, v in sorted(entity_types.items(), key=lambda x: x[1], reverse=True)
-        ]
+            # 通过获取全图来统计节点和边的数量
+            knowledge_graph = await rag_instance.get_knowledge_graph(
+                node_label="*",
+                max_depth=1,
+                max_nodes=10000,  # 设置较大值以获取完整统计
+            )
 
-        return {
-            "success": True,
-            "data": {
+            # 统计实体类型分布
+            entity_types = {}
+            for node in knowledge_graph.nodes:
+                entity_type = node.properties.get("entity_type", "unknown")
+                entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
+
+            entity_types_list = [
+                {"type": k, "count": v} for k, v in sorted(entity_types.items(), key=lambda x: x[1], reverse=True)
+            ]
+
+            payload = {
                 "total_nodes": len(knowledge_graph.nodes),
                 "total_edges": len(knowledge_graph.edges),
                 "entity_types": entity_types_list,
                 "is_truncated": knowledge_graph.is_truncated,
-            },
-        }
+            }
+
+            async with _stats_cache_lock:
+                _write_stats_cache(db_id, payload)
+
+            return {"success": True, "data": payload, "cached": False}
 
     except HTTPException:
         # 重新抛出 HTTP 异常
@@ -548,7 +590,7 @@ async def add_neo4j_entities(
 
         # 路径安全验证：解析绝对路径并检查是否在允许的目录内
         requested_path = Path(file_path).resolve()
-        
+
         # 检查文件是否在允许的目录中
         is_safe = False
         for allowed_dir in ALLOWED_DIRS:
