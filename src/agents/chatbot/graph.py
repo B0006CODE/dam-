@@ -384,6 +384,10 @@ class ChatbotAgent(BaseAgent):
         input_context = _get_runtime_input_context(runtime) or {}
         retrieval_mode = input_context.get("retrieval_mode", "mix")
         retrieval_context = ""
+        system_prompt = runtime.context.system_prompt
+        if retrieval_mode == "llm":
+            llm_prompt = getattr(runtime.context, "llm_system_prompt", "") or ""
+            system_prompt = llm_prompt or system_prompt
 
         if _last_message_is_user(state.messages) and retrieval_mode != "llm":
             query_text = _get_latest_user_text(state.messages)
@@ -405,7 +409,7 @@ class ChatbotAgent(BaseAgent):
             model = model.bind_tools(available_tools)
 
         # 使用异步调用
-        messages = [{"role": "system", "content": runtime.context.system_prompt}]
+        messages = [{"role": "system", "content": system_prompt}]
         if retrieval_context:
             messages.append({"role": "system", "content": retrieval_context})
         messages.extend(state.messages)

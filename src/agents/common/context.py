@@ -104,6 +104,17 @@ class BaseContext:
         },
     )
 
+    llm_system_prompt: str = field(
+        default="""你是一个大坝安全知识问答助手。
+## 角色
+- 基于模型自身知识进行回答，不调用知识库或知识图谱
+## 回答要求
+- 不要提及“检索”“资料”“知识库”“图谱”等词
+- 如果不确定或缺少依据，直接说明无法确定
+- 用简洁、专业的语言回答""",
+        metadata={"name": "纯模型提示词", "description": "llm 模式下使用的系统提示词"},
+    )
+
     system_prompt: str = field(
         default="""你是一个大坝安全知识问答助手，专注于提供准确、专业的大坝与水库相关知识。
 
