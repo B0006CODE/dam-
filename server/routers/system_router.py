@@ -259,3 +259,316 @@ async def get_all_chat_models_status(current_user: User = Depends(get_admin_user
     except Exception as e:
         logger.error(f"获取所有聊天模型状态失败: {e}")
         return {"message": f"获取所有聊天模型状态失败: {e}", "status": {"models": {}, "total": 0, "available": 0}}
+
+
+# =============================================================================
+# === 大坝异常配置分组 ===
+# =============================================================================
+
+# 默认大坝异常配置
+DEFAULT_DAM_EXCEPTION_CONFIG = {
+    "kb_whitelist": [],  # 知识库白名单
+    "graph_name": "neo4j",  # 知识图谱名称
+    "exception_api_url": "https://mock.apipost.net/mock/349eac/point/getExceptInfo",  # 默认异常数据API
+    "exception_api_params": {"apipost_id": "5735bd5d1c8a000", "pwd": "iwhr"},  # API参数
+    "include_repair_suggestions": True,  # 是否默认包含修复建议
+}
+
+# 存储大坝异常配置的文件路径
+DAM_CONFIG_FILE = Path("saves/config/dam_exception.yaml")
+
+
+def load_dam_exception_config() -> dict:
+    """加载大坝异常配置"""
+    try:
+        if DAM_CONFIG_FILE.exists():
+            with open(DAM_CONFIG_FILE, encoding="utf-8") as f:
+                return yaml.safe_load(f) or DEFAULT_DAM_EXCEPTION_CONFIG.copy()
+    except Exception as e:
+        logger.error(f"加载大坝异常配置失败: {e}")
+    return DEFAULT_DAM_EXCEPTION_CONFIG.copy()
+
+
+def save_dam_exception_config(config_data: dict) -> bool:
+    """保存大坝异常配置"""
+    try:
+        DAM_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(DAM_CONFIG_FILE, "w", encoding="utf-8") as f:
+            yaml.dump(config_data, f, allow_unicode=True, default_flow_style=False)
+        return True
+    except Exception as e:
+        logger.error(f"保存大坝异常配置失败: {e}")
+        return False
+
+
+@system.get("/dam-exception/config")
+async def get_dam_exception_config(current_user: User = Depends(get_admin_user)):
+    """获取大坝异常配置（管理员）"""
+    try:
+        config_data = load_dam_exception_config()
+        return {"success": True, "data": config_data}
+    except Exception as e:
+        logger.error(f"获取大坝异常配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取配置失败: {str(e)}")
+
+
+@system.post("/dam-exception/config")
+async def update_dam_exception_config(
+    kb_whitelist: list[str] = Body(None),
+    graph_name: str = Body(None),
+    exception_api_url: str = Body(None),
+    exception_api_params: dict = Body(None),
+    include_repair_suggestions: bool = Body(None),
+    current_user: User = Depends(get_admin_user),
+):
+    """更新大坝异常配置（管理员）"""
+    try:
+        # 加载当前配置
+        config_data = load_dam_exception_config()
+        
+        # 更新非空字段
+        if kb_whitelist is not None:
+            config_data["kb_whitelist"] = kb_whitelist
+        if graph_name is not None:
+            config_data["graph_name"] = graph_name
+        if exception_api_url is not None:
+            config_data["exception_api_url"] = exception_api_url
+        if exception_api_params is not None:
+            config_data["exception_api_params"] = exception_api_params
+        if include_repair_suggestions is not None:
+            config_data["include_repair_suggestions"] = include_repair_suggestions
+        
+        # 保存配置
+        if save_dam_exception_config(config_data):
+            return {"success": True, "message": "配置更新成功", "data": config_data}
+        else:
+            raise HTTPException(status_code=500, detail="保存配置失败")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"更新大坝异常配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"更新配置失败: {str(e)}")
+
+
+@system.get("/dam-exception/knowledge-bases")
+async def get_available_knowledge_bases(current_user: User = Depends(get_admin_user)):
+    """获取可用的知识库列表（供管理员选择）"""
+    try:
+        from src import knowledge_base
+        
+        retrievers = knowledge_base.get_retrievers()
+        kb_list = [
+            {"id": db_id, "name": info.get("name", db_id)}
+            for db_id, info in retrievers.items()
+        ]
+        return {"success": True, "knowledge_bases": kb_list}
+    except Exception as e:
+        logger.error(f"获取知识库列表失败: {e}")
+        return {"success": False, "knowledge_bases": [], "message": str(e)}
+
+
+@system.get("/dam-exception/graphs")
+async def get_available_graphs(current_user: User = Depends(get_admin_user)):
+    """获取可用的知识图谱列表（供管理员选择）"""
+    try:
+        # 默认支持的图谱
+        graphs = [
+            {"id": "neo4j", "name": "Neo4j知识图谱"},
+        ]
+        
+        # 尝试获取其他配置的图谱
+        try:
+            from src import knowledge_base
+            if hasattr(knowledge_base, 'get_graph_names'):
+                extra_graphs = knowledge_base.get_graph_names()
+                for g in extra_graphs:
+                    if g not in [x["id"] for x in graphs]:
+                        graphs.append({"id": g, "name": g})
+        except Exception:
+            pass
+            
+        return {"success": True, "graphs": graphs}
+    except Exception as e:
+        logger.error(f"获取图谱列表失败: {e}")
+        return {"success": False, "graphs": [], "message": str(e)}
+
+
+# =============================================================================
+# === 模型配置管理分组 ===
+# =============================================================================
+
+
+@system.get("/model-config")
+async def get_model_config(current_user: User = Depends(get_superadmin_user)):
+    """获取所有模型配置（超级管理员）"""
+    try:
+        return {
+            "success": True,
+            "data": {
+                "providers": config.model_names,
+                "embed_models": config.embed_model_names,
+                "rerankers": config.reranker_names,
+            }
+        }
+    except Exception as e:
+        logger.error(f"获取模型配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取模型配置失败: {str(e)}")
+
+
+@system.post("/model-config/provider")
+async def update_model_provider(
+    provider_id: str = Body(..., description="提供商ID，如 'openai', 'deepseek'"),
+    name: str = Body(..., description="显示名称"),
+    base_url: str = Body(..., description="API基础URL"),
+    default: str = Body(None, description="默认模型名称"),
+    env: str = Body("NO_API_KEY", description="API Key环境变量名"),
+    models: list[str] = Body([], description="支持的模型列表"),
+    url: str = Body("", description="文档链接"),
+    current_user: User = Depends(get_superadmin_user),
+):
+    """添加或更新聊天模型提供商（超级管理员）"""
+    try:
+        provider_data = {
+            "name": name,
+            "base_url": base_url,
+            "default": default or (models[0] if models else ""),
+            "env": env,
+            "models": models,
+        }
+        if url:
+            provider_data["url"] = url
+            
+        config.model_names[provider_id] = provider_data
+        config._save_models_to_file()
+        config.handle_self()  # 重新处理配置以更新状态
+        
+        return {"success": True, "message": f"提供商 '{provider_id}' 更新成功", "data": provider_data}
+    except Exception as e:
+        logger.error(f"更新模型提供商失败: {e}")
+        raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
+
+
+@system.delete("/model-config/provider/{provider_id}")
+async def delete_model_provider(
+    provider_id: str,
+    current_user: User = Depends(get_superadmin_user),
+):
+    """删除聊天模型提供商（超级管理员）"""
+    try:
+        if provider_id not in config.model_names:
+            raise HTTPException(status_code=404, detail=f"提供商 '{provider_id}' 不存在")
+        
+        del config.model_names[provider_id]
+        config._save_models_to_file()
+        config.handle_self()
+        
+        return {"success": True, "message": f"提供商 '{provider_id}' 删除成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除模型提供商失败: {e}")
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+
+@system.post("/model-config/embed-model")
+async def update_embed_model(
+    model_id: str = Body(..., description="模型ID，如 'siliconflow/BAAI/bge-m3'"),
+    name: str = Body(..., description="模型名称"),
+    dimension: int = Body(1024, description="向量维度"),
+    base_url: str = Body(..., description="API URL"),
+    api_key: str = Body("NO_API_KEY", description="API Key环境变量名"),
+    current_user: User = Depends(get_superadmin_user),
+):
+    """添加或更新Embedding模型（超级管理员）"""
+    try:
+        model_data = {
+            "name": name,
+            "dimension": dimension,
+            "base_url": base_url,
+            "api_key": api_key,
+        }
+        
+        config.embed_model_names[model_id] = model_data
+        config._save_models_to_file()
+        
+        # 更新配置项 choices
+        config._config_items["embed_model"]["choices"] = list(config.embed_model_names.keys())
+        
+        return {"success": True, "message": f"Embedding模型 '{model_id}' 更新成功", "data": model_data}
+    except Exception as e:
+        logger.error(f"更新Embedding模型失败: {e}")
+        raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
+
+
+@system.delete("/model-config/embed-model/{model_id:path}")
+async def delete_embed_model(
+    model_id: str,
+    current_user: User = Depends(get_superadmin_user),
+):
+    """删除Embedding模型（超级管理员）"""
+    try:
+        if model_id not in config.embed_model_names:
+            raise HTTPException(status_code=404, detail=f"Embedding模型 '{model_id}' 不存在")
+        
+        del config.embed_model_names[model_id]
+        config._save_models_to_file()
+        config._config_items["embed_model"]["choices"] = list(config.embed_model_names.keys())
+        
+        return {"success": True, "message": f"Embedding模型 '{model_id}' 删除成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除Embedding模型失败: {e}")
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+
+@system.post("/model-config/reranker")
+async def update_reranker(
+    model_id: str = Body(..., description="模型ID，如 'siliconflow/BAAI/bge-reranker-v2-m3'"),
+    name: str = Body(..., description="模型名称"),
+    base_url: str = Body(..., description="API URL"),
+    api_key: str = Body("NO_API_KEY", description="API Key环境变量名"),
+    current_user: User = Depends(get_superadmin_user),
+):
+    """添加或更新Reranker模型（超级管理员）"""
+    try:
+        model_data = {
+            "name": name,
+            "base_url": base_url,
+            "api_key": api_key,
+        }
+        
+        config.reranker_names[model_id] = model_data
+        config._save_models_to_file()
+        
+        # 更新配置项 choices
+        config._config_items["reranker"]["choices"] = list(config.reranker_names.keys())
+        
+        return {"success": True, "message": f"Reranker模型 '{model_id}' 更新成功", "data": model_data}
+    except Exception as e:
+        logger.error(f"更新Reranker模型失败: {e}")
+        raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
+
+
+@system.delete("/model-config/reranker/{model_id:path}")
+async def delete_reranker(
+    model_id: str,
+    current_user: User = Depends(get_superadmin_user),
+):
+    """删除Reranker模型（超级管理员）"""
+    try:
+        if model_id not in config.reranker_names:
+            raise HTTPException(status_code=404, detail=f"Reranker模型 '{model_id}' 不存在")
+        
+        del config.reranker_names[model_id]
+        config._save_models_to_file()
+        config._config_items["reranker"]["choices"] = list(config.reranker_names.keys())
+        
+        return {"success": True, "message": f"Reranker模型 '{model_id}' 删除成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除Reranker模型失败: {e}")
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+

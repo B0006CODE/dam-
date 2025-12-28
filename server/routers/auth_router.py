@@ -71,9 +71,43 @@ class UserIdGeneration(BaseModel):
     is_available: bool
 
 
+class SSOLoginRequest(BaseModel):
+    """SSO登录请求 - 外部系统传递的用户信息"""
+    userName: str
+    fullName: str
+    token: str
+    userId: str
+    sn: str
+    roles: list[str]
+
+
+class SSOLoginResponse(BaseModel):
+    """SSO登录响应"""
+    access_token: str
+    token_type: str
+    user_id: int
+    username: str
+    user_id_login: str
+    avatar: str | None = None
+    role: str
+
+
 # =============================================================================
 # === 工具函数 ===
 # =============================================================================
+
+
+def map_external_roles_to_system_role(roles: list[str]) -> str:
+    """将外部系统角色映射为系统角色
+    
+    规则：
+    - 包含「开发用户」或「大坝核心数据管控」-> superadmin
+    - 仅「浏览用户」-> user
+    """
+    admin_roles = {"开发用户", "大坝核心数据管控"}
+    if admin_roles & set(roles):
+        return "superadmin"
+    return "user"
 
 
 # 路由：登录获取令牌
@@ -160,6 +194,81 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         "avatar": user.avatar,
         "role": user.role,
     }
+
+
+# 路由：SSO登录（外部系统）
+@auth.post("/sso-login", response_model=SSOLoginResponse)
+async def sso_login(sso_data: SSOLoginRequest, db: Session = Depends(get_db)):
+    """外部系统SSO登录接口
+    
+    接收外部系统传递的用户信息，自动创建或更新用户，生成本系统JWT token。
+    直接信任外部已认证的token，不做二次验证。
+    
+    角色映射规则：
+    - 包含「开发用户」或「大坝核心数据管控」-> superadmin（管理员）
+    - 仅「浏览用户」-> user（普通用户）
+    """
+    # 1. 映射角色
+    system_role = map_external_roles_to_system_role(sso_data.roles)
+    
+    # 2. 查找或创建用户（通过external_user_id）
+    user = db.query(User).filter(User.external_user_id == sso_data.userId).first()
+    
+    if user:
+        # 更新已有用户信息
+        user.username = sso_data.fullName
+        user.external_token = sso_data.token
+        user.external_roles = sso_data.roles
+        user.role = system_role
+        user.sso_last_login = utc_now()
+        user.last_login = utc_now()
+        db.commit()
+        
+        # 记录登录操作
+        log_operation(db, user.id, "SSO登录", f"外部用户ID: {sso_data.userId}")
+    else:
+        # 创建新用户
+        # 生成唯一的user_id（用于系统内部登录标识）
+        existing_user_ids = [u.user_id for u in db.query(User.user_id).all()]
+        internal_user_id = generate_unique_user_id(sso_data.userName, existing_user_ids)
+        
+        # 为SSO用户生成一个随机密码hash（SSO用户不使用密码登录）
+        import secrets
+        random_password = secrets.token_urlsafe(32)
+        password_hash = AuthUtils.hash_password(random_password)
+        
+        user = User(
+            username=sso_data.fullName,
+            user_id=internal_user_id,
+            password_hash=password_hash,
+            role=system_role,
+            external_user_id=sso_data.userId,
+            external_token=sso_data.token,
+            external_roles=sso_data.roles,
+            sso_last_login=utc_now(),
+            last_login=utc_now(),
+        )
+        
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+        # 记录创建操作
+        log_operation(db, user.id, "SSO用户创建", f"外部用户ID: {sso_data.userId}, 角色: {system_role}")
+    
+    # 3. 生成本系统JWT token
+    token_data = {"sub": str(user.id)}
+    access_token = AuthUtils.create_access_token(token_data)
+    
+    return SSOLoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=user.id,
+        username=user.username,
+        user_id_login=user.user_id,
+        avatar=user.avatar,
+        role=user.role,
+    )
 
 
 # 路由：校验是否需要初始化管理员

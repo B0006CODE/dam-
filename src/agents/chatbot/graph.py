@@ -88,6 +88,176 @@ def _is_statistical_query(text: str) -> bool:
     return bool(_STAT_QUERY_PATTERN.search(text))
 
 
+def _extract_stat_params(text: str) -> tuple[str, str]:
+    """从用户查询中提取统计参数：关键词和查询类型"""
+    keyword = ""
+    query_type = "病害"
+    
+    # 提取实体关键词（常见大坝类型）
+    entity_patterns = [
+        r"(重力坝|土石坝|拱坝|溢洪道|闸门|坝基|坝体|廊道|混凝土坝|堆石坝|水库)",
+        r"(西南地区|华南地区|华北地区|华东地区|东北地区|西北地区)",
+    ]
+    for pattern in entity_patterns:
+        match = re.search(pattern, text)
+        if match:
+            keyword = match.group(1)
+            break
+    
+    # 判断查询类型
+    if any(kw in text for kw in ["解决", "措施", "处理", "整改", "方法", "怎么办"]):
+        if any(kw in text for kw in ["病害", "缺陷", "风险", "隐患", "问题"]):
+            query_type = "病害和解决方法"
+        else:
+            query_type = "解决方法"
+    elif any(kw in text for kw in ["病害", "缺陷", "风险", "隐患", "病因", "原因", "问题"]):
+        query_type = "病害"
+    elif "全部" in text or ("所有" in text and any(kw in text for kw in ["信息", "数据", "内容"])):
+        query_type = "全部"
+    
+    return keyword, query_type
+
+
+async def _direct_graph_statistics(query_text: str, graph_name: str = "neo4j") -> dict | None:
+    """直接调用知识图谱统计（不依赖工具调用机制）"""
+    # 导入语义映射
+    from src.agents.common.tools import SEMANTIC_MAPPING
+    
+    try:
+        if graph_name != "neo4j":
+            logger.debug(f"Direct statistics not supported for non-neo4j graph: {graph_name}")
+            return None
+            
+        if not graph_base.is_running():
+            logger.warning("Neo4j database not connected")
+            return None
+        
+        keyword, query_type = _extract_stat_params(query_text)
+        logger.info(f"Direct statistics: keyword='{keyword}', query_type='{query_type}'")
+        
+        graph_base.use_database(graph_name)
+        
+        # 确定要查询的关系类型
+        relation_types_to_query = []
+        query_labels = []
+        
+        if "全部" in query_type or ("病害" in query_type and ("解决" in query_type or "措施" in query_type)):
+            relation_types_to_query.extend(SEMANTIC_MAPPING.get("病害", []))
+            relation_types_to_query.extend(SEMANTIC_MAPPING.get("解决方法", []))
+            query_labels = ["病害", "解决方法"]
+        elif "病害" in query_type or "缺陷" in query_type or "风险" in query_type:
+            relation_types_to_query.extend(SEMANTIC_MAPPING.get("病害", []))
+            query_labels = ["病害"]
+        elif "解决" in query_type or "措施" in query_type:
+            relation_types_to_query.extend(SEMANTIC_MAPPING.get("解决方法", []))
+            query_labels = ["解决方法"]
+        else:
+            relation_types_to_query.extend(SEMANTIC_MAPPING.get("病害", []))
+            query_labels = ["病害"]
+        
+        relation_types_to_query = list(set(relation_types_to_query))
+        
+        with graph_base.driver.session() as session:
+            results_by_type = {}
+            
+            for rel_type in relation_types_to_query:
+                if keyword:
+                    results = session.run("""
+                        MATCH (n:Entity)-[r:RELATION]->(m:Entity)
+                        WHERE toLower(n.name) CONTAINS toLower($keyword)
+                          AND r.type = $rel_type
+                        RETURN DISTINCT m.name as target_entity, r.type as relation_type
+                        ORDER BY target_entity
+                    """, keyword=keyword, rel_type=rel_type)
+                else:
+                    results = session.run("""
+                        MATCH (n:Entity)-[r:RELATION]->(m:Entity)
+                        WHERE r.type = $rel_type
+                        RETURN DISTINCT m.name as target_entity, r.type as relation_type
+                        ORDER BY target_entity
+                    """, rel_type=rel_type)
+                
+                entities = []
+                for record in results:
+                    entity = record["target_entity"]
+                    if entity and entity not in entities:
+                        entities.append(entity)
+                
+                if entities:
+                    display_type = rel_type
+                    if rel_type == "COMMON_DEFECT":
+                        display_type = "常见缺陷"
+                    elif rel_type == "TYPICAL_CAUSE":
+                        display_type = "典型病因"
+                    elif rel_type == "MAIN_CAUSE":
+                        display_type = "主要病因"
+                    elif rel_type == "TREATMENT_MEASURE":
+                        display_type = "处置措施"
+                    elif rel_type == "TYPICAL_DEFECT":
+                        display_type = "典型缺陷"
+                    
+                    if display_type not in results_by_type:
+                        results_by_type[display_type] = []
+                    results_by_type[display_type].extend(entities)
+            
+            # 去重
+            for rel_type in results_by_type:
+                results_by_type[rel_type] = list(dict.fromkeys(results_by_type[rel_type]))
+            
+            if not results_by_type:
+                return None
+            
+            # 脱敏处理
+            def desensitize_text(text):
+                if not text:
+                    return text
+                text = re.sub(r'\d+#', '某', text)
+                text = re.sub(r'\d+号', '某', text)
+                text = re.sub(r'\d+(?:\.\d+)?[mM米]', '一定长度', text)
+                text = re.sub(r'[kK]\d+\+\d+', '某桩号', text)
+                return text
+            
+            desensitized_results = {}
+            for k, v in results_by_type.items():
+                desensitized_entities = [desensitize_text(e) for e in v]
+                desensitized_entities = list(dict.fromkeys(desensitized_entities))
+                desensitized_results[k] = desensitized_entities
+            
+            total_count = sum(len(v) for v in desensitized_results.values())
+            scope = f"'{keyword}'相关的" if keyword else "整个图谱中的"
+            
+            # 生成文本摘要
+            output_parts = [
+                f"【知识图谱统计结果】",
+                f"查询范围：{scope}{'/'.join(query_labels)}",
+                f"共找到 {total_count} 种不同的{'/'.join(query_labels)}类型",
+                "",
+                "按关系类型分类统计："
+            ]
+            
+            for rel_type, entities in sorted(desensitized_results.items(), key=lambda x: len(x[1]), reverse=True):
+                count = len(entities)
+                preview = "、".join(entities[:8])
+                if len(entities) > 8:
+                    preview += f"...等"
+                output_parts.append(f"  ▪ {rel_type}：{count} 种")
+                output_parts.append(f"    包括：{preview}")
+            
+            return {
+                "query_type": "statistics",
+                "keyword": keyword,
+                "query_labels": query_labels,
+                "scope": scope,
+                "total_count": total_count,
+                "results_by_type": {k: {"count": len(v), "entities": v} for k, v in desensitized_results.items()},
+                "text_summary": "\n".join(output_parts)
+            }
+                
+    except Exception as e:
+        logger.error(f"Direct graph statistics error: {e}")
+        return None
+
+
 def _trim_text(text: str, max_chars: int = 800) -> str:
     content = str(text or "").strip()
     if len(content) <= max_chars:
@@ -384,6 +554,7 @@ class ChatbotAgent(BaseAgent):
         input_context = _get_runtime_input_context(runtime) or {}
         retrieval_mode = input_context.get("retrieval_mode", "mix")
         retrieval_context = ""
+        statistics_context = ""  # 新增：统计结果上下文
         system_prompt = runtime.context.system_prompt
         if retrieval_mode == "llm":
             llm_prompt = getattr(runtime.context, "llm_system_prompt", "") or ""
@@ -392,10 +563,18 @@ class ChatbotAgent(BaseAgent):
         if _last_message_is_user(state.messages) and retrieval_mode != "llm":
             query_text = _get_latest_user_text(state.messages)
             if query_text:
+                # 新增：对于统计性问题，直接调用统计函数（无需工具调用）
+                if _is_statistical_query(query_text) and retrieval_mode in {"mix", "global"}:
+                    graph_name = input_context.get("graph_name") or "neo4j"
+                    stat_result = await _direct_graph_statistics(query_text, graph_name)
+                    if stat_result and stat_result.get("text_summary"):
+                        statistics_context = stat_result["text_summary"]
+                        logger.info(f"Direct statistics injected: {stat_result.get('total_count', 0)} results")
+                
                 policy = await self._decide_retrieval_policy(query_text, runtime.context, retrieval_mode)
                 if policy in {"inject", "enforce"}:
                     kb_results, graph_results = await _prefetch_retrieval(query_text, input_context, retrieval_mode)
-                    has_results = _has_retrieval_results(kb_results, graph_results)
+                    has_results = _has_retrieval_results(kb_results, graph_results) or bool(statistics_context)
                     if policy == "enforce" and not has_results:
                         no_result_reply = getattr(runtime.context, "retrieval_no_result_reply", "资料不足") or "资料不足"
                         return {"messages": [AIMessage(content=no_result_reply)]}
@@ -410,6 +589,9 @@ class ChatbotAgent(BaseAgent):
 
         # 使用异步调用
         messages = [{"role": "system", "content": system_prompt}]
+        # 新增：先注入统计结果（如果有）
+        if statistics_context:
+            messages.append({"role": "system", "content": statistics_context})
         if retrieval_context:
             messages.append({"role": "system", "content": retrieval_context})
         messages.extend(state.messages)

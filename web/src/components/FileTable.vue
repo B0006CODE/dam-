@@ -85,10 +85,10 @@
           emptyText: emptyText
         }">
       <template #bodyCell="{ column, text, record }">
-        <a-button v-if="column.key === 'filename'"  class="main-btn" type="link" @click="openFileDetail(record)">
+        <span v-if="column.key === 'filename'" class="filename-text">
           <component :is="getFileIcon(text)" :style="{ marginRight: '6px', color: getFileIconColor(text) }" />
           {{ text }}
-        </a-button>
+        </span>
         <span v-else-if="column.key === 'type'" :class="['span-type', text]">{{ text?.toUpperCase() }}</span>
         <div v-else-if="column.key === 'status'" style="display: flex; align-items: center; justify-content: flex-end;">
           <CheckCircleFilled v-if="text === 'done'" style="color: #41A317;"/>
@@ -447,19 +447,15 @@ import { parseToShanghai } from '@/utils/time';
   min-height: 0; /* 让 flex 子项可以正确缩小 */
 }
 
-.my-table-compact .main-btn {
+.my-table-compact .filename-text {
+  display: inline-flex;
+  align-items: center;
   padding: 0;
   height: auto;
   line-height: 1.4;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  text-decoration: none;
-}
-
-.my-table-compact .main-btn:hover {
-  cursor: pointer;
-  color: var(--main-color);
 }
 
 .my-table-compact .del-btn {

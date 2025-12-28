@@ -196,6 +196,12 @@ class User(Base):
     created_at = Column(DateTime, default=utc_now)
     last_login = Column(DateTime, nullable=True)
 
+    # 外部系统SSO相关字段
+    external_user_id = Column(String(64), nullable=True, unique=True, index=True)  # 外部系统用户ID
+    external_token = Column(String(256), nullable=True)  # 外部系统token
+    external_roles = Column(JSON, nullable=True)  # 外部系统角色列表
+    sso_last_login = Column(DateTime, nullable=True)  # SSO最后登录时间
+
     # 登录失败限制相关字段
     login_failed_count = Column(Integer, nullable=False, default=0)  # 登录失败次数
     last_failed_login = Column(DateTime, nullable=True)  # 最后一次登录失败时间

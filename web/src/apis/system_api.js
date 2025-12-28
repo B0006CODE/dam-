@@ -1,4 +1,4 @@
-import { apiGet, apiAdminGet, apiAdminPost, apiSuperAdminPost } from './base'
+import { apiGet, apiAdminGet, apiAdminPost, apiSuperAdminPost, apiSuperAdminGet, apiSuperAdminDelete } from './base'
 
 /**
  * 系统管理API模块
@@ -34,7 +34,7 @@ export const configApi = {
    * 获取系统配置
    * @returns {Promise} - 系统配置
    */
-  getConfig: async () =>  apiAdminGet('/api/system/config'),
+  getConfig: async () => apiAdminGet('/api/system/config'),
 
   /**
    * 更新单个配置项
@@ -61,7 +61,7 @@ export const configApi = {
    * 获取系统日志
    * @returns {Promise} - 系统日志
    */
-  getLogs: async () =>  apiAdminGet('/api/system/logs')
+  getLogs: async () => apiAdminGet('/api/system/logs')
 }
 
 // =============================================================================
@@ -124,3 +124,93 @@ export const chatModelApi = {
   }
 }
 
+// =============================================================================
+// === 大坝异常配置分组 ===
+// =============================================================================
+
+export const damExceptionApi = {
+  /**
+   * 获取大坝异常配置
+   * @returns {Promise} - 大坝异常配置
+   */
+  getConfig: async () => apiAdminGet('/api/system/dam-exception/config'),
+
+  /**
+   * 更新大坝异常配置
+   * @param {Object} config - 配置对象
+   * @returns {Promise} - 更新结果
+   */
+  updateConfig: async (config) => apiAdminPost('/api/system/dam-exception/config', config),
+
+  /**
+   * 获取可用的知识库列表
+   * @returns {Promise} - 知识库列表
+   */
+  getKnowledgeBases: async () => apiAdminGet('/api/system/dam-exception/knowledge-bases'),
+
+  /**
+   * 获取可用的知识图谱列表
+   * @returns {Promise} - 图谱列表
+   */
+  getGraphs: async () => apiAdminGet('/api/system/dam-exception/graphs')
+}
+
+// =============================================================================
+// === 模型配置管理分组 ===
+// =============================================================================
+
+export const modelConfigApi = {
+  /**
+   * 获取所有模型配置（超级管理员）
+   * @returns {Promise} - 模型配置
+   */
+  getConfig: async () => apiSuperAdminGet('/api/system/model-config'),
+
+  /**
+   * 添加或更新聊天模型提供商
+   * @param {Object} providerData - 提供商数据
+   * @returns {Promise} - 更新结果
+   */
+  updateProvider: async (providerData) =>
+    apiSuperAdminPost('/api/system/model-config/provider', providerData),
+
+  /**
+   * 删除聊天模型提供商
+   * @param {string} providerId - 提供商ID
+   * @returns {Promise} - 删除结果
+   */
+  deleteProvider: async (providerId) =>
+    apiSuperAdminDelete(`/api/system/model-config/provider/${encodeURIComponent(providerId)}`),
+
+  /**
+   * 添加或更新Embedding模型
+   * @param {Object} modelData - 模型数据
+   * @returns {Promise} - 更新结果
+   */
+  updateEmbedModel: async (modelData) =>
+    apiSuperAdminPost('/api/system/model-config/embed-model', modelData),
+
+  /**
+   * 删除Embedding模型
+   * @param {string} modelId - 模型ID
+   * @returns {Promise} - 删除结果
+   */
+  deleteEmbedModel: async (modelId) =>
+    apiSuperAdminDelete(`/api/system/model-config/embed-model/${encodeURIComponent(modelId)}`),
+
+  /**
+   * 添加或更新Reranker模型
+   * @param {Object} modelData - 模型数据
+   * @returns {Promise} - 更新结果
+   */
+  updateReranker: async (modelData) =>
+    apiSuperAdminPost('/api/system/model-config/reranker', modelData),
+
+  /**
+   * 删除Reranker模型
+   * @param {string} modelId - 模型ID
+   * @returns {Promise} - 删除结果
+   */
+  deleteReranker: async (modelId) =>
+    apiSuperAdminDelete(`/api/system/model-config/reranker/${encodeURIComponent(modelId)}`)
+}
