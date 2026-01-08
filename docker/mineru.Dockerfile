@@ -20,8 +20,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install mineru latest
-RUN python3 -m pip install -U 'mineru[core]' -i https://mirrors.aliyun.com/pypi/simple --break-system-packages && \
+# Install mineru latest with retry logic for network resilience
+RUN python3 -m pip install -U 'mineru[core]' \
+    -i https://mirrors.aliyun.com/pypi/simple \
+    --break-system-packages \
+    --retries 10 \
+    --resume-retries 10 \
+    --timeout 120 && \
     python3 -m pip cache purge
 
 # Download models and update the configuration file
