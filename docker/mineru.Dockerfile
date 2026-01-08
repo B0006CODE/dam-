@@ -22,7 +22,7 @@ RUN apt-get update && \
 
 # Install mineru latest with retry logic for network resilience
 RUN python3 -m pip install -U 'mineru[core]' \
-    -i https://mirrors.aliyun.com/pypi/simple \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple \
     --break-system-packages \
     --retries 10 \
     --resume-retries 10 \
