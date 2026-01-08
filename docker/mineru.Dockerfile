@@ -5,9 +5,13 @@ FROM lmsysorg/sglang:v0.4.9.post3-cu126
 # For blackwell GPU, use the following line instead:
 # FROM lmsysorg/sglang:v0.4.9.post3-cu128-b200
 
+# 使用清华镜像源加速下载
+RUN sed -i 's|http://archive.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
+    sed -i 's|http://security.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
+
 # Install libgl for opencv support & Noto fonts for Chinese characters
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
         fonts-noto-core \
         fonts-noto-cjk \
         fontconfig \

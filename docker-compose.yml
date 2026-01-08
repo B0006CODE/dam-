@@ -241,34 +241,35 @@ services:
       - app-network
     restart: unless-stopped
 
-  paddlex:
-    build:
-      context: .
-      dockerfile: docker/paddlex.Dockerfile
-    image: paddlex:latest
-    container_name: paddlex-ocr
-    profiles:
-      - all
-    volumes:
-      - ./docker/volumes/paddlex:/paddlex
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['0']
-              capabilities: [gpu]
-    networks:
-      - app-network
-    restart: unless-stopped
+  # paddlex 服务已禁用 - 使用 mineru 作为 OCR 服务
+  # paddlex:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/paddlex.Dockerfile
+  #   image: paddlex:latest
+  #   container_name: paddlex-ocr
+  #   profiles:
+  #     - all
+  #   volumes:
+  #     - ./docker/volumes/paddlex:/paddlex
+  #   ports:
+  #     - "8080:8080"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+  #     interval: 20s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             device_ids: ['0']
+  #             capabilities: [gpu]
+  #   networks:
+  #     - app-network
+  #   restart: unless-stopped
 
 networks:
   app-network:
