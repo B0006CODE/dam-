@@ -1,9 +1,8 @@
 import re
 from typing import Any, cast
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.runtime import Runtime
 
 from src import graph_base, knowledge_base
@@ -580,12 +579,7 @@ class ChatbotAgent(BaseAgent):
                         return {"messages": [AIMessage(content=no_result_reply)]}
                     retrieval_context = _build_retrieval_context(kb_results, graph_results)
 
-        # 这里要根据配置动态获取工具
-        available_tools = await self._get_invoke_tools(runtime.context.tools, runtime.context.mcps, runtime)
-        logger.info(f"LLM binded ({len(available_tools)}) available_tools: {[tool.name for tool in available_tools]}")
-
-        if available_tools:
-            model = model.bind_tools(available_tools)
+        # 工具调用功能已禁用，使用预取检索机制代替
 
         # 使用异步调用
         messages = [{"role": "system", "content": system_prompt}]
@@ -619,19 +613,13 @@ class ChatbotAgent(BaseAgent):
         return cast(dict[str, list[ToolMessage]], result)
 
     async def get_graph(self, **kwargs):
-        """构建图"""
+        """构建图 - 已禁用工具调用，仅保留对话节点"""
         if self.graph:
             return self.graph
 
         builder = StateGraph(State, context_schema=self.context_schema)
         builder.add_node("chatbot", self.llm_call)
-        builder.add_node("tools", self.dynamic_tools_node)
         builder.add_edge(START, "chatbot")
-        builder.add_conditional_edges(
-            "chatbot",
-            tools_condition,
-        )
-        builder.add_edge("tools", "chatbot")
         builder.add_edge("chatbot", END)
 
         self.checkpointer = await self._get_checkpointer()

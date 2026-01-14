@@ -20,8 +20,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install mineru latest with retry logic for network resilience
-RUN python3 -m pip install -U 'mineru[core]' \
+# Install mineru with vLLM (required inference engine for mineru-openai-server)
+RUN python3 -m pip install -U 'mineru[core]' vllm \
     -i https://pypi.tuna.tsinghua.edu.cn/simple \
     --break-system-packages \
     --retries 10 \

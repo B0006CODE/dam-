@@ -1,77 +1,22 @@
 MODEL_NAMES:
-  dashscope:
-    name: 阿里百炼 (DashScope)
-    url: https://bailian.console.aliyun.com/?switchAgent=10226727&productCode=p_efm#/model-market
-    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    default: qwen-max-latest
-    env: DASHSCOPE_API_KEY
-    models:
-    - qwen-max-latest
-    - qwen-plus-latest
-    - qwen-turbo-latest
-    - qwen3-235b-a22b-thinking-2507
-    - qwen3-235b-a22b-instruct-2507
   vllm:
     name: vLLM（本地）
     url: https://docs.vllm.ai/
-    base_url: http://localhost:8001/v1
-    default: /models/Qwen3-32B
-    env: NO_API_KEY
+    base_url: http://host.docker.internal:50002/qwen3_32b_i4/v1
+    default: Qwen/Qwen3-32B-AWQ
+    env: VLLM_API_KEY
     models:
-    - /models/Qwen3-32B
-    - Qwen/Qwen2.5-7B-Instruct
-    - Qwen/Qwen2.5-14B-Instruct
-    - Qwen/Qwen2.5-32B-Instruct
-    - meta-llama/Llama-3.1-8B-Instruct
-    - deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    - Qwen/Qwen3-32B-AWQ
+
 EMBED_MODEL_INFO:
-  dashscope/text-embedding-v4:
-    name: text-embedding-v4
+  vllm/qwen3_embedding:
+    name: Qwen/Qwen3-Embedding-4B
     dimension: 1024
-    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings
-    api_key: DASHSCOPE_API_KEY
-  siliconflow/BAAI/bge-m3:
-    name: BAAI/bge-m3
-    dimension: 1024
-    base_url: https://api.siliconflow.cn/v1/embeddings
-    api_key: SILICONFLOW_API_KEY
-  siliconflow/Qwen/Qwen3-Embedding-0.6B:
-    name: Qwen/Qwen3-Embedding-0.6B
-    dimension: 1024
-    base_url: https://api.siliconflow.cn/v1/embeddings
-    api_key: SILICONFLOW_API_KEY
-  vllm/Qwen/Qwen3-Embedding-0.6B:
-    name: Qwen3-Embedding-0.6B
-    dimension: 1024
-    base_url: http://localhost:8002/v1/embeddings
-    api_key: no_api_key
-  vllm/Qwen3_Embedding:
-    name: /models/Qwen3_Embedding
-    dimension: 1024
-    base_url: http://localhost:8002/v1/embeddings
-    api_key: no_api_key
-  ollama/nomic-embed-text:
-    name: nomic-embed-text
-    base_url: http://localhost:11434/api/embed
-    dimension: 768
-  ollama/bge-m3:
-    name: bge-m3
-    base_url: http://localhost:11434/api/embed
-    dimension: 1024
+    base_url: http://host.docker.internal:50002/qwen3_embedding/v1/embeddings
+    api_key: VLLM_API_KEY
+
 RERANKER_LIST:
-  dashscope/qwen3-rerank:
-    name: qwen3-rerank
-    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1/rerank
-    api_key: DASHSCOPE_API_KEY
-  siliconflow/BAAI/bge-reranker-v2-m3:
+  vllm/bge_reranker_v2_m3:
     name: BAAI/bge-reranker-v2-m3
-    base_url: https://api.siliconflow.cn/v1/rerank
-    api_key: SILICONFLOW_API_KEY
-  vllm/BAAI/bge-reranker-v2-m3:
-    name: BAAI/bge-reranker-v2-m3
-    base_url: http://localhost:8003/v1/rerank
-    api_key: no_api_key
-  vllm/Qwen3_Rerank:
-    name: /models/Qwen3_Rerank
-    base_url: http://localhost:8003/v1/rerank
-    api_key: no_api_key
+    base_url: http://host.docker.internal:50002/bge_reranker_v2_m3/v1/rerank
+    api_key: VLLM_API_KEY
