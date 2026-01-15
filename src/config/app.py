@@ -178,10 +178,17 @@ class Config(SimpleConfig):
         # 检查模型提供商的环境变量
         self.model_provider_status = {}
         for provider in self.model_names:
-            env_var = self.model_names[provider]["env"]
+            env_var = self.model_names[provider].get("env")
             # 如果环境变量名为 NO_API_KEY，则认为总是可用
             if env_var == "NO_API_KEY":
                 self.model_provider_status[provider] = True
+            elif env_var is None:
+                self.model_provider_status[provider] = False
+            elif isinstance(env_var, list):
+                # 如果 env 是列表，检查列表中任一环境变量是否被设置
+                self.model_provider_status[provider] = any(
+                    bool(os.getenv(var)) for var in env_var if var != "NO_API_KEY"
+                ) or "NO_API_KEY" in env_var
             else:
                 self.model_provider_status[provider] = bool(os.getenv(env_var))
 
