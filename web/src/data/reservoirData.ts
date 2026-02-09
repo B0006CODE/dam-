@@ -26,14 +26,16 @@ export interface ProvinceStatsMap {
     [province: string]: ProvinceStats;
 }
 
+const DATA_BASE_URL = import.meta.env.BASE_URL || '/';
+
 // Helper functions to load data
 export async function loadReservoirs(): Promise<Reservoir[]> {
-    const response = await fetch('/src/data/reservoirs.json');
+    const response = await fetch(`${DATA_BASE_URL}data/reservoirs.json`);
     return response.json();
 }
 
 export async function loadProvinceStats(): Promise<ProvinceStatsMap> {
-    const response = await fetch('/src/data/provinceStats.json');
+    const response = await fetch(`${DATA_BASE_URL}data/provinceStats.json`);
     return response.json();
 }
 

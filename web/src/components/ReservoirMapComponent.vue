@@ -27,15 +27,29 @@ const emit = defineEmits<{
 const mapRef = ref<HTMLElement | null>(null);
 let chartInstance: ECharts | null = null;
 const reservoirs = ref<Reservoir[]>([]);
+const DATA_BASE_URL = import.meta.env.BASE_URL || '/';
 
 // Load reservoir data
 const loadData = async () => {
   try {
-    const response = await fetch('/src/data/reservoirs.json');
+    const response = await fetch(`${DATA_BASE_URL}data/reservoirs.json`);
     reservoirs.value = await response.json();
   } catch (error) {
     console.error('Failed to load reservoir data:', error);
   }
+};
+
+const fetchJson = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+};
+
+const loadChinaGeoJson = async () => {
+  const localUrl = `${DATA_BASE_URL}maps/china_100000_full.json`;
+  return fetchJson(localUrl);
 };
 
 // Initialize map
@@ -46,10 +60,7 @@ const initMap = async () => {
   chartInstance = echarts.init(mapRef.value);
 
   try {
-    // Fetch China map GeoJSON data
-    // Using a CDN source for China map data
-    const response = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json');
-    const chinaGeoJson = await response.json();
+    const chinaGeoJson = await loadChinaGeoJson();
     
     // Register China map
     echarts.registerMap('china', chinaGeoJson);

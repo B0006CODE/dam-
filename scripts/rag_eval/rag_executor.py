@@ -126,12 +126,6 @@ class RAGExecutor:
         # 解析结果
         result = data.get("result", "")
         context_text = self._format_context(result)
-        answer_text = ""
-        if isinstance(result, dict):
-            answer_text = result.get("answer") or result.get("response") or ""
-        elif isinstance(result, str):
-            answer_text = result
-        context_text = self._format_context(result)
         
         return RAGResult(
             question=question,
@@ -165,6 +159,12 @@ class RAGExecutor:
         data = response.json()
         
         result = data.get("result", "")
+        context_text = self._format_context(result)
+        answer_text = ""
+        if isinstance(result, dict):
+            answer_text = result.get("answer") or result.get("response") or ""
+        elif isinstance(result, str):
+            answer_text = result
         
         return RAGResult(
             question=question,

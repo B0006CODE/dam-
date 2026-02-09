@@ -131,6 +131,8 @@ class QuestionGenerator:
             "together": "TOGETHER_API_KEY",
             "openrouter": "OPENROUTER_API_KEY",
             "ark": "ARK_API_KEY",
+            "host.docker.internal": "VLLM_API_KEY",
+            "vllm": "VLLM_API_KEY",
         }
         for keyword, env_var in url_to_env.items():
             if keyword in self.base_url.lower():
