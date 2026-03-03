@@ -1,4 +1,7 @@
+import json
 import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, cast
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -48,6 +51,24 @@ _STAT_QUERY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_DAM_TYPE_PATTERN = re.compile(
+    r"(重力坝|土石坝|拱坝|混凝土坝|堆石坝|心墙坝|斜墙坝|均质坝|面板坝|支墩坝|浆砌石坝|土坝)"
+)
+
+_RESERVOIR_COUNT_HINT_PATTERN = re.compile(r"(多少座|几座|有多少座|数量|总数|有多少)")
+
+_REGION_PROVINCE_MAP = {
+    "华北": {"北京", "天津", "河北", "山西", "内蒙古"},
+    "东北": {"辽宁", "吉林", "黑龙江"},
+    "华东": {"上海", "江苏", "浙江", "安徽", "福建", "江西", "山东"},
+    "华中": {"河南", "湖北", "湖南"},
+    "华南": {"广东", "广西", "海南"},
+    "西南": {"重庆", "四川", "贵州", "云南", "西藏"},
+    "西北": {"陕西", "甘肃", "青海", "宁夏", "新疆"},
+}
+_REGION_PATTERN = re.compile(r"(华北|东北|华东|华中|华南|西南|西北)(?:地区)?")
+_EXCLUDED_COUNT_QUERY_TERMS = ("病害", "缺陷", "风险", "隐患", "病因", "处置", "整改", "措施", "多少种", "几种")
+
 
 def _extract_message_text(message: Any) -> str:
     if message is None:
@@ -86,6 +107,134 @@ def _is_statistical_query(text: str) -> bool:
     if not text:
         return False
     return bool(_STAT_QUERY_PATTERN.search(text))
+
+
+def _is_reservoir_count_query(text: str) -> bool:
+    """是否是“按地区/坝型统计多少座”这类数量查询。"""
+    if not text:
+        return False
+    if not ("坝" in text or "水库" in text):
+        return False
+    if any(term in text for term in _EXCLUDED_COUNT_QUERY_TERMS):
+        return False
+    if not _RESERVOIR_COUNT_HINT_PATTERN.search(text):
+        return False
+    if _DAM_TYPE_PATTERN.search(text):
+        return True
+    if _REGION_PATTERN.search(text):
+        return True
+    return "水库" in text
+
+
+def _extract_reservoir_count_params(text: str) -> tuple[str, str, set[str]]:
+    """提取坝型、区域和省份过滤条件。"""
+    dam_type = ""
+    region = ""
+    provinces: set[str] = set()
+
+    dam_type_match = _DAM_TYPE_PATTERN.search(text)
+    if dam_type_match:
+        dam_type = dam_type_match.group(1)
+
+    region_match = _REGION_PATTERN.search(text)
+    if region_match:
+        region = region_match.group(1)
+        provinces.update(_REGION_PROVINCE_MAP.get(region, set()))
+
+    all_known_provinces = set().union(*_REGION_PROVINCE_MAP.values())
+    for province in all_known_provinces:
+        if province in text:
+            provinces.add(province)
+
+    return dam_type, region, provinces
+
+
+@lru_cache(maxsize=1)
+def _load_reservoir_records() -> tuple[list[dict[str, Any]], str]:
+    """加载用于计数的水库结构化数据。"""
+    project_root = Path(__file__).resolve().parents[3]
+    candidate_files = [
+        project_root / "web" / "public" / "data" / "reservoirs.json",
+        project_root / "web" / "src" / "data" / "reservoirs.json",
+    ]
+
+    for file_path in candidate_files:
+        if not file_path.exists():
+            continue
+        try:
+            with file_path.open(encoding="utf-8") as f:
+                payload = json.load(f)
+            if isinstance(payload, list):
+                return payload, str(file_path)
+        except Exception as e:
+            logger.error(f"Failed to load reservoir records from {file_path}: {e}")
+
+    return [], ""
+
+
+def _direct_reservoir_count_statistics(query_text: str) -> dict[str, Any] | None:
+    """直接基于结构化水库数据统计“多少座”。"""
+    if not _is_reservoir_count_query(query_text):
+        return None
+
+    records, source_path = _load_reservoir_records()
+    if not records:
+        logger.warning("Reservoir structured data not found, skip direct count statistics")
+        return None
+
+    dam_type, region, provinces = _extract_reservoir_count_params(query_text)
+
+    filtered: list[dict[str, Any]] = []
+    for row in records:
+        if not isinstance(row, dict):
+            continue
+        row_dam_type = str(row.get("damType") or "").strip()
+        row_province = str(row.get("province") or "").strip()
+
+        if dam_type and row_dam_type != dam_type:
+            continue
+        if provinces and row_province not in provinces:
+            continue
+        filtered.append(row)
+
+    province_counts: dict[str, int] = {}
+    for row in filtered:
+        province = str(row.get("province") or "未知")
+        province_counts[province] = province_counts.get(province, 0) + 1
+
+    scope_items = []
+    if region:
+        scope_items.append(f"{region}地区")
+    elif provinces:
+        scope_items.append("指定省份")
+    if dam_type:
+        scope_items.append(dam_type)
+    if not scope_items:
+        scope_items.append("全部水库")
+    scope_text = "、".join(scope_items)
+
+    output_parts = [
+        "【结构化水库统计结果】",
+        f"统计范围：{scope_text}",
+        f"统计口径：按数据记录条目计数",
+        f"结果：共 {len(filtered)} 座",
+    ]
+    if province_counts:
+        sorted_counts = sorted(province_counts.items(), key=lambda x: (-x[1], x[0]))
+        breakdown = "、".join(f"{province}{count}座" for province, count in sorted_counts)
+        output_parts.append(f"分省结果：{breakdown}")
+    output_parts.append("说明：该结果来自当前系统内置样本数据，仅代表已入库记录。")
+
+    return {
+        "query_type": "reservoir_count",
+        "dam_type": dam_type,
+        "region": region,
+        "provinces": sorted(list(provinces)),
+        "count": len(filtered),
+        "province_counts": province_counts,
+        "source_path": source_path,
+        "text_summary": "\n".join(output_parts),
+    }
 
 
 def _extract_stat_params(text: str) -> tuple[str, str]:
@@ -357,6 +506,141 @@ def _build_retrieval_context(kb_results: list[Any], graph_results: Any) -> str:
     return "\n".join(sections)
 
 
+def _build_retrieval_citations(
+    kb_results: list[Any],
+    graph_results: Any,
+    max_items: int = 12,
+) -> list[dict[str, Any]]:
+    citations: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+
+    def _add_citation(
+        *,
+        title: str = "",
+        path: str = "",
+        snippet: str = "",
+        source_type: str = "document",
+        score: Any = None,
+        reference_id: Any = None,
+    ) -> None:
+        key = str(path or title or reference_id or "").strip()
+        if not key or key in seen_keys:
+            return
+        seen_keys.add(key)
+
+        normalized_title = str(title or "").strip()
+        normalized_path = str(path or "").strip()
+        citation = {
+            "title": normalized_title or (normalized_path.split("/")[-1] if normalized_path else "未知来源"),
+            "path": normalized_path,
+            "snippet": _trim_text(snippet, max_chars=160),
+            "sourceType": source_type,
+        }
+        if score is not None:
+            citation["score"] = score
+        if reference_id is not None:
+            citation["referenceId"] = str(reference_id)
+        citations.append(citation)
+
+    for item in kb_results:
+        if isinstance(item, dict):
+            content = item.get("content") or item.get("text") or item.get("chunk") or ""
+            metadata = item.get("metadata") or {}
+            path = (
+                metadata.get("source")
+                or metadata.get("file_name")
+                or metadata.get("filename")
+                or metadata.get("path")
+                or metadata.get("db_id")
+                or item.get("source_db")
+                or item.get("source")
+                or ""
+            )
+            title = item.get("title") or (str(path).split("/")[-1] if path else "")
+            _add_citation(
+                title=str(title or ""),
+                path=str(path or ""),
+                snippet=str(content or ""),
+                source_type="knowledge_base",
+                score=item.get("score"),
+                reference_id=item.get("reference_id") or item.get("referenceId"),
+            )
+        elif isinstance(item, str):
+            text = item.strip()
+            if text:
+                _add_citation(
+                    title="知识库检索结果",
+                    path="",
+                    snippet=text,
+                    source_type="knowledge_base",
+                )
+
+    if isinstance(graph_results, dict):
+        graph_type = str(graph_results.get("graph_type") or "neo4j")
+        triples = graph_results.get("triples") or []
+        if isinstance(triples, list) and triples:
+            preview_lines: list[str] = []
+            for triple in triples[:3]:
+                if isinstance(triple, (list, tuple)) and len(triple) >= 3:
+                    h, r, t = triple[:3]
+                    preview_lines.append(f"{h} -[{r}]-> {t}")
+            if preview_lines:
+                _add_citation(
+                    title=f"知识图谱({graph_type})",
+                    path=f"graph://{graph_type}",
+                    snippet="；".join(preview_lines),
+                    source_type="knowledge_graph",
+                )
+
+        content = graph_results.get("content") or ""
+        if isinstance(content, str) and content.strip():
+            _add_citation(
+                title=f"知识图谱({graph_type})",
+                path=f"graph://{graph_type}",
+                snippet=content,
+                source_type="knowledge_graph",
+            )
+    elif isinstance(graph_results, list):
+        for item in graph_results:
+            if isinstance(item, dict):
+                content = item.get("content") or item.get("text") or item.get("chunk") or ""
+                metadata = item.get("metadata") or {}
+                path = (
+                    metadata.get("source")
+                    or metadata.get("file_name")
+                    or metadata.get("filename")
+                    or metadata.get("path")
+                    or metadata.get("db_id")
+                    or item.get("source")
+                    or "graph://global"
+                )
+                title = item.get("title") or (str(path).split("/")[-1] if path else "知识图谱")
+                _add_citation(
+                    title=str(title or ""),
+                    path=str(path or ""),
+                    snippet=str(content or ""),
+                    source_type="knowledge_graph",
+                    score=item.get("score"),
+                    reference_id=item.get("reference_id") or item.get("referenceId"),
+                )
+            elif isinstance(item, str) and item.strip():
+                _add_citation(
+                    title="知识图谱检索结果",
+                    path="graph://global",
+                    snippet=item,
+                    source_type="knowledge_graph",
+                )
+    elif isinstance(graph_results, str) and graph_results.strip():
+        _add_citation(
+            title="知识图谱检索结果",
+            path="graph://global",
+            snippet=graph_results,
+            source_type="knowledge_graph",
+        )
+
+    return citations[:max_items]
+
+
 async def _prefetch_retrieval(
     query_text: str,
     input_context: dict | None,
@@ -367,7 +651,10 @@ async def _prefetch_retrieval(
     context = input_context or {}
 
     if retrieval_mode in {"mix", "local"}:
-        kb_whitelist = set(context.get("kb_whitelist") or [])
+        raw_whitelist = context.get("kb_whitelist") or []
+        if isinstance(raw_whitelist, str):
+            raw_whitelist = [raw_whitelist]
+        kb_whitelist = {kb for kb in raw_whitelist if kb}
         try:
             retrievers = knowledge_base.get_retrievers()
         except Exception as e:
@@ -555,6 +842,7 @@ class ChatbotAgent(BaseAgent):
         retrieval_mode = input_context.get("retrieval_mode", "mix")
         retrieval_context = ""
         statistics_context = ""  # 新增：统计结果上下文
+        retrieval_citations: list[dict[str, Any]] = []
         system_prompt = runtime.context.system_prompt
         if retrieval_mode == "llm":
             llm_prompt = getattr(runtime.context, "llm_system_prompt", "") or ""
@@ -563,22 +851,46 @@ class ChatbotAgent(BaseAgent):
         if _last_message_is_user(state.messages) and retrieval_mode != "llm":
             query_text = _get_latest_user_text(state.messages)
             if query_text:
+                has_direct_structured_stats = False
                 # 新增：对于统计性问题，直接调用统计函数（无需工具调用）
-                if _is_statistical_query(query_text) and retrieval_mode in {"mix", "global"}:
+                if _is_statistical_query(query_text):
+                    reservoir_stat_result = _direct_reservoir_count_statistics(query_text)
+                    if reservoir_stat_result and reservoir_stat_result.get("text_summary"):
+                        has_direct_structured_stats = True
+                        statistics_context = reservoir_stat_result["text_summary"]
+                        retrieval_citations.append(
+                            {
+                                "title": "结构化水库统计",
+                                "path": reservoir_stat_result.get("source_path") or "dataset://reservoirs",
+                                "snippet": statistics_context,
+                                "sourceType": "structured_data",
+                            }
+                        )
+
+                if _is_statistical_query(query_text) and not has_direct_structured_stats and retrieval_mode in {"mix", "global"}:
                     graph_name = input_context.get("graph_name") or "neo4j"
                     stat_result = await _direct_graph_statistics(query_text, graph_name)
                     if stat_result and stat_result.get("text_summary"):
                         statistics_context = stat_result["text_summary"]
                         logger.info(f"Direct statistics injected: {stat_result.get('total_count', 0)} results")
+                        retrieval_citations.append(
+                            {
+                                "title": f"知识图谱统计({graph_name})",
+                                "path": f"graph://{graph_name}",
+                                "snippet": statistics_context,
+                                "sourceType": "knowledge_graph",
+                            }
+                        )
                 
                 policy = await self._decide_retrieval_policy(query_text, runtime.context, retrieval_mode)
-                if policy in {"inject", "enforce"}:
+                if policy in {"inject", "enforce"} and not has_direct_structured_stats:
                     kb_results, graph_results = await _prefetch_retrieval(query_text, input_context, retrieval_mode)
                     has_results = _has_retrieval_results(kb_results, graph_results) or bool(statistics_context)
                     if policy == "enforce" and not has_results:
                         no_result_reply = getattr(runtime.context, "retrieval_no_result_reply", "资料不足") or "资料不足"
                         return {"messages": [AIMessage(content=no_result_reply)]}
                     retrieval_context = _build_retrieval_context(kb_results, graph_results)
+                    retrieval_citations.extend(_build_retrieval_citations(kb_results, graph_results))
 
         # 工具调用功能已禁用，使用预取检索机制代替
 
@@ -594,6 +906,19 @@ class ChatbotAgent(BaseAgent):
             AIMessage,
             await model.ainvoke(messages),
         )
+        if retrieval_citations:
+            deduped: list[dict[str, Any]] = []
+            seen_citation_keys: set[str] = set()
+            for citation in retrieval_citations:
+                key = str(citation.get("path") or citation.get("title") or citation.get("referenceId") or "").strip()
+                if not key or key in seen_citation_keys:
+                    continue
+                seen_citation_keys.add(key)
+                deduped.append(citation)
+            if deduped:
+                current_kwargs = dict(getattr(response, "additional_kwargs", {}) or {})
+                current_kwargs["citations"] = deduped[:12]
+                response = cast(AIMessage, response.model_copy(update={"additional_kwargs": current_kwargs}))
         return {"messages": [response]}
 
     async def dynamic_tools_node(self, state: State, runtime: Runtime[Context]) -> dict[str, list[ToolMessage]]:

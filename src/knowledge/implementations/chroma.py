@@ -249,20 +249,37 @@ class ChromaKB(KnowledgeBase):
             # 当启用 reranker 时，初始检索更多结果以供重排序
             from src import config
             from src.models.rerank import rerank_chunks
-            
-            rerank_top_k = config.rerank_top_k or 10
-            initial_top_k = kwargs.get("top_k", 10)
-            
-            # 如果启用了 reranker，检索更多结果用于重排序
+
+            def _normalize_positive_int(value: Any, default: int) -> int:
+                try:
+                    parsed = int(value)
+                    return parsed if parsed > 0 else default
+                except (TypeError, ValueError):
+                    return default
+
+            configured_rerank_top_k = _normalize_positive_int(getattr(config, "rerank_top_k", None), 10)
+
+            # 最终返回条数：优先使用请求 top_k，否则回退到配置或默认值
             if config.enable_reranker:
-                top_k = max(initial_top_k * 3, 30)  # 至少检索 3 倍或 30 个结果
+                final_top_k = _normalize_positive_int(kwargs.get("top_k"), configured_rerank_top_k)
+                search_top_k = max(final_top_k * 3, 30)  # 召回更多结果给 reranker
             else:
-                top_k = initial_top_k
-                
-            similarity_threshold = kwargs.get("similarity_threshold", 0.0)
+                final_top_k = _normalize_positive_int(kwargs.get("top_k"), 10)
+                search_top_k = final_top_k
+
+            try:
+                similarity_threshold = float(kwargs.get("similarity_threshold", 0.0))
+            except (TypeError, ValueError):
+                similarity_threshold = 0.0
+            similarity_threshold = max(0.0, min(1.0, similarity_threshold))
+            include_distances = kwargs.get("include_distances", True)
+            if isinstance(include_distances, str):
+                include_distances = include_distances.strip().lower() in {"1", "true", "yes", "on"}
+            else:
+                include_distances = bool(include_distances)
 
             results = collection.query(
-                query_texts=[query_text], n_results=top_k, include=["documents", "metadatas", "distances"]
+                query_texts=[query_text], n_results=search_top_k, include=["documents", "metadatas", "distances"]
             )
 
             if not results or not results.get("documents") or not results["documents"][0]:
@@ -287,13 +304,23 @@ class ChromaKB(KnowledgeBase):
                 retrieved_chunks.append({"content": doc, "metadata": metadata, "score": similarity})
 
             logger.debug(f"ChromaDB query response: {len(retrieved_chunks)} chunks found (after similarity filtering)")
-            
+
             # 应用 rerank（如果启用）
             if config.enable_reranker and retrieved_chunks:
-                retrieved_chunks = rerank_chunks(query_text, retrieved_chunks, top_k=rerank_top_k)
+                retrieved_chunks = rerank_chunks(query_text, retrieved_chunks, top_k=final_top_k)
                 logger.debug(f"After rerank: {len(retrieved_chunks)} chunks returned")
-            
-            return retrieved_chunks
+
+            final_chunks = retrieved_chunks[:final_top_k]
+            if include_distances:
+                return final_chunks
+
+            sanitized_chunks = []
+            for chunk in final_chunks:
+                item = dict(chunk)
+                item.pop("score", None)
+                item.pop("rerank_score", None)
+                sanitized_chunks.append(item)
+            return sanitized_chunks
 
         except Exception as e:
             logger.error(f"ChromaDB query error: {e}, {traceback.format_exc()}")

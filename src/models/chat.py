@@ -8,6 +8,22 @@ from src import config
 from src.utils import logger
 
 
+def _resolve_api_key(env_config: str | list[str] | None) -> str:
+    if env_config is None:
+        return ""
+    if isinstance(env_config, list):
+        for env_var in env_config:
+            if env_var == "NO_API_KEY":
+                return "EMPTY"
+            value = os.getenv(env_var)
+            if value:
+                return value
+        return ""
+    if env_config == "NO_API_KEY":
+        return "EMPTY"
+    return os.getenv(env_config, env_config)
+
+
 def split_model_spec(model_spec, sep="/"):
     """
     将 provider/model 形式的字符串拆分为 (provider, model)
@@ -51,9 +67,10 @@ class OpenAIBase:
                 response = self._get_response(messages)
 
         except Exception as e:
+            masked_key = (self.api_key[:5] + "***") if isinstance(self.api_key, str) and self.api_key else "<empty>"
             err = (
                 f"Error streaming response: {e}, URL: {self.base_url}, "
-                f"API Key: {self.api_key[:5]}***, Model: {self.model_name}"
+                f"API Key: {masked_key}, Model: {self.model_name}"
             )
             logger.error(err)
             raise Exception(err)
@@ -114,7 +131,11 @@ def select_model(model_provider=None, model_name=None, model_spec=None):
 
     assert model_provider, "Model provider not specified"
 
-    model_info = config.model_names.get(model_provider, {})
+    model_info = config.model_names.get(model_provider)
+    if not model_info:
+        available = ", ".join(sorted(config.model_names.keys()))
+        raise ValueError(f"Model provider `{model_provider}` is not configured. Available providers: {available}")
+
     model_name = model_name or model_info.get("default", "")
 
     if not model_name:
@@ -127,9 +148,12 @@ def select_model(model_provider=None, model_name=None, model_spec=None):
 
     # 其他模型，默认使用OpenAIBase
     try:
+        base_url = model_info.get("base_url")
+        if not base_url:
+            raise ValueError(f"Model provider `{model_provider}` is missing `base_url` in models config.")
         model = OpenAIBase(
-            api_key=os.getenv(model_info["env"]),
-            base_url=model_info["base_url"],
+            api_key=_resolve_api_key(model_info.get("env", "NO_API_KEY")),
+            base_url=base_url,
             model_name=model_name,
         )
         return model

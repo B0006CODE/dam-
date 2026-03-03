@@ -33,7 +33,7 @@
         ref="graphRef"
         :graph-data="graphData"
         :layout-options="layoutOptions"
-        :highlight-keywords="[state.searchInput]"
+        :highlight-keywords="highlightKeywords"
         :hidden-dimensions="hiddenDimensions"
         @node-click="handleNodeExpand"
       >
@@ -63,6 +63,11 @@
               </a-input>
             </div>
             <div class="actions-right">
+              <a-select
+                v-model:value="displayMode"
+                :options="displayModeOptions"
+                style="width: 130px"
+              />
               <a-button type="default" @click="state.showInfoModal = true" :icon="h(InfoCircleOutlined)">
                 说明
               </a-button>
@@ -100,16 +105,35 @@
             <div class="legend" v-if="legendItems.length">
               <div class="legend-header">
                 <h4>实体类型</h4>
-                <div class="legend-stats">
-                  <span v-if="typeof graphInfo?.entity_count === 'number'" class="stat-item">
-                    实体 {{ graphData.nodes.length }} / {{ graphInfo.entity_count }}
-                  </span>
-                  <span v-if="typeof graphInfo?.relationship_count === 'number'" class="stat-item">
-                    关系 {{ graphData.edges.length }} / {{ graphInfo.relationship_count }}
-                  </span>
+                <div class="legend-right">
+                  <div class="legend-stats">
+                    <span class="stat-item">
+                      实体 {{ visibleGraphData.nodes.length }}
+                      <template v-if="typeof graphInfo?.entity_count === 'number'">
+                        / {{ graphInfo.entity_count }}
+                      </template>
+                    </span>
+                    <span class="stat-item">
+                      关系 {{ visibleGraphData.edges.length }}
+                      <template v-if="typeof graphInfo?.relationship_count === 'number'">
+                        / {{ graphInfo.relationship_count }}
+                      </template>
+                    </span>
+                  </div>
+                  <a-button
+                    type="text"
+                    size="small"
+                    class="legend-toggle-btn"
+                    @click="legendCollapsed = !legendCollapsed"
+                  >
+                    <template #icon>
+                      <component :is="legendCollapsed ? DownOutlined : UpOutlined" />
+                    </template>
+                    {{ legendCollapsed ? '展开' : '收起' }}
+                  </a-button>
                 </div>
               </div>
-              <div class="legend-content">
+              <div class="legend-content" v-show="!legendCollapsed">
                 <div class="legend-item" v-for="item in legendItems" :key="item.type">
                   <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
                   <span class="legend-label">{{ item.type }} ({{ item.count }})</span>
@@ -206,13 +230,13 @@ LIMIT $num</code></pre>
 import { computed, onMounted, reactive, ref, h } from 'vue';
 import { message } from 'ant-design-vue';
 import { useConfigStore } from '@/stores/config';
-import { UploadOutlined, SyncOutlined, GlobalOutlined, InfoCircleOutlined, SearchOutlined, ReloadOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons-vue';
+import { UploadOutlined, SyncOutlined, GlobalOutlined, InfoCircleOutlined, SearchOutlined, ReloadOutlined, LoadingOutlined, EditOutlined, UpOutlined, DownOutlined } from '@ant-design/icons-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import { neo4jApi, lightragApi, getPagedSubgraph } from '@/apis/graph_api';
 import { useUserStore } from '@/stores/user';
 import G6GraphCanvas from '@/components/G6GraphCanvas.vue';
 import DimensionFilter from '@/components/DimensionFilter.vue';
-import { buildNodeColorMap, DIMENSION_COLORS } from '@/utils/nodeColorMapper';
+import { buildNodeColorMap, DIMENSION_COLORS, filterByDimensions } from '@/utils/nodeColorMapper';
 import { getEntityTypeColor, normalizeEntityType } from '@/utils/entityTypeColors';
 import { storeToRefs } from 'pinia';
 
@@ -226,13 +250,28 @@ const modelMatched = computed(() => !graphInfo?.value?.embed_model_name || graph
 const graphRef = ref(null)
 const graphInfo = ref(null)
 const fileList = ref([]);
-const sampleNodeCount = ref(100);  // 分页加载每页数量
+const DEFAULT_SAMPLE_NODE_COUNT = 100;
+const MIN_SAMPLE_NODE_COUNT = 20;
+const MAX_SAMPLE_NODE_COUNT = 1000;
+const sampleNodeCount = ref(DEFAULT_SAMPLE_NODE_COUNT);  // 分页加载每页数量
 const hiddenDimensions = ref([]);  // 隐藏的维度列表
+const committedSearchKeyword = ref('');
+const highlightKeywords = computed(() =>
+  committedSearchKeyword.value ? [committedSearchKeyword.value] : []
+);
 const graphOptions = ref([{ label: 'Neo4j', value: 'neo4j' }]);
 const selectedGraph = ref('neo4j');
+const displayMode = ref('force');
+const displayModeOptions = [
+  { label: '自由布局', value: 'force' },
+  { label: '环形布局', value: 'radial' },
+  { label: '同心布局', value: 'concentric' },
+  { label: '圆形布局', value: 'circular' },
+];
 const graphAliases = ref(loadGraphAliases());
 const renameModalVisible = ref(false);
 const renameInput = ref('');
+const legendCollapsed = ref(false);
 const graphData = reactive({
   nodes: [],
   edges: [],
@@ -240,6 +279,20 @@ const graphData = reactive({
 
 const expandedNodeIds = new Set();
 const expandingNodeIds = new Set();
+
+const clampSampleNodeCount = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_SAMPLE_NODE_COUNT;
+  return Math.max(MIN_SAMPLE_NODE_COUNT, Math.min(MAX_SAMPLE_NODE_COUNT, parsed));
+};
+
+const resolveSampleNodeCount = () => {
+  const safe = clampSampleNodeCount(sampleNodeCount.value);
+  if (safe !== sampleNodeCount.value) {
+    sampleNodeCount.value = safe;
+  }
+  return safe;
+};
 
 const resetExpandState = () => {
   expandedNodeIds.clear();
@@ -262,6 +315,42 @@ const edgeKeyOf = (edge) => {
   }
   const type = edge?.type ?? edge?.r ?? edge?.relation ?? edge?.label ?? edge?.name ?? '';
   return `${String(s)}->${String(t)}::${String(type)}`;
+};
+
+const normalizeRenderableGraphData = (nodes = [], edges = []) => {
+  const nodeMap = new Map();
+  const normalizedNodes = [];
+
+  for (const node of nodes || []) {
+    if (!node || node.id == null || node.id === '') continue;
+    const key = String(node.id);
+    if (!nodeMap.has(key)) {
+      const nextNode = { ...node, id: key };
+      nodeMap.set(key, nextNode);
+      normalizedNodes.push(nextNode);
+      continue;
+    }
+    const prev = nodeMap.get(key);
+    Object.assign(prev, node, { id: key });
+  }
+
+  const normalizedEdges = [];
+  const seenEdgeKeys = new Set();
+  for (const edge of edges || []) {
+    if (!edge) continue;
+    const s = getEdgeSourceId(edge);
+    const t = getEdgeTargetId(edge);
+    if (s == null || t == null) continue;
+    const sourceKey = String(s);
+    const targetKey = String(t);
+    if (!nodeMap.has(sourceKey) || !nodeMap.has(targetKey)) continue;
+    const key = edgeKeyOf(edge);
+    if (!key || seenEdgeKeys.has(key)) continue;
+    seenEdgeKeys.add(key);
+    normalizedEdges.push(edge);
+  }
+
+  return { nodes: normalizedNodes, edges: normalizedEdges };
 };
 
 const mergeSubgraphIntoGraphData = (subgraph) => {
@@ -305,7 +394,35 @@ const mergeSubgraphIntoGraphData = (subgraph) => {
   graphData.edges = nextEdges;
 };
 
-const layoutOptions = computed(() => ({ type: 'force' }))
+const layoutOptions = computed(() => {
+  switch (displayMode.value) {
+    case 'radial':
+      return {
+        type: 'radial',
+        unitRadius: 180,
+        linkDistance: 220,
+        maxIteration: 1000
+      };
+    case 'concentric':
+      return {
+        type: 'concentric',
+        preventOverlap: true,
+        equidistant: false,
+        startAngle: -Math.PI / 2,
+        clockwise: true
+      };
+    case 'circular':
+      return {
+        type: 'circular',
+        ordering: 'degree',
+        startAngle: -Math.PI / 2,
+        clockwise: true
+      };
+    case 'force':
+    default:
+      return { type: 'force' };
+  }
+})
 
 const state = reactive({
   fetching: false,
@@ -325,19 +442,20 @@ const unindexedCount = computed(() => {
   return graphInfo.value?.unindexed_node_count || 0;
 });
 
-const loadGraphInfo = () => {
-  state.loadingGraphInfo = true
-  neo4jApi.getInfo()
-    .then(data => {
-      graphInfo.value = data.data
-      state.loadingGraphInfo = false
-    })
-    .catch(error => {
-      console.error(error)
-      message.error(error.message || '加载图数据库信息失败')
-      state.loadingGraphInfo = false
-    })
-}
+const loadGraphInfo = async () => {
+  state.loadingGraphInfo = true;
+  try {
+    const data = await neo4jApi.getInfo();
+    graphInfo.value = data.data;
+    return data.data;
+  } catch (error) {
+    console.error(error);
+    message.error(error.message || '加载图数据库信息失败');
+    return null;
+  } finally {
+    state.loadingGraphInfo = false;
+  }
+};
 
 const addDocumentByFile = () => {
   if (isReadOnly.value) {
@@ -373,6 +491,7 @@ const handleNodeExpand = async ({ id, data }) => {
 
   expandingNodeIds.add(nodeId);
   const currentGraph = selectedGraph.value || 'neo4j';
+  const limit = resolveSampleNodeCount();
 
   try {
     let res;
@@ -385,7 +504,7 @@ const handleNodeExpand = async ({ id, data }) => {
         db_id: currentGraph,
         center,
         depth: 1,
-        limit: sampleNodeCount.value,
+        limit,
         page: 1,
         fields: 'compact'
       });
@@ -398,7 +517,6 @@ const handleNodeExpand = async ({ id, data }) => {
 
     mergeSubgraphIntoGraphData(result);
     expandedNodeIds.add(nodeId);
-    graphRef.value?.refreshGraph?.();
     setTimeout(() => graphRef.value?.focusNode?.(nodeId), 200);
   } catch (error) {
     console.error('expand node error:', error);
@@ -411,13 +529,14 @@ const handleNodeExpand = async ({ id, data }) => {
 const loadSampleNodes = () => {
   state.fetching = true
   const currentGraph = selectedGraph.value || 'neo4j'
+  const limit = resolveSampleNodeCount();
+  committedSearchKeyword.value = '';
 
   const handleResult = (data) => {
     const result = data?.result || data?.data || data || {}
     resetExpandState();
     graphData.nodes = result.nodes || []
     graphData.edges = result.edges || []
-    setTimeout(() => graphRef.value?.refreshGraph?.(), 200)
   }
 
   const handleError = (error) => {
@@ -428,7 +547,7 @@ const loadSampleNodes = () => {
   const finallyCb = () => { state.fetching = false }
 
   if (currentGraph === 'neo4j') {
-    neo4jApi.getSampleNodes(currentGraph, sampleNodeCount.value)
+    neo4jApi.getSampleNodes(currentGraph, limit)
       .then(handleResult)
       .catch(handleError)
       .finally(finallyCb)
@@ -437,7 +556,7 @@ const loadSampleNodes = () => {
       db_id: currentGraph,
       center: '*',
       depth: 2,
-      limit: sampleNodeCount.value,
+      limit,
       page: 1,
       fields: 'compact'
     })
@@ -457,13 +576,15 @@ const onSearch = () => {
     // 可选：提示模型不一致
   }
 
-  if (!state.searchInput) {
+  const keyword = (state.searchInput || '').trim();
+  if (!keyword) {
     message.error('请输入要查询的实体')
     return
   }
 
   state.searchLoading = true
   const currentGraph = selectedGraph.value || 'neo4j'
+  const limit = resolveSampleNodeCount();
 
   const handleResult = (data) => {
     const result = data?.result || data?.data || data || {}
@@ -473,10 +594,10 @@ const onSearch = () => {
     resetExpandState();
     graphData.nodes = result.nodes
     graphData.edges = result.edges
+    committedSearchKeyword.value = keyword;
     if (graphData.nodes.length === 0) {
       message.info('未找到相关实体')
     }
-    graphRef.value?.refreshGraph?.()
   }
 
   const handleError = (error) => {
@@ -487,16 +608,16 @@ const onSearch = () => {
   const finallyCb = () => { state.searchLoading = false }
 
   if (currentGraph === 'neo4j') {
-    neo4jApi.queryNode(state.searchInput)
+    neo4jApi.queryNode(keyword)
       .then(handleResult)
       .catch(handleError)
       .finally(finallyCb)
   } else {
     getPagedSubgraph({
       db_id: currentGraph,
-      center: state.searchInput,
+      center: keyword,
       depth: 2,
-      limit: sampleNodeCount.value,
+      limit,
       page: 1,
       fields: 'compact'
     })
@@ -506,9 +627,9 @@ const onSearch = () => {
   }
 };
 
-onMounted(() => {
-  loadGraphInfo();
-  loadGraphOptions();
+onMounted(async () => {
+  await loadGraphInfo();
+  await loadGraphOptions();
   // 自动加载节点数据
   loadSampleNodes();
 });
@@ -551,11 +672,23 @@ const useEntityTypes = computed(() => {
 
 const showDimensionFilter = computed(() => !useEntityTypes.value);
 
+const visibleGraphData = computed(() => {
+  const filtered = filterByDimensions(
+    graphData.nodes || [],
+    graphData.edges || [],
+    hiddenDimensions.value
+  );
+  return normalizeRenderableGraphData(filtered.nodes || [], filtered.edges || []);
+});
+
 // ========= 图例 =========
 const legendItems = computed(() => {
+  const visibleNodes = visibleGraphData.value.nodes || [];
+  const visibleEdges = visibleGraphData.value.edges || [];
+
   if (useEntityTypes.value) {
     const counts = new Map();
-    (graphData.nodes || []).forEach((node) => {
+    visibleNodes.forEach((node) => {
       const typeKey = normalizeEntityType(node?.type ?? node?.entity_type ?? node?.entityType);
       counts.set(typeKey, (counts.get(typeKey) || 0) + 1);
     });
@@ -570,7 +703,7 @@ const legendItems = computed(() => {
   }
 
   // 统计每个维度的节点数量
-  const colorMap = buildNodeColorMap(graphData.nodes, graphData.edges);
+  const colorMap = buildNodeColorMap(visibleNodes, visibleEdges);
   const dimensionCounts = new Map();
   
   for (const [nodeId, info] of colorMap) {
@@ -693,6 +826,7 @@ const loadGraphOptions = async () => {
 };
 
 const handleGraphChange = () => {
+  committedSearchKeyword.value = '';
   loadSampleNodes();
 };
 
@@ -857,6 +991,11 @@ const confirmRename = () => {
   color: var(--text-primary);
   flex-shrink: 0;
 }
+.legend-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .legend-stats {
   display: flex;
   gap: 12px;
@@ -865,6 +1004,10 @@ const confirmRename = () => {
 }
 .legend-stats .stat-item {
   white-space: nowrap;
+}
+.legend-toggle-btn {
+  color: var(--text-secondary);
+  padding: 0 4px;
 }
 .legend-content { max-height: 140px; overflow-y: auto; }
 .legend-item {

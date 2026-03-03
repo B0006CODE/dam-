@@ -19,12 +19,10 @@
     <div class="login-layout">
       <!-- 左侧品牌形象图片区域 -->
       <div class="login-image-section">
-        <img :src="loginBgImage" alt="登录背景" class="login-bg-image" />
+        <img :src="loginBgImage" alt="中国水库地图" class="login-bg-image" />
         <div class="image-overlay">
           <div class="brand-info">
             <h1 class="brand-title">{{ brandName }}</h1>
-            <p class="brand-subtitle">{{ brandSubtitle }}</p>
-            <p class="brand-description">{{ brandDescription }}</p>
           </div>
           <div class="brand-copyright">
             <p>{{ infoStore.footer?.copyright || 'Smart Water' }}. {{ infoStore.branding?.copyright || '版权所有' }}</p>
@@ -38,7 +36,6 @@
           <header class="login-header">
             <p class="login-title">欢迎登录</p>
             <h1 class="login-brand">{{ brandName }}</h1>
-            <p v-if="!isFirstRun && brandSubtitle" class="login-subtitle">{{ brandSubtitle }}</p>
           </header>
 
           <div class="login-content" :class="{ 'is-initializing': isFirstRun }">
@@ -139,10 +136,8 @@ const infoStore = useInfoStore()
 const agentStore = useAgentStore()
 
 /* 品牌展示 */
-const loginBgImage = computed(() => infoStore.organization?.login_bg || '/login-bg.jpg')
-const brandName = computed(() => infoStore.branding?.name?.trim() || 'AI 驱动的智能水利问答平台')
-const brandSubtitle = computed(() => infoStore.branding?.subtitle?.trim() || '大模型驱动的知识库管理工具')
-const brandDescription = computed(() => infoStore.branding?.description?.trim() || '结合知识库与知识图谱，提供更准确、更全面的回答')
+const loginBgImage = '/china-reservoir-map.png'
+const brandName = computed(() => infoStore.branding?.name?.trim() || '大坝工程领域知识图谱大模型')
 
 /* 状态 */
 const isFirstRun = ref(false)
@@ -294,10 +289,10 @@ onUnmounted(() => clearLockCountdown())
 }
 .login-layout{display:flex;min-height:100%;width:100%;background:transparent}
 .login-image-section{flex:0 0 52%;position:relative;overflow:hidden;max-height:100vh;border-right:var(--glass-border);
-  .login-bg-image{width:100%;height:100%;object-fit:cover;object-position:center;filter:brightness(.7) contrast(1.1)}
-  .image-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(to right,rgba(6,42,92,.8),rgba(6,42,92,.4));display:flex;flex-direction:column;justify-content:space-between;padding:72px 64px 36px;backdrop-filter:blur(2px);
-    .brand-info{text-align:left;color:var(--text-primary);max-width:520px;
-      .brand-title{font-size:52px;font-weight:700;margin-bottom:20px;text-shadow:0 4px 12px rgba(0,0,0,.5);letter-spacing:-.5px;background:linear-gradient(135deg,#fff 0%,#94a3b8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .login-bg-image{width:100%;height:100%;object-fit:cover;object-position:center;filter:brightness(.96) contrast(1.1) saturate(1.15)}
+  .image-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(to right,rgba(4,30,64,.52),rgba(4,30,64,.24));display:flex;flex-direction:column;justify-content:space-between;padding:72px 64px 36px;backdrop-filter:blur(1px);
+    .brand-info{text-align:left;color:var(--text-primary);max-width:none;
+      .brand-title{font-size:52px;font-weight:700;margin-bottom:20px;text-shadow:0 4px 12px rgba(0,0,0,.5);letter-spacing:-.5px;background:linear-gradient(135deg,#fff 0%,#94a3b8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
       .brand-subtitle{font-size:24px;font-weight:500;margin-bottom:24px;opacity:.92;text-shadow:0 2px 4px rgba(0,0,0,.5);line-height:1.4;color:var(--text-primary)}
       .brand-description{font-size:18px;line-height:1.6;margin:0;opacity:.82;text-shadow:0 1px 3px rgba(0,0,0,.5);color:var(--text-secondary)}
     }
@@ -308,7 +303,7 @@ onUnmounted(() => clearLockCountdown())
 .login-container{width:100%;max-width:560px;padding:50px;background:var(--glass-bg);backdrop-filter:blur(12px);border-radius:24px;border:1px solid var(--glass-border);box-shadow:0 8px 32px 0 rgba(0,0,0,.37);display:flex;flex-direction:column;gap:32px;transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease;&:hover{box-shadow:0 20px 40px -10px rgba(6,182,212,.2),0 0 0 1px rgba(6,182,212,.2),inset 0 1px 0 rgba(255,255,255,.08);border-color:rgba(6,182,212,.3)}}
 .login-header{display:flex;flex-direction:column;gap:8px;text-align:left}
 .login-title{margin:0;font-size:14px;font-weight:600;letter-spacing:.08em;color:var(--main-color);text-transform:uppercase}
-.login-brand{margin:0;font-size:30px;font-weight:600;color:var(--text-primary);line-height:1.25}
+.login-brand{margin:0;font-size:30px;font-weight:600;color:var(--text-primary);line-height:1.25;white-space:nowrap}
 .login-subtitle{margin:0;font-size:16px;color:var(--text-secondary);line-height:1.6}
 .login-content{display:flex;flex-direction:column;gap:24px;&.is-initializing{gap:28px}}
 .login-form{display:flex;flex-direction:column;gap:12px;width:100%;

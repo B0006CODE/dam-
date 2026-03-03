@@ -67,13 +67,13 @@ const props = defineProps({
 
 <style lang="less" scoped>
 .stats-overview-container {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
+  gap: 14px;
 }
 
 .stat-card {
@@ -81,10 +81,10 @@ const props = defineProps({
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -118,9 +118,9 @@ const props = defineProps({
   }
 
   .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     display: flex;
     align-items: center;
@@ -129,8 +129,8 @@ const props = defineProps({
     color: rgba(255, 255, 255, 0.7);
 
     .icon {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
     }
   }
 
@@ -139,7 +139,7 @@ const props = defineProps({
     z-index: 1;
 
     .stat-value {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #fff;
       line-height: 1.2;

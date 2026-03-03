@@ -22,16 +22,53 @@ class GraphDatabase:
         self.files = []
         self.status = "closed"
         self.kgdb_name = "neo4j"
-        self.embed_model_name = os.getenv("GRAPH_EMBED_MODEL_NAME") 
-        self.embed_model = select_embedding_model(self.embed_model_name)
+        self.embed_model_name = os.getenv("GRAPH_EMBED_MODEL_NAME")
+        self.embed_model = None
         self.work_dir = os.path.join(config.save_dir, "knowledge_graph", self.kgdb_name)
         os.makedirs(self.work_dir, exist_ok=True)
 
         # 尝试加载已保存的图数据库信息
         if not self.load_graph_info():
             logger.debug("创建新的图数据库配置")
+        self._ensure_embed_model()
 
         self.start()
+
+    def _resolve_embed_model_name(self):
+        support_embed_models = list(config.embed_model_names.keys())
+        if not support_embed_models:
+            raise ValueError("No embedding models configured in EMBED_MODEL_INFO")
+
+        candidates = []
+        env_embed_model = os.getenv("GRAPH_EMBED_MODEL_NAME")
+        if env_embed_model:
+            candidates.append(env_embed_model)
+        if self.embed_model_name:
+            candidates.append(self.embed_model_name)
+        if config.embed_model:
+            candidates.append(config.embed_model)
+
+        lower_name_map = {name.lower(): name for name in support_embed_models}
+        for candidate in candidates:
+            if candidate in config.embed_model_names:
+                return candidate
+            mapped_name = lower_name_map.get(candidate.lower())
+            if mapped_name:
+                logger.warning(f"Embedding model name normalized from '{candidate}' to '{mapped_name}'")
+                return mapped_name
+
+        fallback_name = support_embed_models[0]
+        logger.warning(
+            f"Embedding model '{self.embed_model_name or config.embed_model}' is unsupported, fallback to '{fallback_name}'"
+        )
+        return fallback_name
+
+    def _ensure_embed_model(self):
+        resolved_model_name = self._resolve_embed_model_name()
+        if self.embed_model is not None and self.embed_model_name == resolved_model_name:
+            return
+        self.embed_model_name = resolved_model_name
+        self.embed_model = select_embedding_model(self.embed_model_name)
 
     def start(self):
         uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
@@ -287,13 +324,10 @@ class GraphDatabase:
                     embedding=embedding,
                 )
 
-        # 判断模型名称是否匹配
-        self.embed_model_name = self.embed_model_name or config.embed_model
+        self._ensure_embed_model()
         cur_embed_info = config.embed_model_names.get(self.embed_model_name)
+        assert cur_embed_info is not None, f"Embedding model config missing: {self.embed_model_name}"
         logger.warning(f"embed_model_name={self.embed_model_name}, {cur_embed_info=}")
-        assert self.embed_model_name == config.embed_model or self.embed_model_name is None, (
-            f"embed_model_name={self.embed_model_name}, {config.embed_model=}"
-        )
 
         with self.driver.session() as session:
             logger.info(f"Adding entity to {kgdb_name}")
@@ -665,6 +699,7 @@ class GraphDatabase:
             return []
 
     async def aget_embedding(self, text):
+        self._ensure_embed_model()
         if isinstance(text, list):
             outputs = await self.embed_model.abatch_encode(text, batch_size=40)
             return outputs
@@ -673,6 +708,7 @@ class GraphDatabase:
             return outputs
 
     def get_embedding(self, text):
+        self._ensure_embed_model()
         if isinstance(text, list):
             outputs = self.embed_model.batch_encode(text, batch_size=40)
             return outputs

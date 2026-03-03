@@ -303,6 +303,7 @@ class LightRagKB(KnowledgeBase):
         "mix": "hybrid",    # 混合检索 → LightRAG hybrid
         "local": "local",   # 知识库检索 → LightRAG local (向量检索)
         "global": "global", # 知识图谱检索 → LightRAG global (图谱检索)
+        "naive": "naive",   # 基本搜索
     }
 
     async def aquery(self, query_text: str, db_id: str, mode="mix", **kwargs) -> list[dict]:

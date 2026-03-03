@@ -186,7 +186,7 @@
 
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick, computed, onUnmounted } from 'vue';
+import { ref, reactive, onMounted, watch, nextTick, computed, onUnmounted, onActivated } from 'vue';
 import { LoadingOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
@@ -1073,9 +1073,14 @@ const parseKnowledgeGraphContent = (rawContent) => {
     }
     
     // 处理搜索结果（保留 query_type）
-    if (data.query_type === 'search' && Array.isArray(data.triples)) {
-      const triples = data.triples.map(normalizeTriple).filter(Boolean);
-      if (triples.length) return { ...data, triples };
+    if (data.query_type === 'search') {
+      if (Array.isArray(data.triples)) {
+        const triples = data.triples.map(normalizeTriple).filter(Boolean);
+        if (triples.length) return { ...data, triples };
+      }
+      if (typeof data.content === 'string' && data.content.trim()) {
+        return { ...data, triples: Array.isArray(data.triples) ? data.triples : [] };
+      }
     }
     
     if (Array.isArray(data.triples)) {
@@ -1091,6 +1096,15 @@ const parseKnowledgeGraphContent = (rawContent) => {
     if (Array.isArray(data.data)) {
       const triples = data.data.map(normalizeTriple).filter(Boolean);
       if (triples.length) return { triples, query_type: 'search' };
+    }
+
+    // 处理嵌套图谱结果结构（如 hybrid 返回的 knowledge_graph_results）
+    const nestedFields = ['knowledge_graph_results', 'result', 'output', 'data', 'content', 'json'];
+    for (const field of nestedFields) {
+      const nested = data[field];
+      if (nested === undefined || nested === null || nested === data) continue;
+      const parsedNested = parseKnowledgeGraphContent(nested);
+      if (parsedNested) return parsedNested;
     }
 
     const singleTriple = normalizeTriple(data);
@@ -1231,6 +1245,7 @@ const collectKnowledgeGraphData = (messages) => {
   const triples = [];
   const tripleKeys = new Set();
   let statisticsResult = null;  // 保存最后一个统计结果
+  let searchResultMeta = null;
 
   messages.forEach((msg) => {
     if (!msg || msg.type !== 'ai') return;
@@ -1251,6 +1266,14 @@ const collectKnowledgeGraphData = (messages) => {
         statisticsResult = parsed;
         return;
       }
+
+      // 缓存搜索结果元数据（用于保留 query/content/graph_type 等字段）
+      if (parsed.query_type === 'search') {
+        searchResultMeta = {
+          ...(searchResultMeta || { query_type: 'search' }),
+          ...parsed,
+        };
+      }
       
       // 处理搜索结果（三元组）
       if (parsed?.triples?.length) {
@@ -1270,9 +1293,25 @@ const collectKnowledgeGraphData = (messages) => {
     return statisticsResult;
   }
   
-  // 返回搜索结果
-  if (triples.length === 0) return null;
-  return { triples, query_type: 'search' };
+  // 返回搜索结果（三元组优先）
+  if (triples.length > 0) {
+    return {
+      ...(searchResultMeta || {}),
+      query_type: 'search',
+      triples,
+    };
+  }
+
+  // 支持 content-only 图谱结果（如部分 LightRAG 返回）
+  if (searchResultMeta && typeof searchResultMeta.content === 'string' && searchResultMeta.content.trim()) {
+    return {
+      ...searchResultMeta,
+      query_type: 'search',
+      triples: Array.isArray(searchResultMeta.triples) ? searchResultMeta.triples : [],
+    };
+  }
+
+  return null;
 };
 
 const findLastAiMessageIndex = (messages) => {
@@ -1367,10 +1406,7 @@ const loadChatsList = async () => {
       chatState.currentThreadId = null;
     }
 
-    // 如果有线程但没有选中任何线程，自动选择第一个
-    if (threads.value.length > 0 && !chatState.currentThreadId) {
-      await selectChat(threads.value[0].id);
-    }
+    // 进入对话界面默认保持“新对话”状态，不自动选中历史会话
   } catch (error) {
     handleChatError(error, 'load');
   }
@@ -1389,6 +1425,10 @@ const initAll = async () => {
 onMounted(async () => {
   await initAll();
   scrollController.enableAutoScroll();
+});
+
+onActivated(() => {
+  chatState.currentThreadId = null;
 });
 
 

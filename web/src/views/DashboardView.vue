@@ -388,19 +388,19 @@ onUnmounted(() => {
 // Dashboard 特有的网格布局
 .dashboard-grid {
   display: grid;
-  padding: 24px;
+  padding: 16px;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto;
-  gap: 24px;
-  margin-bottom: 24px;
-  min-height: 600px;
+  gap: 16px;
+  margin-bottom: 16px;
+  min-height: 0;
 
   .grid-item {
     border-radius: 16px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 300px;
+    min-height: 260px;
     background: var(--glass-bg-light);
     backdrop-filter: blur(12px);
     border: var(--border-default);
@@ -415,25 +415,25 @@ onUnmounted(() => {
     &.call-stats {
       grid-column: 1 / 2;
       grid-row: 1 / 2;
-      min-height: 400px;
+      min-height: 340px;
     }
 
     &.user-stats {
       grid-column: 2 / 3;
       grid-row: 1 / 2;
-      min-height: 400px;
+      min-height: 340px;
     }
 
     &.knowledge-stats {
       grid-column: 1 / 2;
       grid-row: 2 / 3;
-      min-height: 350px;
+      min-height: 300px;
     }
 
     &.conversations {
       grid-column: 2 / 3;
       grid-row: 2 / 3;
-      min-height: 300px;
+      min-height: 280px;
     }
   }
 }
@@ -449,8 +449,8 @@ onUnmounted(() => {
 
   :deep(.ant-card-head) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: 56px;
-    padding: 0 20px;
+    min-height: 52px;
+    padding: 0 16px;
     background: transparent;
 
     .ant-card-head-title {
@@ -462,7 +462,7 @@ onUnmounted(() => {
   }
 
   :deep(.ant-card-body) {
-    padding: 16px 20px;
+    padding: 12px 16px;
     background: transparent;
   }
 
@@ -597,14 +597,14 @@ onUnmounted(() => {
     .call-summary {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 12px;
+      margin-bottom: 16px;
 
       .summary-card {
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px;
-        padding: 12px;
+        padding: 10px;
         text-align: center;
         transition: all 0.3s ease;
 
@@ -634,7 +634,7 @@ onUnmounted(() => {
     .chart-container {
       .chart {
         width: 100%;
-        height: 280px;
+        height: 260px;
         border-radius: 12px;
         overflow: hidden;
       }
@@ -647,7 +647,7 @@ onUnmounted(() => {
   .dashboard-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
-    gap: 20px;
+    gap: 14px;
 
     .grid-item {
       &.call-stats,
@@ -656,7 +656,7 @@ onUnmounted(() => {
       &.conversations {
         grid-column: 1 / 2;
         grid-row: auto;
-        min-height: 300px;
+        min-height: 250px;
       }
     }
   }
@@ -664,13 +664,13 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .dashboard-container {
-    padding: 16px;
+    padding: 12px;
   }
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 12px;
+    gap: 12px;
+    padding: 8px;
 
     .grid-item {
       &.call-stats,
@@ -679,7 +679,7 @@ onUnmounted(() => {
       &.conversations {
         grid-column: 1 / 2;
         grid-row: auto;
-        min-height: 300px;
+        min-height: 240px;
       }
     }
   }
@@ -688,10 +688,10 @@ onUnmounted(() => {
     .call-stats-container {
       .call-summary {
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 10px;
 
         .summary-card {
-          padding: 12px;
+          padding: 10px;
 
           .summary-value {
             font-size: 18px;

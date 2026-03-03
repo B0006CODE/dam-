@@ -526,11 +526,9 @@ async def get_knowledge_base_query_params(db_id: str, current_user: User = Depen
                         "type": "select",
                         "default": "COSINE",
                         "options": [
-                            {"value": "COSINE", "label": "余弦相似度", "description": "适合文本语义相似度"},
-                            {"value": "L2", "label": "欧几里得距离", "description": "适合数值型数据"},
-                            {"value": "IP", "label": "内积", "description": "适合标准化向量"},
+                            {"value": "COSINE", "label": "余弦相似度", "description": "当前 Milvus 检索仅支持该选项"},
                         ],
-                        "description": "向量相似度计算方法",
+                        "description": "向量相似度计算方法（与索引配置一致）",
                     },
                 ],
             }

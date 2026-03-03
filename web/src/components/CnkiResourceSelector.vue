@@ -224,6 +224,29 @@ const graphSummary = computed(() => {
   return found?.name || '未选择';
 });
 
+const ensureKbSelectionForMode = () => {
+  if (!allowKbSelect.value) return;
+
+  const validKbIds = new Set(
+    (kbOptionsRaw.value || [])
+      .map(db => db?.db_id)
+      .filter(Boolean)
+  );
+
+  const current = Array.isArray(selectedKbIds.value) ? selectedKbIds.value : [];
+  let next = current.filter(id => validKbIds.has(id));
+
+  if (next.length === 0 && kbOptionsRaw.value.length > 0) {
+    const fallbackId = kbOptionsRaw.value[0]?.db_id;
+    if (fallbackId) next = [fallbackId];
+  }
+
+  const changed = next.length !== current.length || next.some((id, idx) => id !== current[idx]);
+  if (changed) {
+    selectedKbIds.value = next;
+  }
+};
+
 // 切换知识库选择
 const toggleKbSelection = (value) => {
   if (!allowKbSelect.value) return;
@@ -274,11 +297,8 @@ const loadKnowledgeBases = async () => {
   try {
     const res = await (databaseApi.getDatabasesForChat ? databaseApi.getDatabasesForChat() : databaseApi.getDatabases());
     kbOptionsRaw.value = res?.databases || res?.data || [];
-    
-    // 如果用户未选择任何知识库，默认选中第一个
-    if (selectedKbIds.value.length === 0 && kbOptionsRaw.value.length > 0) {
-      selectedKbIds.value = [kbOptionsRaw.value[0].db_id];
-    }
+
+    ensureKbSelectionForMode();
   } catch (error) {
     console.error('加载知识库列表失败:', error);
     kbOptionsRaw.value = [];
@@ -383,9 +403,9 @@ onMounted(() => {
 });
 
 // 监听检索模式变化
-watch(() => props.retrievalMode, (newMode) => {
-  if (!allowKbSelect.value) {
-    selectedKbIds.value = [];
+watch(() => props.retrievalMode, () => {
+  if (allowKbSelect.value) {
+    ensureKbSelectionForMode();
   }
   if (!allowGraphSelect.value) {
     // 不清空图谱选择，保持上次选择

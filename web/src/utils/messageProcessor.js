@@ -257,7 +257,48 @@ export class MessageProcessor {
    * @returns {Array<Object>}
    */
   static extractCitationsFromMessage(message) {
-    if (!message || !Array.isArray(message.tool_calls) || message.tool_calls.length === 0) {
+    if (!message) {
+      return [];
+    }
+
+    const directCitationCandidates = [];
+    if (Array.isArray(message.citations)) {
+      directCitationCandidates.push(...message.citations);
+    }
+    if (Array.isArray(message?.additional_kwargs?.citations)) {
+      directCitationCandidates.push(...message.additional_kwargs.citations);
+    }
+    if (Array.isArray(message?.extra_metadata?.citations)) {
+      directCitationCandidates.push(...message.extra_metadata.citations);
+    }
+
+    if (directCitationCandidates.length > 0) {
+      const normalizedDirectCitations = MessageProcessor._dedupeCitations(
+        directCitationCandidates
+          .map((item) => {
+            if (!item || typeof item !== 'object') return null;
+            return MessageProcessor._buildCitation({
+              title: item.title || item.name || '',
+              path: item.path || item.url || item.source || '',
+              snippet: item.snippet || item.content || '',
+              score: item.score,
+              rerankScore: item.rerankScore || item.rerank_score,
+              sourceType: item.sourceType || item.source_type || 'document',
+              referenceId: item.referenceId || item.reference_id,
+            });
+          })
+          .filter(Boolean)
+      );
+
+      if (normalizedDirectCitations.length > 0) {
+        return normalizedDirectCitations.map((item, index) => ({
+          ...item,
+          index: index + 1,
+        }));
+      }
+    }
+
+    if (!Array.isArray(message.tool_calls) || message.tool_calls.length === 0) {
       return [];
     }
 
@@ -299,40 +340,11 @@ export class MessageProcessor {
     if (!rawResult) return [];
 
     if (typeof rawResult === 'object' && !Array.isArray(rawResult)) {
-      if (Array.isArray(rawResult.json)) {
-        return MessageProcessor._extractCitationsFromToolResult(rawResult.json);
-      }
-
-      if (Array.isArray(rawResult.content)) {
-        const flattened = rawResult.content
-          .map((item) => {
-            if (typeof item === 'string') return item;
-            if (item && typeof item === 'object') {
-              return item.text || item.content || '';
-            }
-            return '';
-          })
-          .filter(Boolean)
-          .join('\n');
-        return MessageProcessor._extractCitationsFromToolResult(flattened);
-      }
-
-      return [];
+      return MessageProcessor._extractCitationsFromObject(rawResult);
     }
 
     if (Array.isArray(rawResult)) {
-      const collected = rawResult
-        .filter((item) => item && typeof item === 'object' && item.metadata && item.metadata.source)
-        .map((item) => ({
-          title: item.metadata.source,
-          path: item.metadata.source,
-          snippet: MessageProcessor._sanitizeSnippet(item.content || ''),
-          score: item.score,
-          rerankScore: item.rerank_score,
-          sourceType: 'vector',
-        }));
-
-      return collected;
+      return MessageProcessor._extractCitationsFromArray(rawResult);
     }
 
     if (typeof rawResult !== 'string') return [];
@@ -341,7 +353,7 @@ export class MessageProcessor {
     if (!trimmed) return [];
 
     const jsonValue = MessageProcessor._safeJsonParse(trimmed);
-    if (Array.isArray(jsonValue)) {
+    if (jsonValue !== null) {
       return MessageProcessor._extractCitationsFromToolResult(jsonValue);
     }
 
@@ -350,6 +362,222 @@ export class MessageProcessor {
     }
 
     return [];
+  }
+
+  /**
+   * 从对象结构提取引用
+   * @param {Object} rawResult - 工具结果对象
+   * @returns {Array<Object>}
+   * @private
+   */
+  static _extractCitationsFromObject(rawResult) {
+    if (!rawResult || typeof rawResult !== 'object' || Array.isArray(rawResult)) return [];
+
+    const collected = [];
+
+    if (rawResult.json !== undefined && rawResult.json !== rawResult) {
+      collected.push(...MessageProcessor._extractCitationsFromToolResult(rawResult.json));
+    }
+
+    if (Array.isArray(rawResult.content)) {
+      const flattened = rawResult.content
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') {
+            return item.text || item.content || '';
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+      collected.push(...MessageProcessor._extractCitationsFromToolResult(flattened));
+    }
+
+    if (typeof rawResult.content === 'string' && rawResult.content.includes('Reference Document List')) {
+      collected.push(...MessageProcessor._parseLightRagReferences(rawResult.content));
+    }
+
+    const metadataSource = typeof rawResult?.metadata?.source === 'string' ? rawResult.metadata.source.trim() : '';
+    if (metadataSource) {
+      const citation = MessageProcessor._buildCitation({
+        title: rawResult.title || metadataSource,
+        path: metadataSource,
+        snippet: rawResult.snippet || rawResult.content || '',
+        score: rawResult.score,
+        rerankScore: rawResult.rerank_score,
+        sourceType: 'vector',
+      });
+      if (citation) collected.push(citation);
+    }
+
+    const url = typeof rawResult.url === 'string' ? rawResult.url.trim() : '';
+    if (url) {
+      const citation = MessageProcessor._buildCitation({
+        title: rawResult.title || rawResult.name || url,
+        path: url,
+        snippet: rawResult.snippet || rawResult.content || rawResult.summary || '',
+        sourceType: 'web',
+      });
+      if (citation) collected.push(citation);
+    }
+
+    const sourcePath = typeof rawResult.path === 'string'
+      ? rawResult.path.trim()
+      : (typeof rawResult.source === 'string' ? rawResult.source.trim() : '');
+    if (sourcePath) {
+      const citation = MessageProcessor._buildCitation({
+        title: rawResult.title || rawResult.name || sourcePath.split('/').pop() || sourcePath,
+        path: sourcePath,
+        snippet: rawResult.snippet || rawResult.content || rawResult.summary || '',
+        sourceType: rawResult.sourceType || 'document',
+      });
+      if (citation) collected.push(citation);
+    }
+
+    const nestedArrayFields = [
+      'knowledge_base_results',
+      'results',
+      'references',
+      'docs',
+      'documents',
+      'items',
+      'data',
+    ];
+    nestedArrayFields.forEach((field) => {
+      const value = rawResult[field];
+      if (value === undefined || value === rawResult) return;
+      if (Array.isArray(value) || (value && typeof value === 'object')) {
+        collected.push(...MessageProcessor._extractCitationsFromToolResult(value));
+      }
+    });
+
+    ['knowledge_graph_results', 'result', 'output'].forEach((field) => {
+      const value = rawResult[field];
+      if (value === undefined || value === rawResult) return;
+      if (value && (typeof value === 'object' || typeof value === 'string')) {
+        collected.push(...MessageProcessor._extractCitationsFromToolResult(value));
+      }
+    });
+
+    return MessageProcessor._dedupeCitations(collected);
+  }
+
+  /**
+   * 从数组结构提取引用
+   * @param {Array} rawResult - 工具结果数组
+   * @returns {Array<Object>}
+   * @private
+   */
+  static _extractCitationsFromArray(rawResult) {
+    if (!Array.isArray(rawResult)) return [];
+
+    const collected = [];
+
+    rawResult.forEach((item) => {
+      if (!item) return;
+
+      if (typeof item === 'string') {
+        if (item.includes('Reference Document List')) {
+          collected.push(...MessageProcessor._parseLightRagReferences(item));
+        }
+        return;
+      }
+
+      if (typeof item !== 'object') return;
+
+      const metadataSource = typeof item?.metadata?.source === 'string' ? item.metadata.source.trim() : '';
+      if (metadataSource) {
+        const citation = MessageProcessor._buildCitation({
+          title: item.title || metadataSource,
+          path: metadataSource,
+          snippet: item.content || item.snippet || '',
+          score: item.score,
+          rerankScore: item.rerank_score,
+          sourceType: 'vector',
+        });
+        if (citation) collected.push(citation);
+      }
+
+      const url = typeof item.url === 'string' ? item.url.trim() : '';
+      if (url) {
+        const citation = MessageProcessor._buildCitation({
+          title: item.title || item.name || url,
+          path: url,
+          snippet: item.content || item.snippet || item.summary || '',
+          score: item.score,
+          rerankScore: item.rerank_score,
+          sourceType: 'web',
+        });
+        if (citation) collected.push(citation);
+      }
+
+      const sourcePath = typeof item.path === 'string'
+        ? item.path.trim()
+        : (typeof item.source === 'string' ? item.source.trim() : '');
+      if (sourcePath) {
+        const citation = MessageProcessor._buildCitation({
+          title: item.title || item.name || sourcePath.split('/').pop() || sourcePath,
+          path: sourcePath,
+          snippet: item.content || item.snippet || item.summary || '',
+          score: item.score,
+          rerankScore: item.rerank_score,
+          sourceType: item.sourceType || 'document',
+        });
+        if (citation) collected.push(citation);
+      }
+
+      collected.push(...MessageProcessor._extractCitationsFromObject(item));
+    });
+
+    return MessageProcessor._dedupeCitations(collected);
+  }
+
+  /**
+   * 组装标准化引用对象
+   * @param {Object} input - 原始引用信息
+   * @returns {Object|null}
+   * @private
+   */
+  static _buildCitation(input) {
+    if (!input || typeof input !== 'object') return null;
+
+    const path = typeof input.path === 'string' ? input.path.trim() : '';
+    const title = typeof input.title === 'string' ? input.title.trim() : '';
+    const referenceId = input.referenceId !== undefined ? String(input.referenceId) : '';
+    const key = path || title || referenceId;
+    if (!key) return null;
+
+    return {
+      title: title || (path ? (path.split('/').pop() || path) : ''),
+      path: path || '',
+      snippet: MessageProcessor._sanitizeSnippet(input.snippet || ''),
+      score: input.score,
+      rerankScore: input.rerankScore,
+      sourceType: input.sourceType || 'document',
+      referenceId: referenceId || undefined,
+    };
+  }
+
+  /**
+   * 去重引用列表
+   * @param {Array<Object>} citations - 原始引用数组
+   * @returns {Array<Object>}
+   * @private
+   */
+  static _dedupeCitations(citations) {
+    if (!Array.isArray(citations) || citations.length === 0) return [];
+
+    const seen = new Set();
+    const deduped = [];
+    citations.forEach((item) => {
+      if (!item || typeof item !== 'object') return;
+      const key = item.path || item.title || item.referenceId;
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      deduped.push(item);
+    });
+
+    return deduped;
   }
 
   /**

@@ -246,8 +246,23 @@ async def test_all_embedding_models_status() -> dict:
     }
 
 
+def split_embed_model_id(model_id: str) -> tuple[str, str]:
+    """
+    将 embedding 模型 ID 拆分为 (provider, model_name)。
+    兼容两种格式：
+    1) provider/model_name
+    2) model_name（无 provider 前缀）
+    """
+    if not model_id:
+        return "", ""
+    if "/" not in model_id:
+        return "", model_id
+    provider, model_name = model_id.split("/", 1)
+    return provider, model_name
+
+
 def select_embedding_model(model_id):
-    provider, model_name = model_id.split("/", 1) if model_id else ("", "")
+    provider, model_name = split_embed_model_id(model_id)
     support_embed_models = config.embed_model_names.keys()
     assert model_id in support_embed_models, f"Unsupported embed model: {model_id}, only support {support_embed_models}"
     logger.info(f"Loading embedding model {model_id}")

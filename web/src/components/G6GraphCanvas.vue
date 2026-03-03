@@ -40,6 +40,9 @@ const container = ref(null);
 const rootEl = ref(null);
 let graphInstance = null;
 let initTimer = null;
+let renderQueued = false;
+let queuedForceRelayout = false;
+let lastTopologyKey = '';
 
 const selectedSeedNodeIds = new Set();
 const highlightedNodeIds = new Set();
@@ -262,8 +265,109 @@ const TEXT_PADDING = 14;
 const FONT_SIZE_MAX = 14;
 const FONT_SIZE_MIN = 11;
 
+const HASH_OFFSET_BASIS = 2166136261;
+const HASH_PRIME = 16777619;
+
+const hashInto = (hash, value) => {
+  const text = String(value ?? '');
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, HASH_PRIME);
+  }
+  hash ^= 124;
+  return Math.imul(hash, HASH_PRIME);
+};
+
+const buildTopologyKey = (data) => {
+  const nodes = data?.nodes || [];
+  const edges = data?.edges || [];
+  let hash = HASH_OFFSET_BASIS;
+
+  nodes.forEach((node) => {
+    hash = hashInto(hash, node?.id);
+  });
+  hash = hashInto(hash, '::');
+  edges.forEach((edge) => {
+    hash = hashInto(hash, edge?.id);
+    hash = hashInto(hash, edge?.source);
+    hash = hashInto(hash, edge?.target);
+  });
+
+  return `${nodes.length}:${edges.length}:${hash >>> 0}`;
+};
+
+const resolveLayoutType = () => {
+  const rawType = String(props.layoutOptions?.type || 'force').toLowerCase();
+  const supportedLayoutTypes = new Set(['force', 'radial', 'concentric', 'circular']);
+  return supportedLayoutTypes.has(rawType) ? rawType : 'force';
+};
+
+const isRingLikeLayoutType = (layoutType) => layoutType === 'concentric' || layoutType === 'circular';
+
+const getLayoutViewport = () => {
+  const [graphWidth = 0, graphHeight = 0] = graphInstance?.getSize?.() || [];
+  const rawWidth = container.value?.offsetWidth || graphWidth || 960;
+  const rawHeight = container.value?.offsetHeight || graphHeight || 640;
+  const safeWidth = Math.max(320, rawWidth);
+  const safeHeight = Math.max(320, rawHeight);
+  const shortSide = Math.min(safeWidth, safeHeight);
+  const layoutSide = Math.max(320, shortSide * 0.9);
+
+  return {
+    width: safeWidth,
+    height: safeHeight,
+    side: layoutSide,
+    center: [safeWidth / 2, safeHeight / 2],
+  };
+};
+
+const inferRadialFocusNodeId = () => {
+  const explicitFocusNode = props.layoutOptions?.focusNode ?? props.layoutOptions?.focusNodeId;
+  if (explicitFocusNode != null && String(explicitFocusNode).trim()) {
+    return String(explicitFocusNode);
+  }
+
+  const { nodes = [], edges = [] } = filterByDimensions(
+    props.graphData.nodes || [],
+    props.graphData.edges || [],
+    props.hiddenDimensions
+  );
+  if (!nodes.length) return undefined;
+
+  const degrees = new Map(nodes.map((node) => [String(node.id), 0]));
+  edges.forEach((edge) => {
+    const sourceRaw = getEdgeSourceId(edge);
+    const targetRaw = getEdgeTargetId(edge);
+    if (sourceRaw == null || targetRaw == null) return;
+    const sourceId = String(sourceRaw);
+    const targetId = String(targetRaw);
+    if (degrees.has(sourceId)) degrees.set(sourceId, (degrees.get(sourceId) || 0) + 1);
+    if (degrees.has(targetId)) degrees.set(targetId, (degrees.get(targetId) || 0) + 1);
+  });
+
+  let focusNodeId = String(nodes[0].id);
+  let maxDegree = -1;
+  degrees.forEach((degree, nodeId) => {
+    if (degree > maxDegree) {
+      maxDegree = degree;
+      focusNodeId = nodeId;
+    }
+  });
+
+  return focusNodeId;
+};
+
 const getLayoutConfig = (nodeSizeById) => {
   const { type: _ignoredType, ...userOptions } = props.layoutOptions || {};
+  const layoutType = resolveLayoutType();
+  const isRingLayout = isRingLikeLayoutType(layoutType);
+  const nodeCount = nodeSizeById?.size || 0;
+  const dynamicMaxIteration = Math.max(240, Math.min(1200, Math.max(nodeCount, 40) * 8));
+  const { side, center } = getLayoutViewport();
+  const nodeSizeValues = nodeSizeById ? Array.from(nodeSizeById.values()) : [];
+  const avgNodeSize = nodeSizeValues.length
+    ? nodeSizeValues.reduce((sum, size) => sum + Number(size || 0), 0) / nodeSizeValues.length
+    : 64;
 
   const getNodeSize = (node, fallbackId) => {
     if (fallbackId != null && nodeSizeById?.get?.(String(fallbackId))) {
@@ -287,6 +391,77 @@ const getLayoutConfig = (nodeSizeById) => {
     return Math.max(300, min);
   };
 
+  if (layoutType === 'radial') {
+    const focusNode = inferRadialFocusNodeId();
+    const radialStep = Math.max(92, Math.min(220, Math.round(side * 0.19)));
+    return {
+      type: 'radial',
+      center,
+      width: side,
+      height: side,
+      unitRadius: radialStep,
+      preventOverlap: true,
+      strictRadial: false,
+      maxIteration: dynamicMaxIteration,
+      nodeSize: (node) => node?.data?.size ?? node?.data?.style?.size ?? 32,
+      animation: false,
+      ...userOptions,
+      type: 'radial',
+      ...(focusNode ? { focusNode } : {}),
+      animation: false,
+    };
+  }
+
+  if (layoutType === 'concentric') {
+    const ringNodeSpacing = Math.max(
+      10,
+      Math.min(30, Math.round(avgNodeSize * (nodeCount > 180 ? 0.16 : 0.2)))
+    );
+    return {
+      type: 'concentric',
+      center,
+      width: side,
+      height: side,
+      preventOverlap: true,
+      equidistant: true,
+      nodeSize: (node) => node?.data?.size ?? node?.data?.style?.size ?? 32,
+      nodeSpacing: ringNodeSpacing,
+      startAngle: -Math.PI / 2,
+      clockwise: true,
+      sortBy: '__degree',
+      maxLevelDiff: nodeCount > 220 ? 3 : 2,
+      animation: false,
+      ...userOptions,
+      type: 'concentric',
+      animation: false,
+    };
+  }
+
+  if (layoutType === 'circular') {
+    const circleRadius = Math.max(120, Math.min(side * 0.44, 560));
+    const circularNodeSpacing = Math.max(
+      8,
+      Math.min(24, Math.round(avgNodeSize * (nodeCount > 180 ? 0.14 : 0.18)))
+    );
+    return {
+      type: 'circular',
+      center,
+      width: side,
+      height: side,
+      radius: circleRadius,
+      ordering: 'topology',
+      nodeSize: (node) => node?.data?.size ?? node?.data?.style?.size ?? 32,
+      nodeSpacing: circularNodeSpacing,
+      angleRatio: nodeCount > 160 ? 0.95 : 1,
+      startAngle: -Math.PI / 2,
+      clockwise: true,
+      animation: false,
+      ...userOptions,
+      type: 'circular',
+      animation: false,
+    };
+  }
+
   return {
     type: 'force',
     linkDistance: defaultLinkDistance,
@@ -295,14 +470,14 @@ const getLayoutConfig = (nodeSizeById) => {
     preventOverlap: true,
     collideStrength: 1,
     nodeSize: (node) => node?.data?.size ?? node?.data?.style?.size ?? 32,
-    nodeSpacing: 48,
+    nodeSpacing: isRingLayout ? 60 : 48,
     damping: 0.9,
     maxSpeed: 120,
     gravity: 2,
     factor: 2,
     coulombDisScale: 0.004,
     interval: 0.02,
-    maxIteration: 3000,
+    maxIteration: dynamicMaxIteration,
     minMovement: 0.1,
     animation: false,
     ...userOptions,
@@ -312,6 +487,8 @@ const getLayoutConfig = (nodeSizeById) => {
 };
 
 const buildGraphData = () => {
+  const layoutType = resolveLayoutType();
+  const isRingLayout = isRingLikeLayoutType(layoutType);
   const { nodes = [], edges = [] } = filterByDimensions(
     props.graphData.nodes || [],
     props.graphData.edges || [],
@@ -319,6 +496,9 @@ const buildGraphData = () => {
   );
 
   const isDenseGraph = edges.length >= 300;
+  const shouldCompactEdges = isDenseGraph || isRingLayout;
+  const maxNodeSize = isRingLayout ? 136 : MAX_NODE_SIZE;
+  const minNodeSize = isRingLayout ? 44 : MIN_NODE_SIZE;
 
   const colorMap = buildNodeColorMap(nodes, edges);
   const degrees = new Map();
@@ -372,22 +552,22 @@ const buildGraphData = () => {
 
     let fontSize = FONT_SIZE_MAX;
     let degreeBase = props.sizeByDegree ? Math.min(48 + degree * 1.2, 110) : 60;
-    let layout = computeLayout(Math.max(degreeBase, MIN_NODE_SIZE), fontSize, degreeBase);
+    let layout = computeLayout(Math.max(degreeBase, minNodeSize), fontSize, degreeBase);
     if (layout.requiredDiameter > degreeBase + 1) {
       layout = computeLayout(layout.requiredDiameter, fontSize, degreeBase);
     }
     // 如果仍超出最大直径，逐步缩小字体重算，直到适配或到达最小字号
-    while (layout.requiredDiameter > MAX_NODE_SIZE && fontSize > FONT_SIZE_MIN) {
+    while (layout.requiredDiameter > maxNodeSize && fontSize > FONT_SIZE_MIN) {
       fontSize -= 1;
       degreeBase = props.sizeByDegree ? Math.min(48 + degree * 1.2, 110) : 60;
-      layout = computeLayout(Math.max(degreeBase, MIN_NODE_SIZE), fontSize, degreeBase);
+      layout = computeLayout(Math.max(degreeBase, minNodeSize), fontSize, degreeBase);
       if (layout.requiredDiameter > degreeBase + 1) {
         layout = computeLayout(layout.requiredDiameter, fontSize, degreeBase);
       }
     }
 
     const wrappedLabel = layout.lines.join('\n');
-    const nodeSize = Math.max(MIN_NODE_SIZE, Math.min(MAX_NODE_SIZE, layout.requiredDiameter));
+    const nodeSize = Math.max(minNodeSize, Math.min(maxNodeSize, layout.requiredDiameter));
     const colorInfo = colorMap.get(id) || { color: '#3b82f6', dimension: 'default' };
     const muted = keywordSet.length > 0 && !isMatched;
     const baseLabelOpacity = isDenseGraph ? 0.88 : 0.98;
@@ -396,7 +576,10 @@ const buildGraphData = () => {
 
     return {
       id,
-      data: node,
+      data: {
+        ...node,
+        __degree: degree
+      },
       size: nodeSize,
       style: {
         size: nodeSize,
@@ -487,15 +670,18 @@ const buildGraphData = () => {
         );
       })();
 
-      const rawLabel =
-        propsLabel || edge.r || edge.relation || edge.label || edge.name || edge.type || '';
+      let clampedLabelText = '';
+      if (!shouldCompactEdges) {
+        const rawLabel =
+          propsLabel || edge.r || edge.relation || edge.label || edge.name || edge.type || '';
 
-      // 优先显示中文；如果没有中文，则回退显示英文/符号（例如 OCCUR_AT -> OCCUR AT）
-      const rawLabelText = String(rawLabel || '').trim();
-      const chineseOnly = (rawLabelText.match(/[\u4e00-\u9fa5]+/g) || []).join('');
-      const fallback = rawLabelText.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-      const labelText = chineseOnly || fallback;
-      const clampedLabelText = labelText.length > 24 ? `${labelText.slice(0, 24)}…` : labelText;
+        // 优先显示中文；如果没有中文，则回退显示英文/符号（例如 OCCUR_AT -> OCCUR AT）
+        const rawLabelText = String(rawLabel || '').trim();
+        const chineseOnly = (rawLabelText.match(/[\u4e00-\u9fa5]+/g) || []).join('');
+        const fallback = rawLabelText.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const labelText = chineseOnly || fallback;
+        clampedLabelText = labelText.length > 24 ? `${labelText.slice(0, 24)}…` : labelText;
+      }
 
       const curveOffset = parallelOffsetByEdgeIdx.get(idx) || 0;
       const labelOffsetY = Math.max(-16, Math.min(16, curveOffset * 0.35));
@@ -504,37 +690,37 @@ const buildGraphData = () => {
         id: edge.id ? String(edge.id) : `e-${idx}-${sourceId}-${targetId}`,
         source: sourceId,
         target: targetId,
-        type: 'line',
+        type: isRingLayout ? 'quadratic' : 'line',
         data: edge,
         style: {
           stroke: '#ffffff',
           strokeOpacity:
             keywordSet.length === 0
-              ? isDenseGraph
-                ? 0.22
+              ? shouldCompactEdges
+                ? 0.16
                 : 0.32
               : connectsHighlight
-                ? 0.65
-                : 0.16,
+                ? (isRingLayout ? 0.46 : 0.65)
+                : 0.14,
           lineWidth:
             keywordSet.length === 0
-              ? isDenseGraph
+              ? shouldCompactEdges
                 ? 1
                 : 1.4
               : connectsHighlight
-                ? 1.9
+                ? (isRingLayout ? 1.4 : 1.9)
                 : 1.2,
           endArrow: false,
+          ...(isRingLayout ? { curveOffset: curveOffset || ((idx % 4) - 1.5) * 10 } : {}),
           ...(labelOffsetY ? { labelOffsetY } : {}),
           labelText: clampedLabelText,
           labelPlacement: 'center',
           labelFill: '#ffffff',
           labelFontSize: 10,
-          labelOpacity:
-            keywordSet.length === 0
-              ? isDenseGraph
-                ? 0.68
-                : 0.9
+          labelOpacity: shouldCompactEdges
+            ? 0
+            : keywordSet.length === 0
+              ? 0.9
               : connectsHighlight
                 ? 0.95
                 : 0.5,
@@ -554,23 +740,46 @@ const buildGraphData = () => {
   return { nodes: nodeData, edges: edgeData };
 };
 
-const applyGraphData = async () => {
+const applyGraphData = async ({ forceRelayout = false } = {}) => {
   if (!graphInstance) return;
 
   const data = buildGraphData();
+  const topologyKey = buildTopologyKey(data);
+  const topologyChanged = forceRelayout || topologyKey !== lastTopologyKey;
   graphInstance.setData(data);
   const nodeSizeById = new Map(
     (data.nodes || []).map((n) => [String(n.id), n?.size || n?.style?.size || 32])
   );
-  graphInstance.setLayout(getLayoutConfig(nodeSizeById));
+  if (topologyChanged) {
+    graphInstance.setLayout(getLayoutConfig(nodeSizeById));
+  }
   await graphInstance.render();
+  lastTopologyKey = topologyKey;
   if (selectedSeedNodeIds.size > 0) {
     await applyCumulativeHighlights();
   }
-  if (props.autoFit && typeof graphInstance.fitView === 'function') {
-    await graphInstance.fitView({ padding: 32 }, false);
+  if (topologyChanged && props.autoFit && typeof graphInstance.fitView === 'function') {
+    const fitPadding = isRingLikeLayoutType(resolveLayoutType()) ? 72 : 32;
+    await graphInstance.fitView({ padding: fitPadding }, false);
   }
   emit('data-rendered');
+};
+
+const queueApplyGraphData = ({ forceRelayout = false } = {}) => {
+  if (forceRelayout) queuedForceRelayout = true;
+  if (renderQueued) return;
+  renderQueued = true;
+
+  nextTick(async () => {
+    renderQueued = false;
+    const useForceRelayout = queuedForceRelayout;
+    queuedForceRelayout = false;
+    try {
+      await applyGraphData({ forceRelayout: useForceRelayout });
+    } catch (error) {
+      console.error('applyGraphData failed:', error);
+    }
+  });
 };
 
 const bindEvents = () => {
@@ -706,20 +915,23 @@ const initGraph = () => {
   });
 
   bindEvents();
-  applyGraphData();
+  queueApplyGraphData({ forceRelayout: true });
   emit('ready', { graph: graphInstance });
 };
 
 watch(
-  () => props.graphData,
-  () => nextTick(() => applyGraphData()),
-  { deep: true }
+  () => [props.graphData?.nodes, props.graphData?.edges],
+  () => queueApplyGraphData()
 );
 
 watch(
-  () => [props.hiddenDimensions, props.layoutOptions, props.highlightKeywords],
-  () => nextTick(() => applyGraphData()),
-  { deep: true }
+  () => [props.hiddenDimensions, props.layoutOptions],
+  () => queueApplyGraphData({ forceRelayout: true })
+);
+
+watch(
+  () => props.highlightKeywords,
+  () => queueApplyGraphData()
 );
 
 onMounted(() => {
@@ -734,14 +946,17 @@ onUnmounted(() => {
   }
 });
 
-const refreshGraph = () => applyGraphData();
-const fitView = () => graphInstance?.fitView?.({ padding: 32 });
+const refreshGraph = () => queueApplyGraphData({ forceRelayout: true });
+const fitView = () => {
+  const fitPadding = isRingLikeLayoutType(resolveLayoutType()) ? 72 : 32;
+  return graphInstance?.fitView?.({ padding: fitPadding });
+};
 const fitCenter = () => graphInstance?.fitCenter?.({ duration: 200 });
 const getInstance = () => ({ graph: graphInstance });
 const focusNode = (id) => graphInstance?.focusElement?.(id, { duration: 200 });
 const clearFocus = () => graphInstance?.focusElement?.([], { duration: 150 });
-const applyHighlightKeywords = () => applyGraphData();
-const clearHighlights = () => applyGraphData();
+const applyHighlightKeywords = () => queueApplyGraphData();
+const clearHighlights = () => queueApplyGraphData();
 
 defineExpose({
   refreshGraph,

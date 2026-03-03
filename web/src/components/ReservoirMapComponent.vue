@@ -120,8 +120,11 @@ const initMap = async () => {
           min: 1,
           max: 10
         },
-        zoom: 1.2,
-        center: [105, 36],
+        // Fill the viewport more tightly to reduce empty space around the map.
+        layoutCenter: ['50%', '52%'],
+        layoutSize: '112%',
+        zoom: 1.05,
+        center: [104.5, 35.8],
         itemStyle: {
           areaColor: 'rgba(6, 42, 92, 0.3)',
           borderColor: '#00d4ff',

@@ -80,7 +80,7 @@
         :initial-database-id="databaseId"
         :hide-db-selector="true"
         :hide-stats="true"
-        :hide-controls="!store.state.isGraphMaximized"
+        :hide-controls="false"
         :initial-limit="graphLimit"
         :initial-depth="graphDepth"
         @update:stats="handleStatsUpdate"
@@ -186,7 +186,7 @@ const graphStats = computed({
 
 const graphViewerRef = ref(null);
 const showSettings = ref(false);
-const graphLimit = ref(200);
+const graphLimit = ref(100);
 const graphDepth = ref(2);
 
 const showExportModal = ref(false);

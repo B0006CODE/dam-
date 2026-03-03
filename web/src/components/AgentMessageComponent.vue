@@ -30,15 +30,18 @@
       <div v-else-if="parsedData.reasoning_content"  class="empty-block"></div>
 
       <div v-if="hasKnowledgeGraphData && (message.isLast || message.status === 'finished')" class="knowledge-graph-wrapper">
-        <div class="kg-toggle-header">
-          <span class="kg-title">{{ kgTitle }}</span>
+        <div class="kg-toggle-header" @click="toggleKnowledgeGraph">
+          <div class="kg-toggle-left">
+            <caret-right-outlined class="kg-caret" :rotate="kgCollapsed ? 0 : 90" />
+            <span class="kg-title">{{ kgTitle }}</span>
+          </div>
           <a-button
             size="small"
             class="kg-collapse-btn"
-            :title="kgCollapsed ? '展开' : '收起'"
-            @click="kgCollapsed = !kgCollapsed"
+            :title="kgCollapsed ? '展开图谱过程' : '收起图谱过程'"
+            @click.stop="toggleKnowledgeGraph"
           >
-            <caret-right-outlined :rotate="kgCollapsed ? 0 : 90" />
+            {{ kgCollapsed ? '展开' : '收起' }}
           </a-button>
         </div>
         <KnowledgeGraphResult 
@@ -86,6 +89,27 @@
         </div>
       </div>
 
+      <div v-if="citationList.length > 0" class="citations-wrapper">
+        <div class="citations-title">引用来源</div>
+        <ol class="citations-list">
+          <li v-for="citation in citationList" :key="citationKey(citation)" class="citation-item">
+            <div class="citation-main">
+              <span class="citation-index">[{{ citation.index }}]</span>
+              <a
+                v-if="isHttpLink(citation.path)"
+                :href="citation.path"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="citation-link"
+              >
+                {{ formatCitationTitle(citation) }}
+              </a>
+              <span v-else class="citation-text">{{ formatCitationTitle(citation) }}</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
       <div v-if="message.isStoppedByUser" class="retry-hint">
         你停止生成了本次回答
         <span class="retry-link" @click="emit('retryStoppedMessage', message.id)">重新编辑问题</span>
@@ -105,7 +129,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { CaretRightOutlined, ThunderboltOutlined, LoadingOutlined } from '@ant-design/icons-vue';
+import { CaretRightOutlined } from '@ant-design/icons-vue';
 
 import { Loader, CircleCheckBig } from 'lucide-vue-next';
 import { ToolResultRenderer, KnowledgeGraphResult } from '@/components/ToolCallingResult'
@@ -164,7 +188,7 @@ const agentStore = useAgentStore();
 const infoStore = useInfoStore();
 const userStore = useUserStore();
 // KG 折叠开关（默认收起）
-const kgCollapsed = ref(false);
+const kgCollapsed = ref(true);
 const { availableTools } = storeToRefs(agentStore);
 const { isAdmin } = storeToRefs(userStore);
 
@@ -240,6 +264,10 @@ const toggleToolCall = (toolCallId) => {
   }
 };
 
+const toggleKnowledgeGraph = () => {
+  kgCollapsed.value = !kgCollapsed.value;
+};
+
 // 是否存在可视化的知识图谱数据（搜索结果或统计结果）
 const hasKnowledgeGraphData = computed(() => {
   const kg = props.message && props.message.knowledgeGraphData;
@@ -248,6 +276,10 @@ const hasKnowledgeGraphData = computed(() => {
   // 搜索类结果：检查是否有三元组
   const triples = Array.isArray(kg.triples) ? kg.triples : [];
   if (triples.length > 0) return true;
+
+  // 搜索类结果：支持 content-only（如部分嵌套/LightRAG 返回）
+  const content = typeof kg.content === 'string' ? kg.content.trim() : '';
+  if ((kg.query_type === 'search' || kg.query_type === undefined) && content) return true;
   
   // 统计类结果：检查 query_type
   if (kg.query_type === 'statistics' && kg.total_count !== undefined) return true;
@@ -259,10 +291,45 @@ const hasKnowledgeGraphData = computed(() => {
 const kgTitle = computed(() => {
   const kg = props.message && props.message.knowledgeGraphData;
   if (kg && kg.query_type === 'statistics') {
-    return '知识图谱统计结果';
+    return '图谱过程（统计）';
   }
-  return '知识图谱推理结果';
+  return '图谱过程';
 });
+
+const citationList = computed(() => {
+  const list = Array.isArray(props.message?.citations) ? props.message.citations : [];
+  return list
+    .filter((item) => item && (item.path || item.title || item.referenceId))
+    .map((item, index) => ({
+      ...item,
+      index: Number.isFinite(item.index) ? item.index : index + 1,
+    }));
+});
+
+const isHttpLink = (value) => {
+  if (typeof value !== 'string') return false;
+  return /^https?:\/\//i.test(value.trim());
+};
+
+const formatCitationTitle = (citation) => {
+  const path = typeof citation?.path === 'string' ? citation.path.trim() : '';
+  if (path && !isHttpLink(path)) {
+    const parts = path.split(/[\\/]/).filter(Boolean);
+    return parts[parts.length - 1] || path;
+  }
+
+  const title = typeof citation?.title === 'string' ? citation.title.trim() : '';
+  if (title) return title;
+
+  if (path) return path;
+
+  if (citation?.referenceId) return `参考 ${citation.referenceId}`;
+  return '未知来源';
+};
+
+const citationKey = (citation) => {
+  return `${citation?.sourceType || 'source'}-${citation?.referenceId || ''}-${citation?.path || ''}-${citation?.title || ''}-${citation?.index || ''}`;
+};
 </script>
 
 <style lang="less" scoped>
@@ -377,6 +444,66 @@ const kgTitle = computed(() => {
 
   .assistant-message {
     width: 100%;
+  }
+
+  .citations-wrapper {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  .citations-title {
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+
+  .citations-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .citation-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .citation-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .citation-index {
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+
+  .citation-link {
+    color: var(--main-color);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .citation-text {
+    color: var(--text-secondary);
+    word-break: break-all;
   }
 
   .error-hint {
@@ -795,16 +922,25 @@ const kgTitle = computed(() => {
   justify-content: space-between;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+.knowledge-graph-wrapper .kg-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.knowledge-graph-wrapper .kg-caret {
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
 }
 .knowledge-graph-wrapper .kg-title {
   color: var(--main-color);
   font-weight: 500;
 }
 .knowledge-graph-wrapper .kg-collapse-btn {
-  min-width: 24px;
-  width: 24px;
+  min-width: 56px;
   height: 24px;
-  padding: 0;
+  padding: 0 8px;
   display: flex;
   align-items: center;
   justify-content: center;

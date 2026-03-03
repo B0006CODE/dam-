@@ -1,7 +1,7 @@
 <template>
   <div class="reservoir-map-view">
     <div class="page-header">
-      <h1>🗺️ 中国水库分布图</h1>
+      <h1>🗺️ 水库分布图</h1>
       <div class="header-stats">
         <div class="stat-badge">
           <span class="stat-label">总水库数</span>
@@ -102,7 +102,7 @@ const handleReservoirClick = (reservoir: Reservoir) => {
 }
 
 .page-header {
-  padding: 24px 32px;
+  padding: 16px 22px;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(0, 212, 255, 0.2);
   display: flex;
@@ -113,41 +113,41 @@ const handleReservoirClick = (reservoir: Reservoir) => {
 
 .page-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #ffffff;
   text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header-stats {
   display: flex;
-  gap: 16px;
+  gap: 10px;
 }
 
 .stat-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 20px;
+  padding: 8px 14px;
   background: rgba(0, 212, 255, 0.1);
   border: 1px solid rgba(0, 212, 255, 0.3);
   border-radius: 8px;
-  min-width: 100px;
+  min-width: 88px;
 }
 
 .stat-label {
   font-size: 12px;
   color: #8ab4f8;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: #00d4ff;
   text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
@@ -161,20 +161,20 @@ const handleReservoirClick = (reservoir: Reservoir) => {
 
 .map-legend {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: 12px;
+  left: 12px;
   background: rgba(6, 42, 92, 0.95);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 212, 255, 0.3);
   border-radius: 12px;
-  padding: 16px;
-  min-width: 200px;
+  padding: 12px;
+  min-width: 180px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   z-index: 50;
 }
 
 .map-legend h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   font-size: 14px;
   font-weight: 600;
   color: #00d4ff;
@@ -185,21 +185,21 @@ const handleReservoirClick = (reservoir: Reservoir) => {
 .legend-items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 12px;
   color: #ffffff;
 }
 
 .legend-symbol {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -216,19 +216,19 @@ const handleReservoirClick = (reservoir: Reservoir) => {
 }
 
 .legend-note {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid rgba(0, 212, 255, 0.2);
-  font-size: 12px;
+  font-size: 11px;
   color: #8ab4f8;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .page-header {
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
     align-items: flex-start;
   }
 
@@ -242,9 +242,9 @@ const handleReservoirClick = (reservoir: Reservoir) => {
   }
 
   .map-legend {
-    bottom: 10px;
-    left: 10px;
-    right: 10px;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
     min-width: auto;
   }
 }

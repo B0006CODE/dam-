@@ -55,6 +55,12 @@ async def update_config_batch(items: dict = Body(...), current_user: User = Depe
 @system.post("/restart")
 async def restart_system(current_user: User = Depends(get_superadmin_user)):
     """重启系统（仅超级管理员）"""
+    # 重新加载模型配置与环境变量状态，确保设置页可见项是最新的
+    config._update_models_from_file()
+    config.load()
+    config.handle_self()
+    config._config_items["embed_model"]["choices"] = list(config.embed_model_names.keys())
+    config._config_items["reranker"]["choices"] = list(config.reranker_names.keys())
     graph_base.start()
     return {"message": "系统已重启"}
 

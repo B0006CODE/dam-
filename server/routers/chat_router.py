@@ -296,15 +296,15 @@ async def chat_agent(
         if retrieval_mode in {"mix", "global"} and not graph_name:
             yield make_chunk(status="error", message="请至少选择一个知识图谱", meta=meta)
             return
+        if not thread_id:
+            thread_id = str(uuid.uuid4())
+            logger.warning(f"No thread_id provided, generated new thread_id: {thread_id}")
+
         input_context = {"user_id": user_id, "thread_id": thread_id, "retrieval_mode": retrieval_mode}
         if kb_whitelist:
             input_context["kb_whitelist"] = kb_whitelist
         if graph_name:
             input_context["graph_name"] = graph_name
-
-        if not thread_id:
-            thread_id = str(uuid.uuid4())
-            logger.warning(f"No thread_id provided, generated new thread_id: {thread_id}")
 
         # Initialize conversation manager
         conv_manager = ConversationManager(db)
@@ -473,6 +473,18 @@ async def get_agent_history(
                 "created_at": msg.created_at.isoformat() if msg.created_at else None,
                 "error_type": msg.extra_metadata.get("error_type") if msg.extra_metadata else None,
             }
+
+            # 兼容两种位置：extra_metadata.citations / extra_metadata.additional_kwargs.citations
+            raw_citations = []
+            if msg.extra_metadata:
+                if isinstance(msg.extra_metadata.get("citations"), list):
+                    raw_citations = msg.extra_metadata.get("citations") or []
+                else:
+                    additional_kwargs = msg.extra_metadata.get("additional_kwargs") or {}
+                    if isinstance(additional_kwargs, dict) and isinstance(additional_kwargs.get("citations"), list):
+                        raw_citations = additional_kwargs.get("citations") or []
+            if raw_citations:
+                msg_dict["citations"] = raw_citations
 
             # Add tool calls if present (for AI messages)
             if msg.tool_calls and len(msg.tool_calls) > 0:

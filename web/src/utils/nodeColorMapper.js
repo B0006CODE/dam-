@@ -77,9 +77,57 @@ export const DIMENSION_COLORS = {
     },
 };
 
+const DIMENSION_PRIORITY = {
+    treatment: 1,
+    cause: 2,
+    defect: 3,
+    engineering: 4,
+    default: 5,
+};
+
+const pickHigherPriorityDimension = (currentDimension, candidateDimension) => {
+    const currentPriority = DIMENSION_PRIORITY[currentDimension] || DIMENSION_PRIORITY.default;
+    const candidatePriority = DIMENSION_PRIORITY[candidateDimension] || DIMENSION_PRIORITY.default;
+    return candidatePriority < currentPriority ? candidateDimension : currentDimension;
+};
+
+const inferNodeDimensionsFromEdges = (edges = []) => {
+    const nodeDimensionMap = new Map();
+
+    const applyNodeDimension = (nodeId, dimension) => {
+        if (nodeId == null || !dimension || dimension === 'default') return;
+        const key = String(nodeId);
+        const prev = nodeDimensionMap.get(key) || 'default';
+        nodeDimensionMap.set(key, pickHigherPriorityDimension(prev, dimension));
+    };
+
+    for (const edge of edges) {
+        const relationType = getEdgeRelationType(edge);
+        const dimension = getDimensionByRelation(relationType);
+        if (dimension === 'default') continue;
+
+        const sourceId = getEdgeSourceId(edge);
+        const targetId = getEdgeTargetId(edge);
+
+        // 与旧逻辑保持一致：源节点默认作为 defect 参与
+        applyNodeDimension(sourceId, 'defect');
+
+        // 目标节点根据关系维度赋予更具体类型
+        if (dimension === 'treatment') {
+            applyNodeDimension(targetId, 'treatment');
+        } else if (dimension === 'cause') {
+            applyNodeDimension(targetId, 'cause');
+        } else if (dimension === 'engineering') {
+            applyNodeDimension(targetId, 'engineering');
+        }
+    }
+
+    return nodeDimensionMap;
+};
+
 // 获取所有维度列表（用于筛选器）
 export function getDimensionList() {
-    return Object.values(DIMENSION_COLORS).filter(d => d.key !== 'default');
+    return Object.values(DIMENSION_COLORS);
 }
 
 /**
@@ -114,56 +162,8 @@ export function getDimensionColor(dimension) {
  * @returns {string} 维度 key
  */
 export function inferNodeDimension(nodeId, edges) {
-    const dimensionPriority = {
-        treatment: 1,
-        cause: 2,
-        defect: 3,
-        engineering: 4,
-        default: 5,
-    };
-
-    let bestDimension = 'default';
-    let bestPriority = 5;
-
-    for (const edge of edges) {
-        const relationType = getEdgeRelationType(edge);
-        const dimension = getDimensionByRelation(relationType);
-
-        if (dimension === 'default') continue;
-
-        // 检查节点是否参与这条边
-        const sourceId = getEdgeSourceId(edge);
-        const targetId = getEdgeTargetId(edge);
-        const isSource = sourceId != null && String(sourceId) === String(nodeId);
-        const isTarget = targetId != null && String(targetId) === String(nodeId);
-
-        if (!isSource && !isTarget) continue;
-
-        // 根据角色确定维度
-        let nodeDimension = 'default';
-
-        if (dimension === 'treatment' && isTarget) {
-            nodeDimension = 'treatment';
-        } else if (dimension === 'cause' && isTarget) {
-            nodeDimension = 'cause';
-        } else if (dimension === 'defect' && isSource) {
-            nodeDimension = 'defect';
-        } else if (dimension === 'engineering' && isTarget) {
-            nodeDimension = 'engineering';
-        } else if (isSource) {
-            // 作为源节点，可能是 defect 类型
-            nodeDimension = 'defect';
-        }
-
-        // 更新最佳维度（优先级越低越好）
-        const priority = dimensionPriority[nodeDimension] || 5;
-        if (priority < bestPriority) {
-            bestDimension = nodeDimension;
-            bestPriority = priority;
-        }
-    }
-
-    return bestDimension;
+    const map = inferNodeDimensionsFromEdges(edges);
+    return map.get(String(nodeId)) || 'default';
 }
 
 /**
@@ -175,6 +175,7 @@ export function inferNodeDimension(nodeId, edges) {
 export function buildNodeColorMap(nodes, edges) {
     const colorMap = new Map();
     const useExplicitType = hasExplicitNodeTypes(nodes);
+    const inferredNodeDimensions = useExplicitType ? null : inferNodeDimensionsFromEdges(edges);
 
     for (const node of nodes) {
         const nodeId = String(node.id);
@@ -191,7 +192,7 @@ export function buildNodeColorMap(nodes, edges) {
             continue;
         }
 
-        const dimension = inferNodeDimension(nodeId, edges);
+        const dimension = inferredNodeDimensions?.get(nodeId) || 'default';
         const colors = getDimensionColor(dimension);
 
         colorMap.set(nodeId, {

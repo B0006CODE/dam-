@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Annotated
 
+from src import config as sys_config
 from src.agents.common.context import BaseContext
 from src.agents.common.mcp import MCP_SERVERS
 from src.agents.common.tools import gen_tool_info
@@ -11,7 +12,7 @@ from .tools import get_tools
 @dataclass(kw_only=True)
 class Context(BaseContext):
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        default="vllm/Qwen/Qwen3-32B-AWQ",
+        default_factory=lambda: getattr(sys_config, "default_model", "") or "deepseek/deepseek-chat",
         metadata={"name": "智能体模型", "options": [], "description": "智能体的驱动模型"},
     )
 

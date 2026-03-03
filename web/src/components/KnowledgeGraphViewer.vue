@@ -65,6 +65,14 @@
       </div>
 
       <div class="layout-section">
+        <a-select
+          v-model:value="layoutMode"
+          size="small"
+          style="width: 120px; margin-right: 6px"
+        >
+          <a-select-option value="radial">环形布局</a-select-option>
+          <a-select-option value="force">力导向</a-select-option>
+        </a-select>
         <a-button size="small" @click="reapplyLayout">重新布局</a-button>
       </div>
 
@@ -194,7 +202,7 @@ const props = defineProps({
   hideDbSelector: { type: Boolean, default: false },
   hideStats: { type: Boolean, default: false },
   hideControls: { type: Boolean, default: false },
-  initialLimit: { type: Number, default: 200 },
+  initialLimit: { type: Number, default: 100 },
   initialDepth: { type: Number, default: 2 }
 });
 
@@ -211,8 +219,18 @@ const selectedDatabase = ref('');
 const availableDatabases = ref([]);
 const selectedLabel = ref('*');
 const availableLabels = ref([]);
+const layoutMode = ref('radial');
 
-const layoutOptions = computed(() => ({ type: 'force' }));
+const layoutOptions = computed(() =>
+  layoutMode.value === 'radial'
+    ? {
+        type: 'radial',
+        unitRadius: 180,
+        linkDistance: 220,
+        maxIteration: 1000
+      }
+    : { type: 'force' }
+);
 
 const searchParams = reactive({
   max_nodes: props.initialLimit,

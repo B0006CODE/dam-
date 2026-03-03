@@ -87,7 +87,7 @@ def get_static_tools(input_context: dict | None = None) -> list:
             logger.debug(f"统计知识图谱 [{graph_name}] 关键词: {keyword}, 查询类型: {query_type}")
             
             if graph_name != "neo4j":
-                return f"LightRAG ??????????: {graph_name}"
+                return f"当前图谱({graph_name})暂不支持统计查询，请切换到 Neo4j 图谱后重试。"
 
             if not graph_base.is_running():
                 return "知识图谱数据库未连接，无法进行统计查询。"

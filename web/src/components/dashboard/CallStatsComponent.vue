@@ -277,6 +277,28 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+
+  :deep(.ant-card-head-wrapper) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  :deep(.ant-card-head-title) {
+    flex: 0 0 auto;
+    min-width: 72px;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    padding-right: 0;
+  }
+
+  :deep(.ant-card-extra) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
 }
 
 :deep(.ant-card-body) {
@@ -309,13 +331,16 @@ onUnmounted(() => {
 .simple-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 8px;
 }
 
 .simple-toggle-group {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);
   padding: 2px;
   border-radius: 6px;
@@ -323,13 +348,14 @@ onUnmounted(() => {
 }
 
 .simple-toggle {
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s ease;
   user-select: none;
+  white-space: nowrap;
 }
 
 .simple-toggle:hover {
@@ -348,6 +374,27 @@ onUnmounted(() => {
   width: 1px;
   height: 16px;
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 1200px) {
+  .simple-controls {
+    gap: 6px;
+  }
+
+  .simple-toggle {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .divider {
+    display: none;
+  }
+
+  .simple-controls {
+    gap: 6px;
+  }
 }
 </style>
 
