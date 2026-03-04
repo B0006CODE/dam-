@@ -200,6 +200,7 @@ import { handleChatError, handleValidationError } from '@/utils/errorHandler';
 import { ScrollController } from '@/utils/scrollController';
 import { AgentValidator } from '@/utils/agentValidator';
 import { useAgentStore } from '@/stores/agent';
+import { safeLocalGet, safeLocalSet } from '@/utils/storage';
 import { storeToRefs } from 'pinia';
 import { MessageProcessor } from '@/utils/messageProcessor';
 import { agentApi, threadApi } from '@/apis';
@@ -260,7 +261,7 @@ const threadMessages = ref({});
 
 const uiState = reactive({
   ...props.state,
-  isSidebarOpen: localStorage.getItem('chat_sidebar_open') !== 'false',
+  isSidebarOpen: safeLocalGet('chat_sidebar_open', 'true') !== 'false',
   isInitialRender: true,
   containerWidth: 0,
 });
@@ -932,7 +933,7 @@ defineExpose({
 
 const toggleSidebar = () => {
   uiState.isSidebarOpen = !uiState.isSidebarOpen;
-  localStorage.setItem('chat_sidebar_open', uiState.isSidebarOpen);
+  safeLocalSet('chat_sidebar_open', uiState.isSidebarOpen);
 };
 const openAgentModal = () => emit('open-agent-modal');
 

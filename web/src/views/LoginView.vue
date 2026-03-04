@@ -121,6 +121,7 @@ import { useUserStore } from '@/stores/user'
 import { useInfoStore } from '@/stores/info'
 import { message } from 'ant-design-vue'
 import { healthApi } from '@/apis/system_api'
+import { safeSessionGet, safeSessionRemove } from '@/utils/storage'
 import { UserOutlined, LockOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -186,8 +187,8 @@ async function handleLogin () {
     clearLockCountdown()
     await userStore.login({ loginId: loginForm.loginId, password: loginForm.password })
     message.success('登录成功')
-    const redirect = sessionStorage.getItem('redirect') || '/'
-    sessionStorage.removeItem('redirect')
+    const redirect = safeSessionGet('redirect', '/') || '/'
+    safeSessionRemove('redirect')
     if (redirect === '/') {
       router.push('/agent')
     } else {

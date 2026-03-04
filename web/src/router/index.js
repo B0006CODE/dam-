@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { useUserStore } from '@/stores/user';
 import { useAgentStore } from '@/stores/agent';
+import { safeSessionSet } from '@/utils/storage';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -122,7 +123,7 @@ router.beforeEach(async (to, from, next) => {
   const isLoggedIn = userStore.isLoggedIn;
   const isAdmin = userStore.isAdmin;
   if (requiresAuth && !isLoggedIn) {
-    sessionStorage.setItem('redirect', to.fullPath);
+    safeSessionSet('redirect', to.fullPath);
     next('/login');
     return;
   }

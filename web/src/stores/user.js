@@ -1,14 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { safeLocalGet, safeLocalSet, safeLocalRemove } from '@/utils/storage'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
-  const token = ref(localStorage.getItem('user_token') || '')
-  const userId = ref(parseInt(localStorage.getItem('user_id') || '0') || null)
-  const username = ref(localStorage.getItem('username') || '')
-  const userIdLogin = ref(localStorage.getItem('user_id_login') || '') // 用于登录的user_id
-  const avatar = ref(localStorage.getItem('avatar') || '')
-  const userRole = ref(localStorage.getItem('user_role') || '')
+  const token = ref(safeLocalGet('user_token', ''))
+  const userId = ref(parseInt(safeLocalGet('user_id', '0'), 10) || null)
+  const username = ref(safeLocalGet('username', ''))
+  const userIdLogin = ref(safeLocalGet('user_id_login', '')) // 用于登录的user_id
+  const avatar = ref(safeLocalGet('avatar', ''))
+  const userRole = ref(safeLocalGet('user_role', ''))
 
   // 计算属性
   const isLoggedIn = computed(() => !!token.value)
@@ -53,12 +54,12 @@ export const useUserStore = defineStore('user', () => {
       userRole.value = data.role
 
       // 保存到本地存储
-      localStorage.setItem('user_token', data.access_token)
-      localStorage.setItem('user_id', data.user_id)
-      localStorage.setItem('username', data.username)
-      localStorage.setItem('user_id_login', data.user_id_login)
-      localStorage.setItem('avatar', data.avatar || '')
-      localStorage.setItem('user_role', data.role)
+      safeLocalSet('user_token', data.access_token)
+      safeLocalSet('user_id', data.user_id)
+      safeLocalSet('username', data.username)
+      safeLocalSet('user_id_login', data.user_id_login)
+      safeLocalSet('avatar', data.avatar || '')
+      safeLocalSet('user_role', data.role)
 
       return true
     } catch (error) {
@@ -77,12 +78,12 @@ export const useUserStore = defineStore('user', () => {
     userRole.value = ''
 
     // 清除本地存储
-    localStorage.removeItem('user_token')
-    localStorage.removeItem('user_id')
-    localStorage.removeItem('username')
-    localStorage.removeItem('user_id_login')
-    localStorage.removeItem('avatar')
-    localStorage.removeItem('user_role')
+    safeLocalRemove('user_token')
+    safeLocalRemove('user_id')
+    safeLocalRemove('username')
+    safeLocalRemove('user_id_login')
+    safeLocalRemove('avatar')
+    safeLocalRemove('user_role')
   }
 
   async function initialize(admin) {
@@ -111,12 +112,12 @@ export const useUserStore = defineStore('user', () => {
       userRole.value = data.role
 
       // 保存到本地存储
-      localStorage.setItem('user_token', data.access_token)
-      localStorage.setItem('user_id', data.user_id)
-      localStorage.setItem('username', data.username)
-      localStorage.setItem('user_id_login', data.user_id_login)
-      localStorage.setItem('avatar', data.avatar || '')
-      localStorage.setItem('user_role', data.role)
+      safeLocalSet('user_token', data.access_token)
+      safeLocalSet('user_id', data.user_id)
+      safeLocalSet('username', data.username)
+      safeLocalSet('user_id_login', data.user_id_login)
+      safeLocalSet('avatar', data.avatar || '')
+      safeLocalSet('user_role', data.role)
 
       return true
     } catch (error) {
@@ -277,7 +278,7 @@ export const useUserStore = defineStore('user', () => {
 
       // 更新本地头像状态
       avatar.value = data.avatar_url
-      localStorage.setItem('avatar', data.avatar_url)
+      safeLocalSet('avatar', data.avatar_url)
 
       return data
     } catch (error) {
@@ -308,10 +309,10 @@ export const useUserStore = defineStore('user', () => {
       userRole.value = userData.role
 
       // 更新本地存储
-      localStorage.setItem('username', userData.username)
-      localStorage.setItem('user_id_login', userData.user_id)
-      localStorage.setItem('avatar', userData.avatar || '')
-      localStorage.setItem('user_role', userData.role)
+      safeLocalSet('username', userData.username)
+      safeLocalSet('user_id_login', userData.user_id)
+      safeLocalSet('avatar', userData.avatar || '')
+      safeLocalSet('user_role', userData.role)
 
       return userData
     } catch (error) {
@@ -342,7 +343,7 @@ export const useUserStore = defineStore('user', () => {
       // 更新本地状态
       if (typeof userData.username === 'string') {
         username.value = userData.username
-        localStorage.setItem('username', userData.username)
+        safeLocalSet('username', userData.username)
       }
 
       return userData
