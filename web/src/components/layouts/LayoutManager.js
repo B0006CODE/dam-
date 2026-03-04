@@ -67,6 +67,18 @@ export class LayoutManager {
     const width = options.width || 800
     const height = options.height || 600
     const centerNode = options.centerNode || null
+    const normalizedEdges = edges
+      .map(edge => {
+        if (edge && typeof edge === 'object' && 'source' in edge && 'target' in edge) {
+          return edge
+        }
+        if (typeof graph.extremities === 'function') {
+          const [source, target] = graph.extremities(edge)
+          return { source, target }
+        }
+        return null
+      })
+      .filter(Boolean)
 
     // 初始化位置
     const simulation = d3.forceSimulation(nodes.map(nodeId => ({
@@ -78,10 +90,7 @@ export class LayoutManager {
     // 定义力
     simulation
       .force('charge', d3.forceManyBody().strength(-300))
-      .force('link', d3.forceLink(edges.map(edge => ({
-        source: edge.source,
-        target: edge.target
-      })))
+      .force('link', d3.forceLink(normalizedEdges).id(d => d.id))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(20))
 
@@ -121,7 +130,19 @@ export class LayoutManager {
     const edges = graph.edges()
     const width = options.width || 800
     const height = options.height || 600
-    const centerNode = options.centerNode || null
+    let centerNode = options.centerNode || null
+    const normalizedEdges = edges
+      .map(edge => {
+        if (edge && typeof edge === 'object' && 'source' in edge && 'target' in edge) {
+          return edge
+        }
+        if (typeof graph.extremities === 'function') {
+          const [source, target] = graph.extremities(edge)
+          return { source, target }
+        }
+        return null
+      })
+      .filter(Boolean)
 
     if (!centerNode && nodes.length > 0) {
       centerNode = nodes[0] // 默认第一个节点为中心
@@ -130,7 +151,7 @@ export class LayoutManager {
     // 构建邻接表
     const adjacency = new Map()
     nodes.forEach(node => adjacency.set(node, []))
-    edges.forEach(edge => {
+    normalizedEdges.forEach(edge => {
       adjacency.get(edge.source).push(edge.target)
       adjacency.get(edge.target).push(edge.source)
     })

@@ -35,7 +35,7 @@
         <h4 class="section-title">对话消息</h4>
         <div class="messages-container">
           <div
-            v-for="(message, index) in conversationDetail.messages"
+            v-for="message in conversationDetail.messages"
             :key="message.id"
             class="message-item"
             :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }"
@@ -64,7 +64,7 @@
               <div v-if="message.tool_calls && message.tool_calls.length > 0" class="tool-calls-section">
                 <a-collapse size="small" :bordered="false">
                   <a-collapse-panel
-                    v-for="(toolCall, toolIndex) in message.tool_calls"
+                    v-for="toolCall in message.tool_calls"
                     :key="toolCall.id"
                     :header="`工具调用: ${toolCall.tool_name}`"
                     class="tool-call-panel"
