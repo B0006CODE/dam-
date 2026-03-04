@@ -112,6 +112,7 @@ import {
 } from '@ant-design/icons-vue';
 import { databaseApi } from '@/apis/knowledge_api';
 import { lightragApi, neo4jApi } from '@/apis/graph_api';
+import { safeLocalGet } from '@/utils/storage';
 
 // Props
 const props = defineProps({
@@ -165,7 +166,7 @@ const kbOptionsWithStats = computed(() => {
 // 读取图谱别名（与GraphView保持一致）
 const loadGraphAliases = () => {
   try {
-    const raw = localStorage.getItem('graph_aliases');
+    const raw = safeLocalGet('graph_aliases', '');
     return raw ? JSON.parse(raw) : {};
   } catch (e) {
     return {};
@@ -317,7 +318,7 @@ const loadGraphOptions = async () => {
     
     // 尝试加载已保存的别名
     try {
-      const savedAliases = localStorage.getItem('graph_aliases');
+      const savedAliases = safeLocalGet('graph_aliases', '');
       if (savedAliases) {
         const aliases = JSON.parse(savedAliases);
         if (aliases['neo4j']) {

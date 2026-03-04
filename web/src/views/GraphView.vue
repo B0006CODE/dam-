@@ -239,6 +239,7 @@ import DimensionFilter from '@/components/DimensionFilter.vue';
 import { buildNodeColorMap, DIMENSION_COLORS, filterByDimensions } from '@/utils/nodeColorMapper';
 import { getEntityTypeColor, normalizeEntityType } from '@/utils/entityTypeColors';
 import { storeToRefs } from 'pinia';
+import { safeLocalGet, safeLocalSet } from '@/utils/storage';
 
 const configStore = useConfigStore();
 const userStore = useUserStore();
@@ -768,7 +769,7 @@ const openLink = (url) => {
 
 function loadGraphAliases() {
   try {
-    const raw = localStorage.getItem('graph_aliases');
+    const raw = safeLocalGet('graph_aliases', '');
     return raw ? JSON.parse(raw) : {};
   } catch (e) {
     return {};
@@ -776,7 +777,7 @@ function loadGraphAliases() {
 }
 
 const persistGraphAliases = () => {
-  localStorage.setItem('graph_aliases', JSON.stringify(graphAliases.value || {}));
+  safeLocalSet('graph_aliases', JSON.stringify(graphAliases.value || {}));
 };
 
 const labelWithAlias = (id, fallback) => {

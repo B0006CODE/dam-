@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { useUserStore } from '@/stores/user';
 import { useAgentStore } from '@/stores/agent';
-import { safeSessionSet } from '@/utils/storage';
+import { safeSessionGet, safeSessionRemove, safeSessionSet } from '@/utils/storage';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -146,5 +146,25 @@ router.beforeEach(async (to, from, next) => {
   }
   next();
 });
+
+// 处理动态路由懒加载偶发失败，避免刷新后白屏
+router.onError((error, to) => {
+  const message = String(error?.message || '')
+  const isChunkLoadError =
+    message.includes('Failed to fetch dynamically imported module') ||
+    message.includes('Importing a module script failed') ||
+    message.includes('Loading chunk')
+
+  if (!isChunkLoadError) return
+
+  const reloadFlag = safeSessionGet('__route_chunk_reload__', '0')
+  if (reloadFlag === '1') {
+    safeSessionRemove('__route_chunk_reload__')
+    return
+  }
+
+  safeSessionSet('__route_chunk_reload__', '1')
+  window.location.assign(to?.fullPath || window.location.pathname || '/')
+})
 
 export default router
