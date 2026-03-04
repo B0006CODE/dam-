@@ -1,6 +1,13 @@
 <template>
   <div class="agent-view">
     <div class="agent-view-body">
+      <div v-if="state.initError" class="init-error-banner">
+        <span>{{ state.initError }}</span>
+        <a-button size="small" type="link" @click="initializeAgentStore" :loading="state.initializing">
+          重试
+        </a-button>
+      </div>
+
       <!-- 智能体选择弹窗 -->
       <a-modal
         v-model:open="state.agentModalOpen"
@@ -75,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive, watch, onMounted } from 'vue';
 import { StarOutlined, StarFilled, MessageOutlined, ShareAltOutlined, EyeOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import AgentChatComponent from '@/components/AgentChatComponent.vue';
@@ -103,7 +110,9 @@ const {
 const state = reactive({
   agentModalOpen: false,
   moreMenuOpen: false,
-  moreMenuPosition: { x: 0, y: 0 }
+  moreMenuPosition: { x: 0, y: 0 },
+  initializing: false,
+  initError: ''
 });
 
 
@@ -128,6 +137,21 @@ const setAsDefaultAgent = async (agentId) => {
 
 
 // 这些方法现在由agentStore处理，无需在组件中定义
+const initializeAgentStore = async () => {
+  if (agentStore.isInitialized || state.initializing) return;
+
+  state.initializing = true;
+  state.initError = '';
+  try {
+    await agentStore.initialize();
+  } catch (error) {
+    console.error('初始化智能体失败:', error);
+    state.initError = '智能体初始化失败，部分功能可能不可用。';
+    message.warning('智能体初始化失败，可点击重试');
+  } finally {
+    state.initializing = false;
+  }
+};
 
 const loadAgentConfig = async () => {
   try {
@@ -240,6 +264,10 @@ const handlePreview = () => {
     window.open(`/agent/${selectedAgentId.value}`, '_blank');
   }
 };
+
+onMounted(() => {
+  initializeAgentStore();
+});
 </script>
 
 <style lang="less" scoped>
@@ -260,6 +288,23 @@ const handlePreview = () => {
   overflow: hidden;
   position: relative;
   background: transparent;
+
+  .init-error-banner {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 420px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(250, 173, 20, 0.35);
+    background: rgba(66, 28, 0, 0.7);
+    color: #ffd591;
+    backdrop-filter: blur(8px);
+  }
 
   .content {
     flex: 1;

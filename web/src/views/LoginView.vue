@@ -98,12 +98,6 @@
                 </a-form-item>
 
                 <a-form-item>
-                  <div class="login-options" style="justify-content: flex-end;">
-                    <a class="forgot-password" @click="showDevMessage">忘记密码?</a>
-                  </div>
-                </a-form-item>
-
-                <a-form-item>
                   <a-button type="primary" html-type="submit" :loading="loading" :disabled="isLocked" block>
                     <span v-if="isLocked">账户已锁定 {{ formatTime(lockRemainingTime) }}</span>
                     <span v-else>登录</span>
@@ -125,7 +119,6 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useInfoStore } from '@/stores/info'
-import { useAgentStore } from '@/stores/agent'
 import { message } from 'ant-design-vue'
 import { healthApi } from '@/apis/system_api'
 import { UserOutlined, LockOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue'
@@ -133,7 +126,6 @@ import { UserOutlined, LockOutlined, ExclamationCircleOutlined } from '@ant-desi
 const router = useRouter()
 const userStore = useUserStore()
 const infoStore = useInfoStore()
-const agentStore = useAgentStore()
 
 /* 品牌展示 */
 const loginBgImage = '/china-reservoir-map.png'
@@ -155,8 +147,6 @@ let lockCountdown = null
 /* 表单 */
 const loginForm = reactive({ loginId: '', password: '' })
 const adminForm = reactive({ user_id: '', password: '', confirmPassword: '' })
-
-const showDevMessage = () => message.info('该功能正在开发中，敬请期待！')
 
 function clearLockCountdown () {
   if (lockCountdown) { clearInterval(lockCountdown); lockCountdown = null }
@@ -199,8 +189,6 @@ async function handleLogin () {
     const redirect = sessionStorage.getItem('redirect') || '/'
     sessionStorage.removeItem('redirect')
     if (redirect === '/') {
-      if (userStore.isAdmin) { router.push('/agent'); return }
-      await agentStore.initialize().catch(() => {})
       router.push('/agent')
     } else {
       router.push(redirect)
@@ -315,6 +303,5 @@ onUnmounted(() => clearLockCountdown())
   :deep(.ant-btn){font-size:16px;font-weight:500;padding:12px 16px;height:auto;background:linear-gradient(135deg,var(--main-color) 0%,var(--main-active) 100%);border:none;border-radius:8px;box-shadow:0 4px 14px 0 rgba(6,182,212,.35);transition:all .3s ease;&:hover:not(:disabled){background:linear-gradient(135deg,var(--main-hover) 0%,var(--main-color) 100%);box-shadow:0 6px 20px rgba(6,182,212,.4);transform:translateY(-2px)}&:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 8px rgba(6,182,212,.3)}&:disabled{background:rgba(107,114,128,.5);box-shadow:none;cursor:not-allowed}}
 }
 .login-form--init{padding:24px;border-radius:18px;background:rgba(6,182,212,.05);border:1px solid rgba(6,182,212,.2);h2{margin-bottom:16px;font-size:22px;font-weight:600;color:var(--main-color);text-align:left}}
-.login-options{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;flex-wrap:wrap;&:deep(.ant-checkbox-wrapper){color:var(--text-secondary)}.forgot-password{color:var(--main-color);font-size:14px;&:hover{color:var(--main-hover)}}}
 .error-message{margin-top:16px;padding:10px 12px;background-color:var(--stats-error-bg);border:1px solid rgba(220,38,38,.25);border-radius:8px;color:var(--stats-error-color);font-size:14px}
 </style>
